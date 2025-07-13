@@ -52,27 +52,28 @@
 
 ### 方法4: 本地运行
 
+我们提供了一个便捷的启动脚本，它会自动检测您的环境并选择最佳的本地服务器启动方式。
+
 ```bash
-# 使用Python
-python -m http.server 8000
+# 赋予脚本执行权限 (首次运行时需要)
+chmod +x start.sh
 
-# 使用Node.js
-npx http-server
-
-# 使用Live Server（VS Code插件）
-右键点击index.html -> Open with Live Server
+# 运行启动脚本
+./start.sh
 ```
+
+脚本会提供一个菜单，让您可以选择使用Python、Node.js或直接在浏览器中打开文件。
 
 ## 📁 项目结构
 
 ```
 xundian_coding/
-├── index.html          # 主页
-├── games/              # 140个游戏文件
-├── data/               # 游戏数据库
+├── index.html          # 主页 (内嵌了所有游戏数据和JS逻辑)
+├── games/              # 140个游戏HTML文件
+├── data/               # 存放原始游戏数据
 │   └── games-database.json
-├── add-navigation.js   # 导航添加脚本
-└── README.md          # 本文件
+├── add-navigation.js   # (开发者工具) 用于向所有游戏页面添加返回导航的Node.js脚本
+└── README.md           # 本文件
 ```
 
 ## ✨ 功能特点
@@ -86,10 +87,9 @@ xundian_coding/
 
 ## 🛠️ 技术细节
 
-- 所有游戏文件都已添加返回主页导航
-- 使用JSON数据库管理游戏信息
-- 采用现代化的玻璃拟态设计
-- 支持PWA，可添加到手机主屏幕
+- **数据管理**: 为提升性能和简化部署，所有游戏元数据（来自`data/games-database.json`）都被直接编译并内嵌于 `index.html` 中。
+- **批量处理**: 提供了 `add-navigation.js` 脚本，可使用 Node.js 为 `games/` 目录下的所有游戏批量添加“返回主页”的导航链接。
+- **前端技术**: 采用现代化的玻璃拟态（Glassmorphism）设计，并完全支持PWA，可将网站添加到手机主屏幕以获得类似App的体验。
 
 ## 👨‍👩‍👧‍👦 适合人群
 
