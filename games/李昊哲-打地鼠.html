@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>欢乐打地鼠</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4A6CF7',
+                        secondary: '#FF9F1C',
+                        accent: '#FF3366',
+                        background: '#FFF8F0',
+                        hole: '#8B4513',
+                    },
+                    fontFamily: {
+                        game: ['"Comic Sans MS"', '"Marker Felt"', 'Arial', 'sans-serif'],
+                    },
+                    animation: {
+                        'pop-up': 'pop-up 0.5s ease-out forwards',
+                        'pop-down': 'pop-down 0.3s ease-in forwards',
+                        'hit': 'hit 0.2s ease-in-out',
+                        'shake': 'shake 0.5s ease-in-out',
+                    },
+                    keyframes: {
+                        'pop-up': {
+                            '0%': { transform: 'translateY(100%)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        'pop-down': {
+                            '0%': { transform: 'translateY(0)', opacity: '1' },
+                            '100%': { transform: 'translateY(100%)', opacity: '0' },
+                        },
+                        'hit': {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(0.8)', filter: 'brightness(1.5)' },
+                        },
+                        'shake': {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '20%, 60%': { transform: 'translateX(-5px)' },
+                            '40%, 80%': { transform: 'translateX(5px)' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            .text-shadow-lg {
+                text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+            }
+            .mole-hole {
+                @apply relative w-20 h-20 md:w-24 md:h-24 rounded-full bg-hole/70 overflow-hidden;
+            }
+            .mole {
+                @apply absolute bottom-0 left-0 right-0 h-full flex items-end justify-center opacity-0 transform translate-y-full transition-all duration-300 cursor-pointer;
+            }
+            .mole-appear {
+                @apply opacity-100 transform translate-y-0;
+            }
+            .mole-hit {
+                @apply animate-hit;
+            }
+            .btn-game {
+                @apply bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            }
+            .btn-game-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-bold py-3 px-8 rounded-full shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50;
+            }
+            .game-panel {
+                @apply bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl p-6 md:p-8 transition-all duration-500 ease-in-out;
+            }
+            .score-display {
+                @apply bg-white rounded-full shadow-md py-2 px-6 flex items-center justify-center font-bold text-xl;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen font-game overflow-x-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 开始界面 -->
+    <div id="startScreen" class="fixed inset-0 flex flex-col items-center justify-center z-50 game-panel">
+        <div class="text-center mb-8 animate-grow">
+            <h1 class="text-[clamp(2rem,5vw,4rem)] font-bold text-primary text-shadow-lg mb-4">
+                <i class="fa fa-paw mr-2"></i>欢乐打地鼠
+            </h1>
+            <p class="text-gray-600 text-lg mb-6">测试你的反应能力，点击出现的地鼠！</p>
+            
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6 mb-8">
+                <div class="score-display">
+                    <i class="fa fa-trophy text-secondary mr-2"></i>
+                    <span id="highScore">最高分: 0</span>
+                </div>
+                <div class="score-display">
+                    <i class="fa fa-clock-o text-primary mr-2"></i>
+                    <span id="timeLimit">时间: 30秒</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6">
+                <button id="startGameBtn" class="btn-game flex items-center">
+                    <i class="fa fa-play mr-2"></i>
+                    开始游戏
+                </button>
+                <button id="howToPlayBtn" class="btn-game-secondary flex items-center">
+                    <i class="fa fa-question-circle mr-2"></i>
+                    游戏说明
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 游戏说明 (默认隐藏) -->
+    <div id="instructionsPanel" class="fixed inset-0 z-50 flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="instructionsOverlay"></div>
+        <div class="game-panel max-w-md w-full z-10 animate-grow">
+            <h2 class="text-2xl font-bold text-primary mb-4">游戏说明</h2>
+            <ul class="list-disc pl-5 mb-6 space-y-2">
+                <li>点击从地洞中出现的地鼠</li>
+                <li>打中地鼠得10分</li>
+                <li>小心不要点击炸弹！</li>
+                <li>游戏时间结束后，你的得分将被记录</li>
+                <li>挑战高分，成为打地鼠大师！</li>
+            </ul>
+            <button id="closeInstructionsBtn" class="btn-game w-full">
+                我知道了
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameScreen" class="container mx-auto px-4 pt-12 pb-16 hidden">
+        <!-- 游戏信息 -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <div class="score-display">
+                    <i class="fa fa-star text-yellow-400 mr-2"></i>
+                    <span id="currentScore">得分: 0</span>
+                </div>
+                <div class="score-display">
+                    <i class="fa fa-clock-o text-red-500 mr-2"></i>
+                    <span id="gameTime">时间: 30</span>
+                </div>
+            </div>
+            
+            <button id="pauseBtn" class="btn-game-secondary flex items-center">
+                <i class="fa fa-pause mr-2"></i>
+                暂停
+            </button>
+        </div>
+        
+        <!-- 游戏区域 -->
+        <div class="game-panel">
+            <h2 class="text-2xl font-bold text-primary mb-6 text-center">准备开始！</h2>
+            
+            <!-- 地鼠游戏网格 -->
+            <div id="gameGrid" class="grid grid-cols-3 gap-4 md:gap-6">
+                <!-- 地鼠洞将通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- 暂停界面 (默认隐藏) -->
+    <div id="pauseScreen" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="game-panel max-w-md w-full z-10 animate-grow">
+            <h2 class="text-3xl font-bold text-primary mb-6 text-center">游戏暂停</h2>
+            <div class="flex flex-col space-y-4">
+                <button id="resumeBtn" class="btn-game flex items-center justify-center">
+                    <i class="fa fa-play mr-2"></i>
+                    继续游戏
+                </button>
+                <button id="restartBtn" class="btn-game-secondary flex items-center justify-center">
+                    <i class="fa fa-refresh mr-2"></i>
+                    重新开始
+                </button>
+                <button id="exitBtn" class="btn-game flex items-center justify-center bg-gray-600">
+                    <i class="fa fa-sign-out mr-2"></i>
+                    退出游戏
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 游戏结束界面 (默认隐藏) -->
+    <div id="gameOverScreen" class="fixed inset-0 flex items-center justify-center z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+        <div class="game-panel max-w-md w-full z-10 animate-grow">
+            <h2 class="text-3xl font-bold text-accent mb-2 text-center">游戏结束！</h2>
+            <p class="text-center text-gray-600 mb-6">恭喜你完成了游戏</p>
+            
+            <div class="flex flex-col items-center space-y-4 mb-8">
+                <div class="score-display text-2xl">
+                    <i class="fa fa-trophy text-secondary mr-2"></i>
+                    <span id="finalScore">最终得分: 0</span>
+                </div>
+                
+                <div id="newHighScore" class="hidden text-green-600 font-bold animate-pulse">
+                    <i class="fa fa-star mr-1"></i>
+                    新纪录！
+                </div>
+            </div>
+            
+            <div class="flex flex-col space-y-4">
+                <button id="playAgainBtn" class="btn-game flex items-center justify-center">
+                    <i class="fa fa-refresh mr-2"></i>
+                    再玩一次
+                </button>
+                <button id="backToMainBtn" class="btn-game-secondary flex items-center justify-center">
+                    <i class="fa fa-home mr-2"></i>
+                    返回主菜单
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置
+        const gameConfig = {
+            timeLimit: 30, // 游戏时间（秒）
+            holeCount: 9,  // 地洞数量
+            minMoleTime: 500, // 地鼠出现的最短时间（毫秒）
+            maxMoleTime: 2000, // 地鼠出现的最长时间（毫秒）
+            minInterval: 500, // 地鼠出现的最短间隔（毫秒）
+            maxInterval: 1500, // 地鼠出现的最长间隔（毫秒）
+            bombChance: 0.1, // 炸弹出现的概率 (0.1 = 10%)
+        };
+        
+        // 游戏状态
+        const gameState = {
+            score: 0,
+            timeRemaining: gameConfig.timeLimit,
+            isPlaying: false,
+            isPaused: false,
+            timer: null,
+            moleTimer: null,
+            holes: [],
+            highScore: localStorage.getItem('whacAMoleHighScore') || 0,
+        };
+
+        // 初始化游戏
+        function initGame() {
+            // 更新最高分显示
+            document.getElementById('highScore').textContent = `最高分: ${gameState.highScore}`;
+            
+            // 创建地洞
+            createHoles();
+            
+            // 设置事件监听
+            setupEventListeners();
+        }
+
+        // 创建地洞
+        function createHoles() {
+            const gameGrid = document.getElementById('gameGrid');
+            gameGrid.innerHTML = '';
+            
+            for (let i = 0; i < gameConfig.holeCount; i++) {
+                const hole = document.createElement('div');
+                hole.className = 'mole-hole flex items-center justify-center';
+                hole.dataset.index = i;
+                
+                // 地鼠元素
+                const mole = document.createElement('div');
+                mole.className = 'mole';
+                mole.innerHTML = `
+                    <div class="mole-content bg-brown-300 rounded-full p-2">
+                        <div class="text-4xl">🐭</div>
+                    </div>
+                `;
+                
+                // 添加点击事件
+                mole.addEventListener('click', () => handleMoleClick(i));
+                
+                hole.appendChild(mole);
+                gameGrid.appendChild(hole);
+                
+                // 保存地洞引用
+                gameState.holes.push({
+                    element: hole,
+                    mole: mole,
+                    isActive: false,
+                    isBomb: false
+                });
+            }
+        }
+
+        // 设置事件监听
+        function setupEventListeners() {
+            // 开始界面按钮
+            document.getElementById('startGameBtn').addEventListener('click', startGame);
+            document.getElementById('howToPlayBtn').addEventListener('click', showInstructions);
+            document.getElementById('closeInstructionsBtn').addEventListener('click', hideInstructions);
+            document.getElementById('instructionsOverlay').addEventListener('click', hideInstructions);
+            
+            // 游戏界面按钮
+            document.getElementById('pauseBtn').addEventListener('click', pauseGame);
+            
+            // 暂停界面按钮
+            document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+            document.getElementById('restartBtn').addEventListener('click', restartGame);
+            document.getElementById('exitBtn').addEventListener('click', exitGame);
+            
+            // 游戏结束界面按钮
+            document.getElementById('playAgainBtn').addEventListener('click', restartGame);
+            document.getElementById('backToMainBtn').addEventListener('click', exitGame);
+        }
+
+        // 开始游戏
+        function startGame() {
+            // 重置游戏状态
+            gameState.score = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            gameState.isPlaying = true;
+            gameState.isPaused = false;
+            
+            // 更新UI
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameScreen').classList.remove('hidden');
+            document.getElementById('currentScore').textContent = `得分: ${gameState.score}`;
+            document.getElementById('gameTime').textContent = `时间: ${gameState.timeRemaining}`;
+            
+            // 开始游戏循环
+            startGameTimer();
+            startMoleSpawner();
+        }
+
+        // 开始游戏计时器
+        function startGameTimer() {
+            gameState.timer = setInterval(() => {
+                gameState.timeRemaining--;
+                document.getElementById('gameTime').textContent = `时间: ${gameState.timeRemaining}`;
+                
+                if (gameState.timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // 开始地鼠生成器
+        function startMoleSpawner() {
+            spawnMole();
+        }
+
+        // 生成地鼠
+        function spawnMole() {
+            // 随机选择一个地洞
+            const availableHoles = gameState.holes.filter(hole => !hole.isActive);
+            
+            if (availableHoles.length > 0) {
+                const randomHole = availableHoles[Math.floor(Math.random() * availableHoles.length)];
+                const isBomb = Math.random() < gameConfig.bombChance;
+                
+                // 设置地鼠/炸弹
+                randomHole.isActive = true;
+                randomHole.isBomb = isBomb;
+                
+                const moleContent = randomHole.mole.querySelector('.mole-content');
+                moleContent.innerHTML = isBomb ? '<div class="text-4xl">💣</div>' : '<div class="text-4xl">🐭</div>';
+                
+                // 显示地鼠
+                randomHole.mole.classList.add('mole-appear');
+                randomHole.mole.classList.remove('mole-hit');
+                
+                // 设置地鼠停留时间
+                const moleTime = Math.floor(Math.random() * (gameConfig.maxMoleTime - gameConfig.minMoleTime)) + gameConfig.minMoleTime;
+                
+                setTimeout(() => {
+                    hideMole(randomHole);
+                    
+                    // 设置下一个地鼠出现的时间
+                    const nextInterval = Math.floor(Math.random() * (gameConfig.maxInterval - gameConfig.minInterval)) + gameConfig.minInterval;
+                    
+                    if (gameState.isPlaying && !gameState.isPaused) {
+                        setTimeout(spawnMole, nextInterval);
+                    }
+                }, moleTime);
+            } else {
+                // 如果没有可用的地洞，稍等一下再试
+                setTimeout(spawnMole, 500);
+            }
+        }
+
+        // 隐藏地鼠
+        function hideMole(hole) {
+            hole.isActive = false;
+            hole.mole.classList.remove('mole-appear');
+        }
+
+        // 处理地鼠点击
+        function handleMoleClick(index) {
+            const hole = gameState.holes[index];
+            
+            if (hole.isActive) {
+                // 添加点击效果
+                hole.mole.classList.add('mole-hit');
+                
+                // 处理得分
+                if (hole.isBomb) {
+                    // 点击炸弹，减分
+                    gameState.score = Math.max(0, gameState.score - 5);
+                    document.getElementById('gameTime').classList.add('animate-shake');
+                    setTimeout(() => {
+                        document.getElementById('gameTime').classList.remove('animate-shake');
+                    }, 500);
+                } else {
+                    // 点击地鼠，加分
+                    gameState.score += 10;
+                }
+                
+                // 更新得分显示
+                document.getElementById('currentScore').textContent = `得分: ${gameState.score}`;
+                
+                // 立即隐藏地鼠
+                hideMole(hole);
+                
+                // 播放点击音效（这里可以添加音效）
+                console.log('点击音效');
+            }
+        }
+
+        // 暂停游戏
+        function pauseGame() {
+            if (gameState.isPlaying && !gameState.isPaused) {
+                gameState.isPaused = true;
+                clearInterval(gameState.timer);
+                document.getElementById('pauseScreen').classList.remove('hidden');
+            }
+        }
+
+        // 恢复游戏
+        function resumeGame() {
+            if (gameState.isPlaying && gameState.isPaused) {
+                gameState.isPaused = false;
+                startGameTimer();
+                document.getElementById('pauseScreen').classList.add('hidden');
+            }
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            // 清除计时器
+            clearInterval(gameState.timer);
+            if (gameState.moleTimer) clearTimeout(gameState.moleTimer);
+            
+            // 隐藏所有界面
+            document.getElementById('pauseScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            
+            // 重置游戏状态
+            gameState.score = 0;
+            gameState.timeRemaining = gameConfig.timeLimit;
+            
+            // 隐藏所有地鼠
+            gameState.holes.forEach(hole => {
+                hideMole(hole);
+            });
+            
+            // 重新开始游戏
+            startGame();
+        }
+
+        // 退出游戏
+        function exitGame() {
+            // 清除计时器
+            clearInterval(gameState.timer);
+            if (gameState.moleTimer) clearTimeout(gameState.moleTimer);
+            
+            // 隐藏所有界面
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('pauseScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+            
+            // 显示开始界面
+            document.getElementById('startScreen').classList.remove('hidden');
+            
+            // 更新最高分显示
+            document.getElementById('highScore').textContent = `最高分: ${gameState.highScore}`;
+            
+            // 重置游戏状态
+            gameState.isPlaying = false;
+            gameState.isPaused = false;
+        }
+
+        // 结束游戏
+        function endGame() {
+            // 清除计时器
+            clearInterval(gameState.timer);
+            if (gameState.moleTimer) clearTimeout(gameState.moleTimer);
+            
+            // 更新游戏状态
+            gameState.isPlaying = false;
+            
+            // 检查是否是新纪录
+            let isNewHighScore = false;
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('whacAMoleHighScore', gameState.highScore);
+                isNewHighScore = true;
+            }
+            
+            // 更新UI
+            document.getElementById('finalScore').textContent = `最终得分: ${gameState.score}`;
+            document.getElementById('newHighScore').classList.toggle('hidden', !isNewHighScore);
+            document.getElementById('gameScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        // 显示游戏说明
+        function showInstructions() {
+            document.getElementById('instructionsPanel').classList.remove('hidden');
+        }
+
+        // 隐藏游戏说明
+        function hideInstructions() {
+            document.getElementById('instructionsPanel').classList.add('hidden');
+        }
+
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李昊哲';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>恐怖躲猫猫 - 多人版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#FF3D3D',
+                        dark: '#121212',
+                        light: '#F8F8F8',
+                        horror: '#8B0000',
+                        ghost: '#87CEEB',
+                        hunter: '#FF8C00',
+                        shadow: '#2C2C2C',
+                    },
+                    fontFamily: {
+                        horror: ['"Creepster"', 'cursive'],
+                        main: ['"Poppins"', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'glow': '0 0 15px rgba(255, 61, 61, 0.7)',
+                        'ghost-glow': '0 0 20px rgba(135, 206, 235, 0.8)',
+                        'hunter-glow': '0 0 15px rgba(255, 140, 0, 0.7)',
+                    }
+                },
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-glow {
+                text-shadow: 0 0 10px rgba(255, 61, 61, 0.8), 0 0 20px rgba(255, 61, 61, 0.5);
+            }
+            .animate-float {
+                animation: float 3s ease-in-out infinite;
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .animate-shake {
+                animation: shake 0.5s infinite;
+            }
+            .animate-flicker {
+                animation: flicker 2s infinite alternate;
+            }
+            .bg-blur {
+                backdrop-filter: blur(8px);
+            }
+            .transition-all-300 {
+                transition: all 300ms ease-in-out;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25% {
+                transform: translateX(-5px) rotate(-2deg);
+            }
+            75% {
+                transform: translateX(5px) rotate(2deg);
+            }
+        }
+
+        @keyframes flicker {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.6;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-dark text-light font-main overflow-hidden h-screen w-full">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 预加载音频 -->
+    <audio id="bgMusic" loop>
+        <source src="https://assets.codepen.io/21542/howler-demo-bg-music.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="screamSound">
+        <source src="https://assets.codepen.io/21542/howler-demo-scream.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="footstepSound">
+        <source src="https://assets.codepen.io/21542/howler-demo-footsteps.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="heartbeatSound" loop>
+        <source src="https://assets.codepen.io/21542/howler-demo-heartbeat.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="flashlightSound">
+        <source src="https://assets.codepen.io/21542/howler-demo-flashlight.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 游戏容器 -->
+    <div id="gameContainer" class="relative h-full w-full">
+        <!-- 开始界面 -->
+        <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center z-50 bg-dark bg-opacity-95">
+            <h1 class="text-[clamp(3rem,8vw,6rem)] font-horror text-secondary text-shadow-glow mb-8 animate-float">恐怖躲猫猫</h1>
+            <div class="bg-shadow/70 rounded-xl p-8 w-[90%] max-w-2xl backdrop-blur-sm border border-gray-700">
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-hunter mb-4 flex items-center">
+                            <i class="fa fa-users mr-2"></i> 游戏模式
+                        </h2>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-dark/50 rounded-lg cursor-pointer hover:bg-primary/20 transition-all-300">
+                                <input type="radio" name="gameMode" value="online" class="mr-3 accent-primary" checked>
+                                <span>在线多人</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-dark/50 rounded-lg cursor-pointer hover:bg-primary/20 transition-all-300">
+                                <input type="radio" name="gameMode" value="local" class="mr-3 accent-primary">
+                                <span>本地多人</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold text-hunter mb-4 flex items-center">
+                            <i class="fa fa-user-secret mr-2"></i> 角色选择
+                        </h2>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 bg-dark/50 rounded-lg cursor-pointer hover:bg-ghost/20 transition-all-300">
+                                <input type="radio" name="playerRole" value="hider" class="mr-3 accent-ghost" checked>
+                                <span>躲藏者</span>
+                            </label>
+                            <label class="flex items-center p-3 bg-dark/50 rounded-lg cursor-pointer hover:bg-hunter/20 transition-all-300">
+                                <input type="radio" name="playerRole" value="seeker" class="mr-3 accent-hunter">
+                                <span>寻找者</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-6">
+                    <h2 class="text-xl font-bold text-hunter mb-4 flex items-center">
+                        <i class="fa fa-gamepad mr-2"></i> 游戏设置
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block mb-2 text-sm font-medium">游戏时间 (分钟)</label>
+                            <input type="range" id="gameTime" min="1" max="10" value="5" class="w-full accent-primary">
+                            <div class="flex justify-between text-xs">
+                                <span>1</span>
+                                <span id="gameTimeValue">5</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block mb-2 text-sm font-medium">躲藏者数量</label>
+                            <input type="range" id="hiderCount" min="1" max="8" value="3" class="w-full accent-primary">
+                            <div class="flex justify-between text-xs">
+                                <span>1</span>
+                                <span id="hiderCountValue">3</span>
+                                <span>8</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-8 flex justify-center">
+                    <button id="startButton" class="bg-secondary hover:bg-secondary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-secondary/20 hover:shadow-glow transition-all-300 transform hover:scale-105 flex items-center">
+                        <i class="fa fa-play mr-2"></i> 开始游戏
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏界面 -->
+        <div id="gameScreen" class="hidden relative h-full w-full">
+            <!-- 游戏地图 -->
+            <div id="gameMap" class="relative h-full w-full bg-black overflow-hidden">
+                <!-- 地图元素将通过JS动态生成 -->
+            </div>
+
+            <!-- 玩家UI -->
+            <div id="playerUI" class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent z-30">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <div id="playerRoleIcon" class="text-2xl mr-3 text-ghost">
+                            <i class="fa fa-user"></i>
+                        </div>
+                        <div>
+                            <div id="playerName" class="font-bold">玩家</div>
+                            <div class="flex items-center mt-1">
+                                <div class="w-24 h-2 bg-gray-700 rounded-full overflow-hidden">
+                                    <div id="playerHealth" class="h-full bg-green-500 rounded-full" style="width: 100%"></div>
+                                </div>
+                                <span id="healthText" class="ml-2 text-sm">100%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <div class="mr-6 text-center">
+                            <div class="text-xs">时间</div>
+                            <div id="gameTimer" class="text-xl font-bold">05:00</div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <div class="text-xs">状态</div>
+                            <div id="gameStatus" class="text-xl font-bold text-hunter">准备中</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 游戏菜单 -->
+            <div id="gameMenu" class="absolute top-4 right-4 z-30">
+                <button id="menuButton" class="bg-dark/70 hover:bg-dark text-white p-2 rounded-full transition-all-300">
+                    <i class="fa fa-bars"></i>
+                </button>
+            </div>
+
+            <!-- 手电筒效果 (仅寻找者可见) -->
+            <div id="flashlight" class="hidden absolute inset-0 pointer-events-none z-20">
+                <div id="flashlightCircle" class="absolute w-64 h-64 rounded-full bg-white/30 blur-3xl" style="transform: translate(-50%, -50%);"></div>
+                <div class="absolute inset-0 bg-black/80"></div>
+            </div>
+
+            <!-- 躲藏者视觉干扰效果 -->
+            <div id="hiderEffect" class="hidden absolute inset-0 bg-black/50 backdrop-blur-sm z-10"></div>
+        </div>
+
+        <!-- 结束界面 -->
+        <div id="endScreen" class="hidden absolute inset-0 flex flex-col items-center justify-center z-50 bg-dark bg-opacity-95">
+            <div id="endResult" class="text-[clamp(2rem,5vw,4rem)] font-horror mb-4"></div>
+            <div class="bg-shadow/70 rounded-xl p-8 w-[90%] max-w-2xl backdrop-blur-sm border border-gray-700">
+                <h2 class="text-2xl font-bold text-center mb-6">游戏统计</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-dark/50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold mb-2 text-hunter">躲藏者</h3>
+                        <ul id="hidersList" class="space-y-2">
+                            <!-- 躲藏者列表将通过JS动态生成 -->
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-dark/50 rounded-lg p-4">
+                        <h3 class="text-lg font-semibold mb-2 text-hunter">寻找者</h3>
+                        <ul id="seekersList" class="space-y-2">
+                            <!-- 寻找者列表将通过JS动态生成 -->
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="mt-6 text-center">
+                    <button id="playAgainButton" class="bg-secondary hover:bg-secondary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-secondary/20 hover:shadow-glow transition-all-300 transform hover:scale-105 mr-4">
+                        再玩一次
+                    </button>
+                    <button id="mainMenuButton" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-primary/20 transition-all-300 transform hover:scale-105">
+                        主菜单
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 暂停菜单 -->
+        <div id="pauseMenu" class="hidden absolute inset-0 flex items-center justify-center z-50 bg-dark bg-opacity-80">
+            <div class="bg-shadow/70 rounded-xl p-8 w-[90%] max-w-md backdrop-blur-sm border border-gray-700">
+                <h2 class="text-2xl font-bold text-center mb-6">游戏暂停</h2>
+                
+                <div class="space-y-4">
+                    <button id="resumeButton" class="w-full bg-primary hover:bg-primary/80 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-primary/20 transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-play mr-2"></i> 继续游戏
+                    </button>
+                    
+                    <button id="restartButton" class="w-full bg-hunter hover:bg-hunter/80 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-hunter/20 transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-refresh mr-2"></i> 重新开始
+                    </button>
+                    
+                    <button id="settingsButton" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg shadow-lg transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-cog mr-2"></i> 设置
+                    </button>
+                    
+                    <button id="quitButton" class="w-full bg-secondary hover:bg-secondary/80 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-secondary/20 transition-all-300 flex items-center justify-center">
+                        <i class="fa fa-sign-out mr-2"></i> 退出游戏
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置菜单 -->
+        <div id="settingsMenu" class="hidden absolute inset-0 flex items-center justify-center z-50 bg-dark bg-opacity-80">
+            <div class="bg-shadow/70 rounded-xl p-8 w-[90%] max-w-md backdrop-blur-sm border border-gray-700">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">游戏设置</h2>
+                    <button id="closeSettingsButton" class="text-gray-400 hover:text-white">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-6">
+                    <div>
+                        <label class="block mb-2 text-sm font-medium">音量</label>
+                        <div class="flex items-center">
+                            <i class="fa fa-volume-up mr-3 text-gray-400"></i>
+                            <input type="range" id="volumeControl" min="0" max="100" value="70" class="w-full accent-primary">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block mb-2 text-sm font-medium">画面亮度</label>
+                        <div class="flex items-center">
+                            <i class="fa fa-sun-o mr-3 text-gray-400"></i>
+                            <input type="range" id="brightnessControl" min="0" max="100" value="50" class="w-full accent-primary">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block mb-2 text-sm font-medium">游戏难度</label>
+                        <select id="difficultyControl" class="w-full bg-dark border border-gray-700 rounded-lg p-2">
+                            <option value="easy">简单</option>
+                            <option value="medium" selected>中等</option>
+                            <option value="hard">困难</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" id="vibrationControl" class="mr-3 accent-primary" checked>
+                        <label>震动反馈</label>
+                    </div>
+                    
+                    <div class="flex items-center">
+                        <input type="checkbox" id="bloodEffectsControl" class="mr-3 accent-primary" checked>
+                        <label>血腥效果</label>
+                    </div>
+                </div>
+                
+                <div class="mt-8 text-center">
+                    <button id="saveSettingsButton" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-primary/20 transition-all-300 transform hover:scale-105">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态管理
+        const gameState = {
+            isRunning: false,
+            isPaused: false,
+            currentScreen: 'start',
+            playerRole: 'hider',
+            gameTime: 5 * 60, // 秒
+            hiderCount: 3,
+            players: [],
+            map: null,
+            timerInterval: null,
+            soundEnabled: true,
+            brightness: 50,
+            difficulty: 'medium',
+            vibrationEnabled: true,
+            bloodEffectsEnabled: true,
+        };
+
+        // DOM 元素
+        const startScreen = document.getElementById('startScreen');
+        const gameScreen = document.getElementById('gameScreen');
+        const endScreen = document.getElementById('endScreen');
+        const pauseMenu = document.getElementById('pauseMenu');
+        const settingsMenu = document.getElementById('settingsMenu');
+        const gameMap = document.getElementById('gameMap');
+        const playerUI = document.getElementById('playerUI');
+        const gameTimer = document.getElementById('gameTimer');
+        const gameStatus = document.getElementById('gameStatus');
+        const playerRoleIcon = document.getElementById('playerRoleIcon');
+        const playerName = document.getElementById('playerName');
+        const playerHealth = document.getElementById('playerHealth');
+        const healthText = document.getElementById('healthText');
+        const flashlight = document.getElementById('flashlight');
+        const flashlightCircle = document.getElementById('flashlightCircle');
+        const hiderEffect = document.getElementById('hiderEffect');
+        
+        // 音频元素
+        const bgMusic = document.getElementById('bgMusic');
+        const screamSound = document.getElementById('screamSound');
+        const footstepSound = document.getElementById('footstepSound');
+        const heartbeatSound = document.getElementById('heartbeatSound');
+        const flashlightSound = document.getElementById('flashlightSound');
+
+        // 游戏设置滑块
+        const gameTimeSlider = document.getElementById('gameTime');
+        const gameTimeValue = document.getElementById('gameTimeValue');
+        const hiderCountSlider = document.getElementById('hiderCount');
+        const hiderCountValue = document.getElementById('hiderCountValue');
+
+        // 按钮
+        const startButton = document.getElementById('startButton');
+        const menuButton = document.getElementById('menuButton');
+        const resumeButton = document.getElementById('resumeButton');
+        const restartButton = document.getElementById('restartButton');
+        const settingsButton = document.getElementById('settingsButton');
+        const quitButton = document.getElementById('quitButton');
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const saveSettingsButton = document.getElementById('saveSettingsButton');
+        const playAgainButton = document.getElementById('playAgainButton');
+        const mainMenuButton = document.getElementById('mainMenuButton');
+
+        // 设置菜单元素
+        const volumeControl = document.getElementById('volumeControl');
+        const brightnessControl = document.getElementById('brightnessControl');
+        const difficultyControl = document.getElementById('difficultyControl');
+        const vibrationControl = document.getElementById('vibrationControl');
+        const bloodEffectsControl = document.getElementById('bloodEffectsControl');
+
+        // 更新游戏设置显示
+        gameTimeSlider.addEventListener('input', () => {
+            gameTimeValue.textContent = gameTimeSlider.value;
+        });
+
+        hiderCountSlider.addEventListener('input', () => {
+            hiderCountValue.textContent = hiderCountSlider.value;
+        });
+
+        // 游戏初始化
+        function initGame() {
+            // 获取玩家选择
+            const selectedRole = document.querySelector('input[name="playerRole"]:checked').value;
+            gameState.playerRole = selectedRole;
+            
+            // 获取游戏设置
+            gameState.gameTime = parseInt(gameTimeSlider.value) * 60;
+            gameState.hiderCount = parseInt(hiderCountSlider.value);
+            
+            // 更新玩家UI
+            updatePlayerUI();
+            
+            // 生成地图
+            generateMap();
+            
+            // 初始化玩家
+            initPlayers();
+            
+            // 开始游戏
+            startGame();
+        }
+
+        // 更新玩家UI
+        function updatePlayerUI() {
+            if (gameState.playerRole === 'hider') {
+                playerRoleIcon.className = 'text-2xl mr-3 text-ghost';
+                playerRoleIcon.innerHTML = '<i class="fa fa-user-secret"></i>';
+            } else {
+                playerRoleIcon.className = 'text-2xl mr-3 text-hunter';
+                playerRoleIcon.innerHTML = '<i class="fa fa-search"></i>';
+            }
+            
+            // 设置随机玩家名称
+            const names = ['暗影', '幽灵', '潜行客', '追踪者', '猎手', '幻影', '窥视者', '藏匿者'];
+            playerName.textContent = names[Math.floor(Math.random() * names.length)];
+            
+            // 重置生命值
+            playerHealth.style.width = '100%';
+            healthText.textContent = '100%';
+        }
+
+        // 生成游戏地图
+        function generateMap() {
+            gameMap.innerHTML = '';
+            
+            // 基础地图尺寸
+            const mapWidth = 1500;
+            const mapHeight = 1000;
+            
+            // 设置地图尺寸
+            gameMap.style.width = `${mapWidth}px`;
+            gameMap.style.height = `${mapHeight}px`;
+            
+            // 创建地图背景
+            const background = document.createElement('div');
+            background.className = 'absolute inset-0 bg-gradient-to-b from-gray-900 to-black';
+            gameMap.appendChild(background);
+            
+            // 添加一些随机障碍物作为躲藏点
+            const obstacleCount = 20;
+            for (let i = 0; i < obstacleCount; i++) {
+                const obstacle = document.createElement('div');
+                
+                // 随机障碍物类型
+                const isLarge = Math.random() > 0.7;
+                const isHorizontal = Math.random() > 0.5;
+                
+                if (isLarge) {
+                    // 大障碍物
+                    obstacle.className = 'absolute bg-shadow border border-gray-800 rounded-lg';
+                    if (isHorizontal) {
+                        obstacle.style.width = `${100 + Math.random() * 150}px`;
+                        obstacle.style.height = `${40 + Math.random() * 60}px`;
+                    } else {
+                        obstacle.style.width = `${40 + Math.random() * 60}px`;
+                        obstacle.style.height = `${100 + Math.random() * 150}px`;
+                    }
+                } else {
+                    // 小障碍物
+                    obstacle.className = 'absolute bg-shadow border border-gray-800 rounded-md';
+                    obstacle.style.width = `${30 + Math.random() * 50}px`;
+                    obstacle.style.height = `${30 + Math.random() * 50}px`;
+                }
+                
+                // 随机位置
+                obstacle.style.left = `${50 + Math.random() * (mapWidth - 100)}px`;
+                obstacle.style.top = `${50 + Math.random() * (mapHeight - 100)}px`;
+                
+                // 添加碰撞检测类
+                obstacle.classList.add('collision-object');
+                
+                gameMap.appendChild(obstacle);
+            }
+            
+            // 添加一些特殊的躲藏点
+            const hidingSpots = [
+                { type: 'closet', width: 80, height: 120 },
+                { type: 'table', width: 120, height: 80 },
+                { type: 'cabinet', width: 60, height: 150 },
+                { type: 'wardrobe', width: 90, height: 180 },
+                { type: 'bookshelf', width: 50, height: 160 },
+            ];
+            
+            for (let i = 0; i < 10; i++) {
+                const spot = hidingSpots[Math.floor(Math.random() * hidingSpots.length)];
+                const hidingSpot = document.createElement('div');
+                
+                hidingSpot.className = `absolute bg-shadow border border-gray-700 rounded-sm ${spot.type}`;
+                hidingSpot.style.width = `${spot.width}px`;
+                hidingSpot.style.height = `${spot.height}px`;
+                hidingSpot.style.left = `${50 + Math.random() * (mapWidth - 100)}px`;
+                hidingSpot.style.top = `${50 + Math.random() * (mapHeight - 100)}px`;
+                hidingSpot.dataset.hidingSpot = 'true';
+                
+                // 添加碰撞检测类
+                hidingSpot.classList.add('collision-object');
+                
+                gameMap.appendChild(hidingSpot);
+            }
+            
+            // 添加一些环境装饰
+            addEnvironmentDecorations();
+        }
+
+        // 添加环境装饰
+        function addEnvironmentDecorations() {
+            // 添加一些血迹
+            for (let i = 0; i < 15; i++) {
+                const blood = document.createElement('div');
+                blood.className = 'absolute opacity-70 animate-flicker';
+                blood.style.left = `${50 + Math.random() * 1400}px`;
+                blood.style.top = `${50 + Math.random() * 900}px`;
+                blood.style.width = `${10 + Math.random() * 30}px`;
+                blood.style.height = `${10 + Math.random() * 30}px`;
+                blood.style.background = 'url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48cGF0aCBkPSJNNTAsMEw2MCwzMEw5MCwzNUw3MCw2MEw4MCwxMDBMMjAsOTBMMzAsNjBMMCwzNUwzMCwzMEw1MCwwWiIgZmlsbD0iIzg5MDEwMSIvPjwvc3ZnPg==") no-repeat center/contain';
+                gameMap.appendChild(blood);
+            }
+            
+            // 添加一些散落的物品
+            const items = ['bone', 'tool', 'paper', 'bottle'];
+            for (let i = 0; i < 20; i++) {
+                const item = document.createElement('div');
+                const itemType = items[Math.floor(Math.random() * items.length)];
+                item.className = `absolute opacity-80 ${itemType}`;
+                item.style.left = `${50 + Math.random() * 1400}px`;
+                item.style.top = `${50 + Math.random() * 900}px`;
+                item.style.width = `${15 + Math.random() * 25}px`;
+                item.style.height = `${15 + Math.random() * 25}px`;
+                
+                // 根据物品类型设置不同的图标
+                switch (itemType) {
+                    case 'bone':
+                        item.innerHTML = '<i class="fa fa-bone text-gray-400"></i>';
+                        break;
+                    case 'tool':
+                        item.innerHTML = '<i class="fa fa-wrench text-gray-400"></i>';
+                        break;
+                    case 'paper':
+                        item.innerHTML = '<i class="fa fa-file-text-o text-gray-400"></i>';
+                        break;
+                    case 'bottle':
+                        item.innerHTML = '<i class="fa fa-flask text-gray-400"></i>';
+                        break;
+                }
+                
+                gameMap.appendChild(item);
+            }
+            
+            // 添加一些闪烁的光源
+            for (let i = 0; i < 5; i++) {
+                const light = document.createElement('div');
+                light.className = 'absolute rounded-full animate-flicker';
+                light.style.left = `${50 + Math.random() * 1400}px`;
+                light.style.top = `${50 + Math.random() * 900}px`;
+                light.style.width = `${5 + Math.random() * 10}px`;
+                light.style.height = `${5 + Math.random() * 10}px`;
+                light.style.background = 'rgba(255, 200, 200, 0.8)';
+                light.style.boxShadow = '0 0 15px rgba(255, 200, 200, 0.8)';
+                gameMap.appendChild(light);
+            }
+        }
+
+        // 初始化玩家
+        function initPlayers() {
+            gameState.players = [];
+            
+            // 创建本地玩家
+            const localPlayer = {
+                id: 'local',
+                role: gameState.playerRole,
+                x: 100 + Math.random() * 300,
+                y: 100 + Math.random() * 300,
+                health: 100,
+                isHiding: false,
+                isLocal: true,
+                isFound: false
+            };
+            
+            gameState.players.push(localPlayer);
+            
+            // 创建AI玩家
+            const totalPlayers = gameState.hiderCount + 1; // +1 for seeker
+            const hiderCount = gameState.playerRole === 'hider' ? gameState.hiderCount - 1 : gameState.hiderCount;
+            
+            // 创建躲藏者
+            for (let i = 0; i < hiderCount; i++) {
+                gameState.players.push({
+                    id: `hider_${i}`,
+                    role: 'hider',
+                    x: 200 + Math.random() * 1100,
+                    y: 200 + Math.random() * 700,
+                    health: 100,
+                    isHiding: Math.random() > 0.5,
+                    isLocal: false,
+                    isFound: false
+                });
+            }
+            
+            // 创建寻找者（如果本地玩家不是寻找者）
+            if (gameState.playerRole !== 'seeker') {
+                gameState.players.push({
+                    id: 'seeker_0',
+                    role: 'seeker',
+                    x: 750,
+                    y: 500,
+                    health: 100,
+                    isHiding: false,
+                    isLocal: false,
+                    isFound: false
+                });
+            }
+            
+            // 在地图上渲染玩家
+            renderPlayers();
+        }
+
+        // 渲染玩家
+        function renderPlayers() {
+            // 清除现有玩家
+            document.querySelectorAll('.player').forEach(el => el.remove());
+            
+            gameState.players.forEach(player => {
+                const playerEl = document.createElement('div');
+                playerEl.id = `player_${player.id}`;
+                playerEl.className = `player absolute z-10 ${player.isLocal ? 'z-20' : ''}`;
+                playerEl.style.left = `${player.x}px`;
+                playerEl.style.top = `${player.y}px`;
+                
+                if (player.role === 'hider') {
+                    playerEl.innerHTML = `
+                        <div class="w-8 h-8 rounded-full ${player.isHiding ? 'bg-ghost/30' : 'bg-ghost'} border ${player.isHiding ? 'border-ghost/50' : 'border-ghost'} shadow ${player.isHiding ? 'shadow-ghost/20' : 'shadow-ghost-glow'} flex items-center justify-center">
+                            ${player.isLocal ? '<i class="fa fa-user-secret"></i>' : '<i class="fa fa-user"></i>'}
+                        </div>
+                    `;
+                } else {
+                    playerEl.innerHTML = `
+                        <div class="w-8 h-8 rounded-full bg-hunter border border-hunter shadow shadow-hunter-glow flex items-center justify-center">
+                            ${player.isLocal ? '<i class="fa fa-search"></i>' : '<i class="fa fa-user"></i>'}
+                        </div>
+                    `;
+                }
+                
+                // 添加玩家名称标签
+                const nameTag = document.createElement('div');
+                nameTag.className = 'absolute -top-6 left-1/2 transform -translate-x-1/2 text-xs bg-dark/80 px-2 py-1 rounded whitespace-nowrap';
+                nameTag.textContent = player.isLocal ? playerName.textContent : `AI ${player.id}`;
+                playerEl.appendChild(nameTag);
+                
+                gameMap.appendChild(playerEl);
+            });
+        }
+
+        // 开始游戏
+        function startGame() {
+            // 更新游戏状态
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.currentScreen = 'game';
+            
+            // 切换屏幕
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            endScreen.classList.add('hidden');
+            pauseMenu.classList.add('hidden');
+            
+            // 开始背景音乐
+            if (gameState.soundEnabled) {
+                bgMusic.volume = 0.3;
+                bgMusic.play();
+            }
+            
+            // 设置游戏状态
+            gameStatus.textContent = '游戏开始！';
+            gameStatus.className = 'text-xl font-bold text-green-500';
+            
+            // 如果是寻找者，显示手电筒
+            if (gameState.playerRole === 'seeker') {
+                flashlight.classList.remove('hidden');
+            } else {
+                hiderEffect.classList.remove('hidden');
+            }
+            
+            // 开始游戏计时器
+            startGameTimer();
+            
+            // 开始游戏循环
+            gameLoop();
+            
+            // 设置玩家移动事件
+            setupPlayerMovement();
+        }
+
+        // 开始游戏计时器
+        function startGameTimer() {
+            let timeLeft = gameState.gameTime;
+            
+            // 清除现有计时器
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            
+            // 更新计时器显示
+            updateTimerDisplay(timeLeft);
+            
+            // 设置新计时器
+            gameState.timerInterval = setInterval(() => {
+                timeLeft--;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    endGame(gameState.playerRole === 'hider' ? '胜利！' : '失败！');
+                    return;
+                }
+                
+                updateTimerDisplay(timeLeft);
+                
+                // 如果时间不多了，改变显示样式
+                if (timeLeft <= 60) {
+                    gameTimer.classList.add('text-secondary');
+                    gameTimer.classList.add('animate-pulse-slow');
+                }
+            }, 1000);
+        }
+
+        // 更新计时器显示
+        function updateTimerDisplay(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            gameTimer.textContent = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+        }
+
+        // 游戏循环
+        function gameLoop() {
+            if (!gameState.isRunning || gameState.isPaused) {
+                return;
+            }
+            
+            // 更新游戏状态
+            updateGameState();
+            
+            // 渲染游戏
+            renderGame();
+            
+            // 继续游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 更新游戏状态
+        function updateGameState() {
+            // 检查游戏是否结束
+            checkGameEnd();
+            
+            // 更新AI玩家行为
+            updateAIPlayers();
+            
+            // 检查碰撞
+            checkCollisions();
+        }
+
+        // 渲染游戏
+        function renderGame() {
+            // 渲染玩家
+            renderPlayers();
+            
+            // 如果是寻找者，更新手电筒位置
+            if (gameState.playerRole === 'seeker') {
+                const localPlayer = gameState.players.find(p => p.isLocal);
+                if (localPlayer) {
+                    flashlightCircle.style.left = `${localPlayer.x + 16}px`;
+                    flashlightCircle.style.top = `${localPlayer.y + 16}px`;
+                }
+            }
+        }
+
+        // 设置玩家移动
+        function setupPlayerMovement() {
+            const localPlayer = gameState.players.find(p => p.isLocal);
+            if (!localPlayer) return;
+            
+            const speed = 5;
+            let keys = {};
+            
+            // 键盘控制
+            window.addEventListener('keydown', (e) => {
+                keys[e.key] = true;
+                
+                // 空格键用于躲藏/搜索
+                if (e.key === ' ') {
+                    toggleHiding();
+                }
+                
+                // F键用于开关手电筒
+                if (e.key === 'f' && gameState.playerRole === 'seeker') {
+                    toggleFlashlight();
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keys[e.key] = false;
+            });
+            
+            // 游戏循环中处理移动
+            function handleMovement() {
+                if (!gameState.isRunning || gameState.isPaused) {
+                    requestAnimationFrame(handleMovement);
+                    return;
+                }
+                
+                let dx = 0;
+                let dy = 0;
+                
+                if (keys['ArrowUp'] || keys['w']) dy -= speed;
+                if (keys['ArrowDown'] || keys['s']) dy += speed;
+                if (keys['ArrowLeft'] || keys['a']) dx -= speed;
+                if (keys['ArrowRight'] || keys['d']) dx += speed;
+                
+                // 如果正在移动，播放脚步声
+                if ((dx !== 0 || dy !== 0) && gameState.soundEnabled) {
+                    if (footstepSound.paused) {
+                        footstepSound.volume = 0.3;
+                        footstepSound.play();
+                    }
+                } else {
+                    footstepSound.pause();
+                    footstepSound.currentTime = 0;
+                }
+                
+                // 更新玩家位置
+                if (dx !== 0 || dy !== 0) {
+                    const newX = localPlayer.x + dx;
+                    const newY = localPlayer.y + dy;
+                    
+                    // 检查边界碰撞
+                    if (newX > 0 && newX < gameMap.offsetWidth - 32) {
+                        localPlayer.x = newX;
+                    }
+                    
+                    if (newY > 0 && newY < gameMap.offsetHeight - 32) {
+                        localPlayer.y = newY;
+                    }
+                    
+                    // 检查障碍物碰撞
+                    checkCollisionWithObjects(localPlayer);
+                }
+                
+                requestAnimationFrame(handleMovement);
+            }
+            
+            handleMovement();
+        }
+
+        // 检查与障碍物的碰撞
+        function checkCollisionWithObjects(player) {
+            const playerRect = {
+                x: player.x,
+                y: player.y,
+                width: 32,
+                height: 32
+            };
+            
+            document.querySelectorAll('.collision-object').forEach(obj => {
+                const objRect = {
+                    x: parseFloat(obj.style.left),
+                    y: parseFloat(obj.style.top),
+                    width: parseFloat(obj.style.width),
+                    height: parseFloat(obj.style.height)
+                };
+                
+                if (isColliding(playerRect, objRect)) {
+                    // 简单的碰撞响应 - 将玩家推回
+                    const overlap = getOverlap(playerRect, objRect);
+                    
+                    if (overlap.x < overlap.y) {
+                        // 水平方向重叠更小，调整x坐标
+                        player.x += (playerRect.x < objRect.x) ? -overlap.x : overlap.x;
+                    } else {
+                        // 垂直方向重叠更小，调整y坐标
+                        player.y += (playerRect.y < objRect.y) ? -overlap.y : overlap.y;
+                    }
+                }
+            });
+        }
+
+        // 检查两个矩形是否碰撞
+        function isColliding(rect1, rect2) {
+            return rect1.x < rect2.x + rect2.width &&
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
+        }
+
+        // 获取两个矩形的重叠量
+        function getOverlap(rect1, rect2) {
+            const overlapX = Math.min(rect1.x + rect1.width, rect2.x + rect2.width) - Math.max(rect1.x, rect2.x);
+            const overlapY = Math.min(rect1.y + rect1.height, rect2.y + rect2.height) - Math.max(rect1.y, rect2.y);
+            return { x: overlapX, y: overlapY };
+        }
+
+        // 切换躲藏状态
+        function toggleHiding() {
+            const localPlayer = gameState.players.find(p => p.isLocal);
+            if (!localPlayer || localPlayer.role !== 'hider') return;
+            
+            // 检查是否在躲藏点附近
+            const playerRect = {
+                x: localPlayer.x,
+                y: localPlayer.y,
+                width: 32,
+                height: 32
+            };
+            
+            let isNearHidingSpot = false;
+            document.querySelectorAll('[data-hiding-spot="true"]').forEach(spot => {
+                const spotRect = {
+                    x: parseFloat(spot.style.left),
+                    y: parseFloat(spot.style.top),
+                    width: parseFloat(spot.style.width),
+                    height: parseFloat(spot.style.height)
+                };
+                
+                // 扩大检测范围
+                spotRect.x -= 20;
+                spotRect.y -= 20;
+                spotRect.width += 40;
+                spotRect.height += 40;
+                
+                if (isColliding(playerRect, spotRect)) {
+                    isNearHidingSpot = true;
+                }
+            });
+            
+            if (!isNearHidingSpot) {
+                gameStatus.textContent = '附近没有可以躲藏的地方！';
+                gameStatus.className = 'text-xl font-bold text-red-500';
+                setTimeout(() => {
+                    gameStatus.textContent = gameState.playerRole === 'hider' ? '寻找躲藏点...' : '寻找躲藏者！';
+                    gameStatus.className = 'text-xl font-bold ' + (gameState.playerRole === 'hider' ? 'text-ghost' : 'text-hunter');
+                }, 2000);
+                return;
+            }
+            
+            // 切换躲藏状态
+            localPlayer.isHiding = !localPlayer.isHiding;
+            
+            if (localPlayer.isHiding) {
+                gameStatus.textContent = '已躲藏！';
+                gameStatus.className = 'text-xl font-bold text-green-500';
+                
+                // 降低心跳声
+                if (gameState.soundEnabled) {
+                    heartbeatSound.volume = 0.1;
+                }
+            } else {
+                gameStatus.textContent = '已暴露！';
+                gameStatus.className = 'text-xl font-bold text-red-500';
+                
+                // 增加心跳声
+                if (gameState.soundEnabled) {
+                    heartbeatSound.volume = 0.3;
+                }
+            }
+            
+            setTimeout(() => {
+                gameStatus.textContent = gameState.playerRole === 'hider' ? (localPlayer.isHiding ? '保持安静...' : '寻找躲藏点...') : '寻找躲藏者！';
+                gameStatus.className = 'text-xl font-bold ' + (gameState.playerRole === 'hider' ? 'text-ghost' : 'text-hunter');
+            }, 2000);
+        }
+
+        // 切换手电筒
+        function toggleFlashlight() {
+            if (!gameState.soundEnabled) {
+                flashlight.classList.toggle('hidden');
+                return;
+            }
+            
+            // 播放手电筒开关音效
+            flashlightSound.currentTime = 0;
+            flashlightSound.play();
+            
+            setTimeout(() => {
+                flashlight.classList.toggle('hidden');
+            }, 100);
+        }
+
+        // 更新AI玩家行为
+        function updateAIPlayers() {
+            const localPlayer = gameState.players.find(p => p.isLocal);
+            if (!localPlayer) return;
+            
+            gameState.players.forEach(player => {
+                if (player.isLocal || player.isFound) return;
+                
+                if (player.role === 'hider') {
+                    // AI躲藏者行为
+                    if (!player.isHiding) {
+                        // 寻找躲藏点
+                        const hidingSpots = document.querySelectorAll('[data-hiding-spot="true"]');
+                        if (hidingSpots.length > 0) {
+                            const closestSpot = findClosestHidingSpot(player, hidingSpots);
+                            if (closestSpot) {
+                                // 向躲藏点移动
+                                moveTowards(player, {
+                                    x: parseFloat(closestSpot.style.left) + parseFloat(closestSpot.style.width) / 2 - 16,
+                                    y: parseFloat(closestSpot.style.top) + parseFloat(closestSpot.style.height) / 2 - 16
+                                });
+                                
+                                // 检查是否到达躲藏点
+                                const distance = getDistance(player, {
+                                    x: parseFloat(closestSpot.style.left),
+                                    y: parseFloat(closestSpot.style.top)
+                                });
+                                
+                                if (distance < 20) {
+                                    player.isHiding = true;
+                                }
+                            }
+                        }
+                    } else {
+                        // 已经躲藏，随机移动位置
+                        if (Math.random() < 0.005) {
+                            player.isHiding = false;
+                        }
+                    }
+                } else {
+                    // AI寻找者行为
+                    if (Math.random() < 0.01) {
+                        // 随机改变方向
+                        player.targetX = 50 + Math.random() * (gameMap.offsetWidth - 100);
+                        player.targetY = 50 + Math.random() * (gameMap.offsetHeight - 100);
+                    }
+                    
+                    // 移动
+                    moveTowards(player, { x: player.targetX || 0, y: player.targetY || 0 });
+                    
+                    // 检测躲藏者
+                    gameState.players.forEach(hider => {
+                        if (hider.role !== 'hider' || hider.isFound) return;
+                        
+                        const distance = getDistance(player, hider);
+                        
+                        // 躲藏者越近，被发现的概率越高
+                        const detectionChance = hider.isHiding ? 0.1 : 0.3;
+                        
+                        if (distance < 100 && Math.random() < detectionChance) {
+                            hider.isFound = true;
+                            
+                            // 播放发现音效
+                            if (gameState.soundEnabled) {
+                                screamSound.currentTime = 0;
+                                screamSound.play();
+                            }
+                            
+                            // 更新游戏状态
+                            if (hider.isLocal) {
+                                // 本地玩家被发现
+                                gameStatus.textContent = '你被抓住了！';
+                                gameStatus.className = 'text-xl font-bold text-red-500';
+                                
+                                // 减少生命值
+                                localPlayer.health -= 25;
+                                updatePlayerHealth();
+                                
+                                if (localPlayer.health <= 0) {
+                                    endGame('失败！');
+                                }
+                                
+                                setTimeout(() => {
+                                    gameStatus.textContent = '寻找躲藏点...';
+                                    gameStatus.className = 'text-xl font-bold text-ghost';
+                                }, 3000);
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // 寻找最近的躲藏点
+        function findClosestHidingSpot(player, spots) {
+            let closestSpot = null;
+            let minDistance = Infinity;
+            
+            spots.forEach(spot => {
+                const spotPos = {
+                    x: parseFloat(spot.style.left) + parseFloat(spot.style.width) / 2,
+                    y: parseFloat(spot.style.top) + parseFloat(spot.style.height) / 2
+                };
+                
+                const distance = getDistance(player, spotPos);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestSpot = spot;
+                }
+            });
+            
+            return closestSpot;
+        }
+
+        // 计算两点之间的距离
+        function getDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        // 向目标移动
+        function moveTowards(player, target) {
+            const speed = player.role === 'seeker' ? 3 : 2;
+            const dx = target.x - player.x;
+            const dy = target.y - player.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > speed) {
+                player.x += (dx / distance) * speed;
+                player.y += (dy / distance) * speed;
+                
+                // 检查碰撞
+                checkCollisionWithObjects(player);
+            }
+        }
+
+        // 检查碰撞
+        function checkCollisions() {
+            // 这里可以添加更多碰撞检测逻辑
+        }
+
+        // 检查游戏是否结束
+        function checkGameEnd() {
+            const localPlayer = gameState.players.find(p => p.isLocal);
+            if (!localPlayer) return;
+            
+            if (localPlayer.role === 'hider') {
+                // 躲藏者胜利条件：时间结束且未被发现
+                if (localPlayer.health <= 0) {
+                    endGame('失败！');
+                }
+            } else {
+                // 寻找者胜利条件：找到所有躲藏者
+                const allHidersFound = gameState.players
+                    .filter(p => p.role === 'hider' && !p.isLocal)
+                    .every(p => p.isFound);
+                
+                if (allHidersFound) {
+                    endGame('胜利！');
+                }
+            }
+        }
+
+        // 更新玩家生命值
+        function updatePlayerHealth() {
+            const localPlayer = gameState.players.find(p => p.isLocal);
+            if (!localPlayer) return;
+            
+            playerHealth.style.width = `${localPlayer.health}%`;
+            healthText.textContent = `${localPlayer.health}%`;
+            
+            // 根据生命值改变颜色
+            if (localPlayer.health < 30) {
+                playerHealth.className = 'h-full bg-red-500 rounded-full';
+            } else if (localPlayer.health < 60) {
+                playerHealth.className = 'h-full bg-yellow-500 rounded-full';
+            } else {
+                playerHealth.className = 'h-full bg-green-500 rounded-full';
+            }
+            
+            // 如果生命值低，增加心跳声
+            if (gameState.soundEnabled && localPlayer.role === 'hider') {
+                if (localPlayer.health < 30) {
+                    heartbeatSound.volume = 0.5;
+                    heartbeatSound.play();
+                } else if (localPlayer.health < 60) {
+                    heartbeatSound.volume = 0.3;
+                    heartbeatSound.play();
+                } else {
+                    heartbeatSound.pause();
+                }
+            }
+        }
+
+        // 结束游戏
+        function endGame(result) {
+            // 更新游戏状态
+            gameState.isRunning = false;
+            clearInterval(gameState.timerInterval);
+            
+            // 停止所有音效
+            bgMusic.pause();
+            footstepSound.pause();
+            heartbeatSound.pause();
+            
+            // 更新结束界面
+            document.getElementById('endResult').textContent = result;
+            document.getElementById('endResult').className = `text-[clamp(2rem,5vw,4rem)] font-horror mb-4 ${result === '胜利！' ? 'text-green-500' : 'text-red-500'}`;
+            
+            // 填充玩家统计信息
+            const hidersList = document.getElementById('hidersList');
+            const seekersList = document.getElementById('seekersList');
+            
+            hidersList.innerHTML = '';
+            seekersList.innerHTML = '';
+            
+            gameState.players.forEach(player => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 border-b border-gray-700 last:border-0';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = player.isLocal ? 'font-bold' : '';
+                nameSpan.textContent = player.isLocal ? `${playerName.textContent} (你)` : `AI ${player.id}`;
+                
+                const statusSpan = document.createElement('span');
+                statusSpan.className = player.isFound ? 'text-red-500' : 'text-green-500';
+                statusSpan.textContent = player.isFound ? '已被发现' : '安全';
+                
+                li.appendChild(nameSpan);
+                li.appendChild(statusSpan);
+                
+                if (player.role === 'hider') {
+                    hidersList.appendChild(li);
+                } else {
+                    seekersList.appendChild(li);
+                }
+            });
+            
+            // 显示结束界面
+            gameScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+        }
+
+        // 事件监听器
+        startButton.addEventListener('click', initGame);
+        
+        menuButton.addEventListener('click', () => {
+            if (!gameState.isRunning) return;
+            
+            gameState.isPaused = true;
+            pauseMenu.classList.remove('hidden');
+            bgMusic.pause();
+            footstepSound.pause();
+            heartbeatSound.pause();
+        });
+        
+        resumeButton.addEventListener('click', () => {
+            gameState.isPaused = false;
+            pauseMenu.classList.add('hidden');
+            if (gameState.soundEnabled) {
+                bgMusic.play();
+                if (gameState.playerRole === 'hider') {
+                    const localPlayer = gameState.players.find(p => p.isLocal);
+                    if (localPlayer && localPlayer.health < 60) {
+                        heartbeatSound.play();
+                    }
+                }
+            }
+        });
+        
+        restartButton.addEventListener('click', () => {
+            pauseMenu.classList.add('hidden');
+            initGame();
+        });
+        
+        settingsButton.addEventListener('click', () => {
+            pauseMenu.classList.add('hidden');
+            settingsMenu.classList.remove('hidden');
+            
+            // 加载当前设置
+            volumeControl.value = gameState.soundEnabled ? 70 : 0;
+            brightnessControl.value = gameState.brightness;
+            difficultyControl.value = gameState.difficulty;
+            vibrationControl.checked = gameState.vibrationEnabled;
+            bloodEffectsControl.checked = gameState.bloodEffectsEnabled;
+        });
+        
+        quitButton.addEventListener('click', () => {
+            gameState.isRunning = false;
+            gameState.currentScreen = 'start';
+            pauseMenu.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            clearInterval(gameState.timerInterval);
+            bgMusic.pause();
+            footstepSound.pause();
+            heartbeatSound.pause();
+        });
+        
+        closeSettingsButton.addEventListener('click', () => {
+            settingsMenu.classList.add('hidden');
+            pauseMenu.classList.remove('hidden');
+        });
+        
+        saveSettingsButton.addEventListener('click', () => {
+            // 保存设置
+            gameState.soundEnabled = volumeControl.value > 0;
+            gameState.brightness = parseInt(brightnessControl.value);
+            gameState.difficulty = difficultyControl.value;
+            gameState.vibrationEnabled = vibrationControl.checked;
+            gameState.bloodEffectsEnabled = bloodEffectsControl.checked;
+            
+            // 更新游戏亮度
+            gameMap.style.filter = `brightness(${gameState.brightness / 100})`;
+            
+            // 更新音量
+            bgMusic.volume = gameState.soundEnabled ? 0.3 : 0;
+            screamSound.volume = gameState.soundEnabled ? 0.5 : 0;
+            footstepSound.volume = gameState.soundEnabled ? 0.3 : 0;
+            heartbeatSound.volume = gameState.soundEnabled ? (gameState.playerRole === 'hider' ? 0.3 : 0) : 0;
+            flashlightSound.volume = gameState.soundEnabled ? 0.3 : 0;
+            
+            settingsMenu.classList.add('hidden');
+            pauseMenu.classList.remove('hidden');
+        });
+        
+        playAgainButton.addEventListener('click', () => {
+            endScreen.classList.add('hidden');
+            initGame();
+        });
+        
+        mainMenuButton.addEventListener('click', () => {
+            gameState.isRunning = false;
+            gameState.currentScreen = 'start';
+            endScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            clearInterval(gameState.timerInterval);
+            bgMusic.pause();
+            footstepSound.pause();
+            heartbeatSound.pause();
+        });
+        
+        // 初始化设置
+        volumeControl.addEventListener('input', () => {
+            gameState.soundEnabled = volumeControl.value > 0;
+        });
+        
+        brightnessControl.addEventListener('input', () => {
+            gameMap.style.filter = `brightness(${brightnessControl.value / 100})`;
+        });
+        
+        // 初始化游戏亮度
+        gameMap.style.filter = `brightness(${gameState.brightness / 100})`;
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '余梓玉';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

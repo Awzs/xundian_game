@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经典推箱子游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        accent: '#F59E0B',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .game-cell {
+                @apply w-12 h-12 flex items-center justify-center text-2xl font-bold transition-all duration-200;
+            }
+            .btn-game {
+                @apply bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded shadow transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            }
+            .btn-direction {
+                @apply bg-accent hover:bg-accent/90 text-white font-bold py-2 px-4 rounded shadow transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-accent/50;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-dark to-gray-800 min-h-screen flex flex-col items-center justify-center p-4 text-light font-game">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full bg-gray-900/70 backdrop-blur-md rounded-xl shadow-2xl p-6 md:p-8">
+        <header class="text-center mb-6">
+            <h1 class="text-[clamp(1.5rem,5vw,2.5rem)] font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-2">经典推箱子</h1>
+            <p class="text-gray-300 text-sm md:text-base">将所有箱子推到目标点上即可过关</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- 游戏区域 -->
+            <div class="lg:col-span-2 flex flex-col items-center">
+                <div class="bg-gray-800/50 p-4 rounded-lg shadow-inner mb-4">
+                    <div id="game-board" class="grid gap-1 transition-all duration-500"></div>
+                </div>
+                
+                <!-- 移动设备方向控制 -->
+                <div class="lg:hidden grid grid-cols-3 gap-2 mt-6 w-48">
+                    <div></div>
+                    <button id="btn-up" class="btn-direction">
+                        <i class="fa fa-arrow-up"></i>
+                    </button>
+                    <div></div>
+                    <button id="btn-left" class="btn-direction">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <div></div>
+                    <button id="btn-right" class="btn-direction">
+                        <i class="fa fa-arrow-right"></i>
+                    </button>
+                    <div></div>
+                    <button id="btn-down" class="btn-direction">
+                        <i class="fa fa-arrow-down"></i>
+                    </button>
+                    <div></div>
+                </div>
+            </div>
+
+            <!-- 游戏信息和控制 -->
+            <div class="flex flex-col gap-4">
+                <div class="bg-gray-800/50 p-4 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-bold text-primary mb-3 flex items-center">
+                        <i class="fa fa-info-circle mr-2"></i>游戏信息
+                    </h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">关卡:</span>
+                            <span id="level" class="text-secondary font-bold">1</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">步数:</span>
+                            <span id="moves" class="text-accent font-bold">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300">已完成:</span>
+                            <span id="completed-boxes" class="text-green-400 font-bold">0/0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800/50 p-4 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-bold text-primary mb-3 flex items-center">
+                        <i class="fa fa-cogs mr-2"></i>游戏控制
+                    </h2>
+                    <div class="space-y-2">
+                        <button id="btn-restart" class="btn-game w-full flex items-center justify-center">
+                            <i class="fa fa-refresh mr-2"></i>重新开始
+                        </button>
+                        <button id="btn-next" class="btn-game w-full flex items-center justify-center" disabled>
+                            <i class="fa fa-arrow-right mr-2"></i>下一关
+                        </button>
+                        <button id="btn-prev" class="btn-game w-full flex items-center justify-center" disabled>
+                            <i class="fa fa-arrow-left mr-2"></i>上一关
+                        </button>
+                        <button id="btn-reset-all" class="btn-game w-full flex items-center justify-center text-red-400">
+                            <i class="fa fa-trash mr-2"></i>重置进度
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-800/50 p-4 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-bold text-primary mb-3 flex items-center">
+                        <i class="fa fa-keyboard-o mr-2"></i>操作说明
+                    </h2>
+                    <div class="text-sm text-gray-300 space-y-2">
+                        <p><i class="fa fa-arrow-up mr-2"></i>向上移动</p>
+                        <p><i class="fa fa-arrow-down mr-2"></i>向下移动</p>
+                        <p><i class="fa fa-arrow-left mr-2"></i>向左移动</p>
+                        <p><i class="fa fa-arrow-right mr-2"></i>向右移动</p>
+                        <p class="text-yellow-400"><i class="fa fa-refresh mr-2"></i>R键: 重新开始</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-400 text-xs">
+            <p>使用键盘方向键移动角色，将所有箱子推到目标点上即可过关。</p>
+            <p class="mt-2">© 2025 经典推箱子游戏</p>
+        </footer>
+    </div>
+
+    <!-- 胜利模态框 -->
+    <div id="win-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-gray-900 rounded-xl p-8 max-w-md w-full text-center shadow-2xl transform transition-all">
+            <div class="mb-4 text-6xl text-yellow-500">
+                <i class="fa fa-trophy"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">恭喜过关！</h2>
+            <p class="text-gray-300 mb-6">你用了 <span id="win-moves" class="text-accent font-bold">0</span> 步完成了本关</p>
+            <div class="flex gap-3 justify-center">
+                <button id="btn-next-level" class="btn-game">
+                    <i class="fa fa-arrow-right mr-2"></i>下一关
+                </button>
+                <button id="btn-retry" class="btn-game bg-gray-600">
+                    <i class="fa fa-refresh mr-2"></i>重试
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏常量
+        const TILE_TYPES = {
+            FLOOR: 0,
+            WALL: 1,
+            BOX: 2,
+            TARGET: 3,
+            PLAYER: 4,
+            BOX_ON_TARGET: 5,
+            PLAYER_ON_TARGET: 6
+        };
+
+        // 游戏关卡定义
+        const LEVELS = [
+            // 第一关
+            {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 2, 0, 2, 0, 1],
+                    [1, 0, 0, 4, 0, 0, 1],
+                    [1, 0, 2, 0, 3, 0, 1],
+                    [1, 0, 3, 0, 3, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1]
+                ],
+                player: { x: 3, y: 3 }
+            },
+            // 第二关
+            {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 1],
+                    [1, 0, 2, 0, 1, 0, 3, 1],
+                    [1, 0, 2, 0, 0, 0, 3, 1],
+                    [1, 0, 0, 4, 2, 0, 3, 1],
+                    [1, 1, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 1, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                player: { x: 3, y: 4 }
+            },
+            // 第三关
+            {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 2, 0, 1, 0, 2, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 0, 1, 1, 1, 0, 1, 1],
+                    [1, 0, 0, 0, 4, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 3, 0, 1, 0, 3, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                player: { x: 4, y: 5 }
+            },
+            // 第四关
+            {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 1, 1, 0, 1, 1, 1, 0, 1],
+                    [1, 0, 1, 0, 0, 0, 2, 1, 0, 1],
+                    [1, 0, 1, 0, 2, 0, 0, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 1, 0, 0, 1, 0, 2, 0, 1],
+                    [1, 0, 1, 1, 0, 1, 1, 1, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 4, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                player: { x: 6, y: 8 },
+                targets: 3
+            },
+            // 第五关
+            {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 1, 0, 0, 0, 1],
+                    [1, 0, 2, 2, 0, 2, 2, 0, 1],
+                    [1, 0, 2, 0, 0, 0, 2, 0, 1],
+                    [1, 0, 0, 0, 4, 0, 0, 0, 1],
+                    [1, 0, 3, 3, 0, 3, 3, 0, 1],
+                    [1, 0, 3, 3, 0, 3, 3, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                player: { x: 4, y: 5 }
+            }
+        ];
+
+        // 游戏状态
+        let currentLevel = 0;
+        let moves = 0;
+        let map = [];
+        let player = { x: 0, y: 0 };
+        let completedLevels = JSON.parse(localStorage.getItem('sokoban-completed-levels')) || [];
+
+        // DOM元素
+        const gameBoard = document.getElementById('game-board');
+        const levelDisplay = document.getElementById('level');
+        const movesDisplay = document.getElementById('moves');
+        const completedBoxesDisplay = document.getElementById('completed-boxes');
+        const winModal = document.getElementById('win-modal');
+        const winMovesDisplay = document.getElementById('win-moves');
+        const btnRestart = document.getElementById('btn-restart');
+        const btnNext = document.getElementById('btn-next');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNextLevel = document.getElementById('btn-next-level');
+        const btnRetry = document.getElementById('btn-retry');
+        const btnResetAll = document.getElementById('btn-reset-all');
+        const btnUp = document.getElementById('btn-up');
+        const btnDown = document.getElementById('btn-down');
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+
+        // 初始化游戏
+        function initGame() {
+            loadLevel(currentLevel);
+            updateControls();
+        }
+
+        // 加载关卡
+        function loadLevel(levelIndex) {
+            if (levelIndex < 0 || levelIndex >= LEVELS.length) return;
+            
+            // 复制关卡数据
+            const level = LEVELS[levelIndex];
+            map = JSON.parse(JSON.stringify(level.map));
+            player = { ...level.player };
+            moves = 0;
+            
+            // 更新UI
+            levelDisplay.textContent = levelIndex + 1;
+            movesDisplay.textContent = moves;
+            renderMap();
+            updateCompletedBoxes();
+        }
+
+        // 渲染地图
+        function renderMap() {
+            gameBoard.innerHTML = '';
+            gameBoard.style.gridTemplateColumns = `repeat(${map[0].length}, 1fr)`;
+            
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('game-cell');
+                    
+                    // 根据单元格类型设置样式和图标
+                    switch (map[y][x]) {
+                        case TILE_TYPES.FLOOR:
+                            cell.classList.add('bg-gray-700');
+                            cell.innerHTML = '<i class="fa fa-square-o text-gray-600"></i>';
+                            break;
+                        case TILE_TYPES.WALL:
+                            cell.classList.add('bg-gray-500');
+                            cell.innerHTML = '<i class="fa fa-square text-gray-400"></i>';
+                            break;
+                        case TILE_TYPES.BOX:
+                            cell.classList.add('bg-gray-700');
+                            cell.innerHTML = '<i class="fa fa-cube text-amber-600"></i>';
+                            break;
+                        case TILE_TYPES.TARGET:
+                            cell.classList.add('bg-gray-700');
+                            cell.innerHTML = '<i class="fa fa-circle text-red-500"></i>';
+                            break;
+                        case TILE_TYPES.PLAYER:
+                            cell.classList.add('bg-gray-700');
+                            cell.innerHTML = '<i class="fa fa-user text-blue-400"></i>';
+                            break;
+                        case TILE_TYPES.BOX_ON_TARGET:
+                            cell.classList.add('bg-red-900/30');
+                            cell.innerHTML = '<i class="fa fa-cube text-amber-300"></i>';
+                            break;
+                        case TILE_TYPES.PLAYER_ON_TARGET:
+                            cell.classList.add('bg-red-900/30');
+                            cell.innerHTML = '<i class="fa fa-user text-blue-200"></i>';
+                            break;
+                    }
+                    
+                    gameBoard.appendChild(cell);
+                }
+            }
+            
+            // 添加动画效果
+            gameBoard.classList.add('animate-pulse');
+            setTimeout(() => {
+                gameBoard.classList.remove('animate-pulse');
+            }, 500);
+        }
+
+        // 移动玩家
+        function movePlayer(dx, dy) {
+            const newX = player.x + dx;
+            const newY = player.y + dy;
+            
+            // 检查是否可以移动
+            if (map[newY][newX] === TILE_TYPES.WALL) {
+                return false;
+            }
+            
+            // 如果是箱子，检查箱子是否可以移动
+            if (map[newY][newX] === TILE_TYPES.BOX || map[newY][newX] === TILE_TYPES.BOX_ON_TARGET) {
+                const boxNewX = newX + dx;
+                const boxNewY = newY + dy;
+                
+                // 检查箱子是否可以移动
+                if (map[boxNewY][boxNewX] === TILE_TYPES.WALL || 
+                    map[boxNewY][boxNewX] === TILE_TYPES.BOX || 
+                    map[boxNewY][boxNewX] === TILE_TYPES.BOX_ON_TARGET) {
+                    return false;
+                }
+                
+                // 移动箱子
+                if (map[newY][newX] === TILE_TYPES.BOX) {
+                    map[newY][newX] = TILE_TYPES.FLOOR;
+                } else {
+                    map[newY][newX] = TILE_TYPES.TARGET;
+                }
+                
+                if (map[boxNewY][boxNewX] === TILE_TYPES.FLOOR) {
+                    map[boxNewY][boxNewX] = TILE_TYPES.BOX;
+                } else {
+                    map[boxNewY][boxNewX] = TILE_TYPES.BOX_ON_TARGET;
+                }
+            }
+            
+            // 移动玩家
+            if (map[player.y][player.x] === TILE_TYPES.PLAYER) {
+                map[player.y][player.x] = TILE_TYPES.FLOOR;
+            } else {
+                map[player.y][player.x] = TILE_TYPES.TARGET;
+            }
+            
+            if (map[newY][newX] === TILE_TYPES.FLOOR) {
+                map[newY][newX] = TILE_TYPES.PLAYER;
+            } else {
+                map[newY][newX] = TILE_TYPES.PLAYER_ON_TARGET;
+            }
+            
+            player.x = newX;
+            player.y = newY;
+            moves++;
+            
+            // 更新UI
+            movesDisplay.textContent = moves;
+            renderMap();
+            updateCompletedBoxes();
+            
+            // 检查是否完成关卡
+            if (isLevelCompleted()) {
+                completeLevel();
+            }
+            
+            return true;
+        }
+
+        // 更新已完成箱子信息
+        function updateCompletedBoxes() {
+            let totalBoxes = 0;
+            let completedBoxes = 0;
+            
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    if (map[y][x] === TILE_TYPES.BOX || map[y][x] === TILE_TYPES.BOX_ON_TARGET) {
+                        totalBoxes++;
+                    }
+                    
+                    if (map[y][x] === TILE_TYPES.BOX_ON_TARGET) {
+                        completedBoxes++;
+                    }
+                }
+            }
+            
+            completedBoxesDisplay.textContent = `${completedBoxes}/${totalBoxes}`;
+        }
+
+        // 检查关卡是否完成
+        function isLevelCompleted() {
+            for (let y = 0; y < map.length; y++) {
+                for (let x = 0; x < map[y].length; x++) {
+                    // 如果存在箱子不在目标点上，关卡未完成
+                    if (map[y][x] === TILE_TYPES.BOX) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // 完成关卡
+        function completeLevel() {
+            // 记录已完成关卡
+            if (!completedLevels.includes(currentLevel)) {
+                completedLevels.push(currentLevel);
+                localStorage.setItem('sokoban-completed-levels', JSON.stringify(completedLevels));
+            }
+            
+            // 更新控制按钮
+            updateControls();
+            
+            // 显示胜利模态框
+            winMovesDisplay.textContent = moves;
+            winModal.classList.remove('hidden');
+            winModal.classList.add('animate-fadeIn');
+            
+            // 添加完成动画
+            gameBoard.classList.add('animate-bounce');
+            setTimeout(() => {
+                gameBoard.classList.remove('animate-bounce');
+            }, 1000);
+        }
+
+        // 更新控制按钮状态
+        function updateControls() {
+            btnNext.disabled = currentLevel >= LEVELS.length - 1;
+            btnPrev.disabled = currentLevel <= 0;
+            btnNextLevel.disabled = currentLevel >= LEVELS.length - 1;
+            
+            // 如果所有关卡都完成了，显示特殊消息
+            if (completedLevels.length === LEVELS.length) {
+                document.getElementById('btn-next-level').textContent = '全部关卡已完成！';
+                document.getElementById('btn-next-level').disabled = true;
+            } else {
+                document.getElementById('btn-next-level').textContent = '下一关';
+            }
+        }
+
+        // 事件监听器
+        function setupEventListeners() {
+            // 键盘控制
+            document.addEventListener('keydown', (e) => {
+                switch (e.key) {
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                        movePlayer(0, -1);
+                        break;
+                    case 'ArrowDown':
+                    case 's':
+                    case 'S':
+                        movePlayer(0, 1);
+                        break;
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        movePlayer(-1, 0);
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        movePlayer(1, 0);
+                        break;
+                    case 'r':
+                    case 'R':
+                        loadLevel(currentLevel);
+                        break;
+                }
+            });
+            
+            // 按钮控制
+            btnRestart.addEventListener('click', () => {
+                loadLevel(currentLevel);
+            });
+            
+            btnNext.addEventListener('click', () => {
+                if (currentLevel < LEVELS.length - 1) {
+                    currentLevel++;
+                    loadLevel(currentLevel);
+                    updateControls();
+                }
+            });
+            
+            btnPrev.addEventListener('click', () => {
+                if (currentLevel > 0) {
+                    currentLevel--;
+                    loadLevel(currentLevel);
+                    updateControls();
+                }
+            });
+            
+            btnNextLevel.addEventListener('click', () => {
+                if (currentLevel < LEVELS.length - 1) {
+                    winModal.classList.add('hidden');
+                    currentLevel++;
+                    loadLevel(currentLevel);
+                    updateControls();
+                }
+            });
+            
+            btnRetry.addEventListener('click', () => {
+                winModal.classList.add('hidden');
+                loadLevel(currentLevel);
+            });
+            
+            btnResetAll.addEventListener('click', () => {
+                if (confirm('确定要重置所有进度吗？')) {
+                    completedLevels = [];
+                    localStorage.removeItem('sokoban-completed-levels');
+                    currentLevel = 0;
+                    loadLevel(currentLevel);
+                    updateControls();
+                }
+            });
+            
+            // 移动设备方向控制
+            btnUp.addEventListener('click', () => movePlayer(0, -1));
+            btnDown.addEventListener('click', () => movePlayer(0, 1));
+            btnLeft.addEventListener('click', () => movePlayer(-1, 0));
+            btnRight.addEventListener('click', () => movePlayer(1, 0));
+        }
+
+        // 启动游戏
+        setupEventListeners();
+        initGame();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '丁宁远';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

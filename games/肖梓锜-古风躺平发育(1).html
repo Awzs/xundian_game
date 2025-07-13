@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>古风躺平发育</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#8B4513',
+            secondary: '#D2B48C',
+            accent: '#C21807',
+            dark: '#2C3E50',
+            light: '#F5F5DC',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            serif: ['"Noto Serif SC"', 'serif'],
+          },
+        },
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+      .bg-blur {
+        backdrop-filter: blur(8px);
+      }
+      .transition-transform {
+        transition-property: transform;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-duration: 150ms;
+      }
+      .scale-hover {
+        @apply hover:scale-105 transition-transform duration-300;
+      }
+      .golden-border {
+        border: 2px solid transparent;
+        background-clip: padding-box, border-box;
+        background-origin: padding-box, border-box;
+        background-image: 
+          linear-gradient(to bottom, #F5F5DC, #F5F5DC),
+          linear-gradient(to right, #D4AF37, #FFD700, #D4AF37);
+      }
+    }
+  </style>
+</head>
+<body class="bg-light min-h-screen font-serif overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+  <!-- 游戏容器 -->
+  <div id="game-container" class="relative w-full h-screen">
+    <!-- 背景图 -->
+    <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://picsum.photos/id/164/1920/1080'); filter: brightness(0.8);"></div>
+    
+    <!-- 主菜单 -->
+    <div id="main-menu" class="absolute inset-0 flex flex-col items-center justify-center z-30">
+      <h1 class="text-[clamp(2.5rem,8vw,5rem)] font-bold text-light text-shadow mb-10 tracking-wider">古风躺平发育</h1>
+      <div class="flex flex-col space-y-6 w-full max-w-md px-4">
+        <button id="start-btn" class="py-4 px-8 bg-primary hover:bg-primary/90 text-light rounded-lg text-xl font-semibold shadow-lg scale-hover golden-border">
+          <i class="fa fa-play mr-2"></i>开始游戏
+        </button>
+        <button id="settings-btn" class="py-4 px-8 bg-dark/70 hover:bg-dark/90 text-light rounded-lg text-xl font-semibold shadow-lg scale-hover">
+          <i class="fa fa-cog mr-2"></i>游戏设置
+        </button>
+        <button id="tutorial-btn" class="py-4 px-8 bg-dark/70 hover:bg-dark/90 text-light rounded-lg text-xl font-semibold shadow-lg scale-hover">
+          <i class="fa fa-book mr-2"></i>玩法说明
+        </button>
+      </div>
+    </div>
+    
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="absolute inset-0 hidden">
+      <!-- 顶部状态栏 -->
+      <div class="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-dark/50 text-light z-20">
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center">
+            <i class="fa fa-heart text-accent mr-2"></i>
+            <span id="health" class="font-bold">100</span>
+          </div>
+          <div class="flex items-center">
+            <i class="fa fa-coins text-yellow-400 mr-2"></i>
+            <span id="gold" class="font-bold">100</span>
+          </div>
+          <div class="flex items-center">
+            <i class="fa fa-clock-o text-blue-400 mr-2"></i>
+            <span id="wave-timer" class="font-bold">60</span>
+          </div>
+        </div>
+        <button id="pause-btn" class="p-2 bg-dark/70 hover:bg-dark rounded-full">
+          <i class="fa fa-pause"></i>
+        </button>
+      </div>
+      
+      <!-- 游戏地图 -->
+      <div id="game-map" class="absolute inset-0 z-10 grid grid-cols-8 grid-rows-6 gap-2 p-16">
+        <!-- 地图格子将通过JS动态生成 -->
+      </div>
+      
+      <!-- 建筑菜单 -->
+      <div id="building-menu" class="absolute bottom-0 left-0 right-0 p-4 bg-dark/50 text-light z-20">
+        <div class="flex justify-between">
+          <div class="building-item scale-hover" data-building="tower" data-cost="50">
+            <div class="w-16 h-16 bg-primary/80 rounded-lg flex items-center justify-center mb-1">
+              <i class="fa fa-building text-2xl"></i>
+            </div>
+            <span class="text-sm">箭塔 (50)</span>
+          </div>
+          <div class="building-item scale-hover" data-building="trap" data-cost="30">
+            <div class="w-16 h-16 bg-primary/80 rounded-lg flex items-center justify-center mb-1">
+              <i class="fa fa-bomb text-2xl"></i>
+            </div>
+            <span class="text-sm">陷阱 (30)</span>
+          </div>
+          <div class="building-item scale-hover" data-building="wall" data-cost="20">
+            <div class="w-16 h-16 bg-primary/80 rounded-lg flex items-center justify-center mb-1">
+              <i class="fa fa-shield text-2xl"></i>
+            </div>
+            <span class="text-sm">城墙 (20)</span>
+          </div>
+          <div class="building-item scale-hover" data-building="gold-mine" data-cost="70">
+            <div class="w-16 h-16 bg-primary/80 rounded-lg flex items-center justify-center mb-1">
+              <i class="fa fa-diamond text-2xl"></i>
+            </div>
+            <span class="text-sm">金矿 (70)</span>
+          </div>
+          <div class="building-item scale-hover" data-building="healer" data-cost="60">
+            <div class="w-16 h-16 bg-primary/80 rounded-lg flex items-center justify-center mb-1">
+              <i class="fa fa-medkit text-2xl"></i>
+            </div>
+            <span class="text-sm">医馆 (60)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 设置菜单 -->
+    <div id="settings-screen" class="absolute inset-0 bg-dark/80 flex flex-col items-center justify-center z-40 hidden">
+      <div class="bg-light/90 rounded-xl p-8 w-full max-w-md">
+        <h2 class="text-2xl font-bold text-primary mb-6 text-center">游戏设置</h2>
+        <div class="space-y-4">
+          <div class="flex justify-between items-center">
+            <span class="font-medium">音量</span>
+            <input type="range" min="0" max="100" value="80" class="w-32">
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="font-medium">音效</span>
+            <input type="range" min="0" max="100" value="80" class="w-32">
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="font-medium">画质</span>
+            <select class="px-2 py-1 border rounded">
+              <option>低</option>
+              <option selected>中</option>
+              <option>高</option>
+            </select>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="font-medium">全屏</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" value="" class="sr-only peer" checked>
+              <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+          </div>
+        </div>
+        <button id="close-settings-btn" class="mt-8 w-full py-3 bg-primary hover:bg-primary/90 text-light rounded-lg font-semibold">
+          返回
+        </button>
+      </div>
+    </div>
+    
+    <!-- 教程界面 -->
+    <div id="tutorial-screen" class="absolute inset-0 bg-dark/80 flex flex-col items-center justify-center z-40 hidden">
+      <div class="bg-light/90 rounded-xl p-8 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+        <h2 class="text-2xl font-bold text-primary mb-6 text-center">玩法说明</h2>
+        <div class="space-y-6">
+          <div>
+            <h3 class="text-xl font-semibold text-dark mb-2">游戏目标</h3>
+            <p>在这个古风世界中，你需要建造防御设施来抵御怪物的进攻，同时发展经济，尽可能长时间地生存下去。</p>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-dark mb-2">资源</h3>
+            <p>黄金是游戏中的主要资源，用于建造和升级建筑。你可以通过建造金矿来自动获取黄金。</p>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-dark mb-2">建筑</h3>
+            <ul class="list-disc pl-5 space-y-1">
+              <li>箭塔：攻击靠近的怪物</li>
+              <li>陷阱：对经过的怪物造成伤害</li>
+              <li>城墙：阻挡怪物前进</li>
+              <li>金矿：自动生产黄金</li>
+              <li>医馆：恢复你的生命值</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-dark mb-2">战斗</h3>
+            <p>每过一段时间，怪物就会发起进攻。你需要合理布置建筑来抵挡它们。怪物会试图突破你的防线，攻击你的基地。</p>
+          </div>
+          <div>
+            <h3 class="text-xl font-semibold text-dark mb-2">升级</h3>
+            <p>你可以通过消耗黄金来升级你的建筑，提高它们的性能。升级后的建筑会更加强大。</p>
+          </div>
+        </div>
+        <button id="close-tutorial-btn" class="mt-8 w-full py-3 bg-primary hover:bg-primary/90 text-light rounded-lg font-semibold">
+          返回
+        </button>
+      </div>
+    </div>
+    
+    <!-- 暂停菜单 -->
+    <div id="pause-screen" class="absolute inset-0 bg-dark/80 flex flex-col items-center justify-center z-40 hidden">
+      <div class="bg-light/90 rounded-xl p-8 w-full max-w-md">
+        <h2 class="text-2xl font-bold text-primary mb-6 text-center">游戏暂停</h2>
+        <div class="space-y-4">
+          <button id="resume-btn" class="w-full py-3 bg-primary hover:bg-primary/90 text-light rounded-lg font-semibold">
+            继续游戏
+          </button>
+          <button id="restart-btn" class="w-full py-3 bg-dark hover:bg-dark/90 text-light rounded-lg font-semibold">
+            重新开始
+          </button>
+          <button id="exit-btn" class="w-full py-3 bg-accent hover:bg-accent/90 text-light rounded-lg font-semibold">
+            返回主菜单
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 游戏结束界面 -->
+    <div id="game-over-screen" class="absolute inset-0 bg-dark/80 flex flex-col items-center justify-center z-40 hidden">
+      <div class="bg-light/90 rounded-xl p-8 w-full max-w-md text-center">
+        <h2 class="text-3xl font-bold text-accent mb-2">游戏结束</h2>
+        <p class="text-xl mb-6">你的防线被突破了</p>
+        <div class="mb-6">
+          <p class="text-lg">生存回合: <span id="survived-waves" class="font-bold">0</span></p>
+          <p class="text-lg">最高黄金: <span id="max-gold" class="font-bold">0</span></p>
+        </div>
+        <div class="flex space-x-4">
+          <button id="retry-btn" class="flex-1 py-3 bg-primary hover:bg-primary/90 text-light rounded-lg font-semibold">
+            再来一次
+          </button>
+          <button id="home-btn" class="flex-1 py-3 bg-dark hover:bg-dark/90 text-light rounded-lg font-semibold">
+            返回主菜单
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 游戏状态
+    const gameState = {
+      gold: 100,
+      health: 100,
+      currentWave: 1,
+      waveTimer: 60,
+      selectedBuilding: null,
+      gameStarted: false,
+      gamePaused: false,
+      map: Array(6).fill().map(() => Array(8).fill(null)),
+      enemies: [],
+      buildings: [],
+      resources: {
+        gold: 100
+      },
+      // 建筑配置
+      buildingTypes: {
+        tower: { cost: 50, damage: 10, range: 2, description: "箭塔 - 远程攻击敌人" },
+        trap: { cost: 30, damage: 20, range: 1, description: "陷阱 - 对经过的敌人造成伤害" },
+        wall: { cost: 20, health: 100, description: "城墙 - 阻挡敌人前进" },
+        'gold-mine': { cost: 70, productionRate: 5, description: "金矿 - 每5秒产出黄金" },
+        healer: { cost: 60, healRate: 2, description: "医馆 - 每10秒恢复一定生命值" }
+      }
+    };
+
+    // DOM 元素
+    const mainMenu = document.getElementById('main-menu');
+    const gameScreen = document.getElementById('game-screen');
+    const settingsScreen = document.getElementById('settings-screen');
+    const tutorialScreen = document.getElementById('tutorial-screen');
+    const pauseScreen = document.getElementById('pause-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const gameMap = document.getElementById('game-map');
+    const buildingItems = document.querySelectorAll('.building-item');
+    const goldDisplay = document.getElementById('gold');
+    const healthDisplay = document.getElementById('health');
+    const waveTimerDisplay = document.getElementById('wave-timer');
+    const survivedWavesDisplay = document.getElementById('survived-waves');
+    const maxGoldDisplay = document.getElementById('max-gold');
+
+    // 初始化地图
+    function initMap() {
+      gameMap.innerHTML = '';
+      for (let row = 0; row < 6; row++) {
+        for (let col = 0; col < 8; col++) {
+          const cell = document.createElement('div');
+          cell.classList.add('bg-dark/30', 'rounded', 'relative', 'scale-hover');
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+          
+          // 点击放置建筑
+          cell.addEventListener('click', () => {
+            if (gameState.selectedBuilding && canBuild(row, col)) {
+              buildStructure(row, col, gameState.selectedBuilding);
+            }
+          });
+          
+          // 悬停显示建筑信息
+          cell.addEventListener('mouseenter', () => {
+            if (gameState.selectedBuilding) {
+              const building = gameState.buildingTypes[gameState.selectedBuilding];
+              if (gameState.resources.gold >= building.cost) {
+                cell.classList.add('border-2', 'border-primary');
+              } else {
+                cell.classList.add('border-2', 'border-accent');
+              }
+            }
+          });
+          
+          cell.addEventListener('mouseleave', () => {
+            cell.classList.remove('border-2', 'border-primary', 'border-accent');
+          });
+          
+          gameMap.appendChild(cell);
+        }
+      }
+    }
+
+    // 检查是否可以建造
+    function canBuild(row, col) {
+      // 检查是否在地图范围内
+      if (row < 0 || row >= 6 || col < 0 || col >= 8) return false;
+      
+      // 检查是否已有建筑
+      if (gameState.map[row][col]) return false;
+      
+      // 检查资源是否足够
+      const building = gameState.buildingTypes[gameState.selectedBuilding];
+      if (gameState.resources.gold < building.cost) return false;
+      
+      return true;
+    }
+
+    // 建造建筑
+    function buildStructure(row, col, type) {
+      const building = gameState.buildingTypes[type];
+      
+      // 扣除资源
+      gameState.resources.gold -= building.cost;
+      updateResourceDisplay();
+      
+      // 创建建筑对象
+      const newBuilding = {
+        type,
+        row,
+        col,
+        level: 1,
+        ...building
+      };
+      
+      // 添加到地图和建筑列表
+      gameState.map[row][col] = newBuilding;
+      gameState.buildings.push(newBuilding);
+      
+      // 更新地图显示
+      updateMapDisplay();
+      
+      // 播放建造音效
+      playSound('build');
+    }
+
+    // 更新地图显示
+    function updateMapDisplay() {
+      // 清除所有建筑显示
+      document.querySelectorAll('.building').forEach(el => el.remove());
+      
+      // 显示所有建筑
+      gameState.buildings.forEach(building => {
+        const cell = gameMap.children[building.row * 8 + building.col];
+        const buildingEl = document.createElement('div');
+        buildingEl.classList.add('building', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'rounded');
+        
+        // 根据建筑类型设置不同的样式
+        switch(building.type) {
+          case 'tower':
+            buildingEl.classList.add('bg-primary/80');
+            buildingEl.innerHTML = '<i class="fa fa-building text-2xl text-light"></i>';
+            break;
+          case 'trap':
+            buildingEl.classList.add('bg-accent/80');
+            buildingEl.innerHTML = '<i class="fa fa-bomb text-2xl text-light"></i>';
+            break;
+          case 'wall':
+            buildingEl.classList.add('bg-dark/80');
+            buildingEl.innerHTML = '<i class="fa fa-shield text-2xl text-light"></i>';
+            break;
+          case 'gold-mine':
+            buildingEl.classList.add('bg-yellow-500/80');
+            buildingEl.innerHTML = '<i class="fa fa-diamond text-2xl text-light"></i>';
+            break;
+          case 'healer':
+            buildingEl.classList.add('bg-green-500/80');
+            buildingEl.innerHTML = '<i class="fa fa-medkit text-2xl text-light"></i>';
+            break;
+        }
+        
+        // 添加等级显示
+        const levelEl = document.createElement('div');
+        levelEl.classList.add('absolute', 'top-1', 'right-1', 'bg-dark', 'text-light', 'text-xs', 'rounded-full', 'w-5', 'h-5', 'flex', 'items-center', 'justify-center');
+        levelEl.textContent = building.level;
+        buildingEl.appendChild(levelEl);
+        
+        cell.appendChild(buildingEl);
+      });
+    }
+
+    // 更新资源显示
+    function updateResourceDisplay() {
+      goldDisplay.textContent = gameState.resources.gold;
+      healthDisplay.textContent = gameState.health;
+      waveTimerDisplay.textContent = Math.ceil(gameState.waveTimer);
+    }
+
+    // 游戏循环
+    let gameLoopInterval;
+    let waveTimerInterval;
+    let resourceTimerInterval;
+
+    function startGameLoop() {
+      // 清除之前的循环
+      if (gameLoopInterval) clearInterval(gameLoopInterval);
+      if (waveTimerInterval) clearInterval(waveTimerInterval);
+      if (resourceTimerInterval) clearInterval(resourceTimerInterval);
+      
+      // 游戏主循环
+      gameLoopInterval = setInterval(() => {
+        if (!gameState.gamePaused) {
+          updateGame();
+        }
+      }, 1000 / 30); // 30 FPS
+      
+      // 波次计时器
+      waveTimerInterval = setInterval(() => {
+        if (!gameState.gamePaused && gameState.waveTimer > 0) {
+          gameState.waveTimer -= 1;
+          updateResourceDisplay();
+          
+          if (gameState.waveTimer <= 0) {
+            startWave();
+            gameState.waveTimer = 60 + gameState.currentWave * 5; // 波次间隔增加
+            gameState.currentWave++;
+          }
+        }
+      }, 1000);
+      
+      // 资源生产计时器
+      resourceTimerInterval = setInterval(() => {
+        if (!gameState.gamePaused) {
+          // 金矿生产黄金
+          const goldMines = gameState.buildings.filter(b => b.type === 'gold-mine');
+          goldMines.forEach(mine => {
+            gameState.resources.gold += mine.productionRate * mine.level;
+          });
+          
+          // 医馆恢复生命值
+          const healers = gameState.buildings.filter(b => b.type === 'healer');
+          healers.forEach(healer => {
+            if (gameState.health < 100) {
+              gameState.health = Math.min(100, gameState.health + healer.healRate * healer.level);
+            }
+          });
+          
+          updateResourceDisplay();
+        }
+      }, 5000); // 每5秒
+    }
+
+    // 更新游戏状态
+    function updateGame() {
+      // 更新建筑状态
+      gameState.buildings.forEach(building => {
+        if (building.type === 'tower') {
+          // 箭塔攻击敌人
+          attackEnemies(building);
+        }
+      });
+      
+      // 更新敌人状态
+      moveEnemies();
+      
+      // 检查游戏是否结束
+      if (gameState.health <= 0) {
+        endGame();
+      }
+    }
+
+    // 开始波次
+    function startWave() {
+      // 清空现有敌人
+      gameState.enemies = [];
+      
+      // 根据波次生成敌人
+      const enemyCount = 5 + gameState.currentWave * 2;
+      for (let i = 0; i < enemyCount; i++) {
+        setTimeout(() => {
+          if (!gameState.gamePaused) {
+            spawnEnemy();
+          }
+        }, i * 1000); // 每隔1秒生成一个敌人
+      }
+      
+      playSound('wave-start');
+    }
+
+    // 生成敌人
+    function spawnEnemy() {
+      const enemy = {
+        id: Date.now(), // 唯一ID
+        health: 10 + gameState.currentWave * 5,
+        damage: 2 + Math.floor(gameState.currentWave / 2),
+        speed: 0.5 + gameState.currentWave * 0.05,
+        row: Math.floor(Math.random() * 6), // 随机起始行
+        col: -1, // 从地图左侧开始
+        progress: 0 // 在当前格子中的进度
+      };
+      
+      gameState.enemies.push(enemy);
+      renderEnemies();
+    }
+
+    // 移动敌人
+    function moveEnemies() {
+      gameState.enemies.forEach(enemy => {
+        // 如果敌人到达地图最右侧，造成伤害
+        if (enemy.col >= 7) {
+          gameState.health -= enemy.damage;
+          gameState.enemies = gameState.enemies.filter(e => e.id !== enemy.id);
+          updateResourceDisplay();
+          playSound('damage');
+          return;
+        }
+        
+        // 检查前方是否有城墙
+        if (enemy.col + 1 < 8 && gameState.map[enemy.row][enemy.col + 1]?.type === 'wall') {
+          const wall = gameState.map[enemy.row][enemy.col + 1];
+          wall.health -= enemy.damage;
+          
+          // 如果城墙被破坏
+          if (wall.health <= 0) {
+            gameState.map[enemy.row][enemy.col + 1] = null;
+            gameState.buildings = gameState.buildings.filter(b => !(b.row === enemy.row && b.col === enemy.col + 1));
+            enemy.col++;
+            enemy.progress = 0;
+            playSound('wall-destroy');
+          } else {
+            playSound('enemy-attack');
+          }
+        } else {
+          // 正常移动
+          enemy.progress += enemy.speed / 30; // 基于帧率的移动
+          
+          // 如果移动到下一个格子
+          if (enemy.progress >= 1) {
+            enemy.col++;
+            enemy.progress = 0;
+            
+            // 检查是否踩到陷阱
+            if (gameState.map[enemy.row][enemy.col]?.type === 'trap') {
+              const trap = gameState.map[enemy.row][enemy.col];
+              enemy.health -= trap.damage * trap.level;
+              
+              // 陷阱被触发后移除
+              gameState.map[enemy.row][enemy.col] = null;
+              gameState.buildings = gameState.buildings.filter(b => !(b.row === enemy.row && b.col === enemy.col));
+              playSound('trap');
+            }
+          }
+        }
+        
+        // 检查敌人是否死亡
+        if (enemy.health <= 0) {
+          gameState.resources.gold += 5 + Math.floor(gameState.currentWave * 1.5); // 敌人掉落黄金
+          updateResourceDisplay();
+          gameState.enemies = gameState.enemies.filter(e => e.id !== enemy.id);
+          playSound('enemy-death');
+        }
+      });
+      
+      renderEnemies();
+    }
+
+    // 渲染敌人
+    function renderEnemies() {
+      // 清除现有敌人
+      document.querySelectorAll('.enemy').forEach(el => el.remove());
+      
+      // 渲染所有敌人
+      gameState.enemies.forEach(enemy => {
+        const cellWidth = gameMap.clientWidth / 8;
+        const x = (enemy.col + enemy.progress) * cellWidth;
+        const y = enemy.row * (gameMap.clientHeight / 6);
+        
+        const enemyEl = document.createElement('div');
+        enemyEl.classList.add('enemy', 'absolute', 'z-20');
+        enemyEl.style.width = '40px';
+        enemyEl.style.height = '40px';
+        enemyEl.style.left = `${x}px`;
+        enemyEl.style.top = `${y}px`;
+        enemyEl.style.transform = 'translate(-50%, -50%)';
+        
+        // 设置敌人外观
+        const healthPercentage = enemy.health / (10 + gameState.currentWave * 5);
+        const healthBarColor = healthPercentage > 0.5 ? 'bg-green-500' : 
+                              healthPercentage > 0.2 ? 'bg-yellow-500' : 'bg-red-500';
+        
+        enemyEl.innerHTML = `
+          <div class="w-full h-full bg-dark/90 rounded-full flex items-center justify-center border-2 border-accent">
+            <i class="fa fa-dragon text-accent text-xl"></i>
+          </div>
+          <div class="absolute top-0 left-0 w-full h-1 bg-gray-700 rounded-full overflow-hidden">
+            <div class="${healthBarColor}" style="width: ${healthPercentage * 100}%"></div>
+          </div>
+        `;
+        
+        gameMap.appendChild(enemyEl);
+      });
+    }
+
+    // 箭塔攻击敌人
+    function attackEnemies(tower) {
+      // 寻找范围内的敌人
+      const enemiesInRange = gameState.enemies.filter(enemy => {
+        const rowDiff = Math.abs(enemy.row - tower.row);
+        const colDiff = Math.abs(enemy.col - tower.col);
+        return rowDiff <= tower.range && colDiff <= tower.range;
+      });
+      
+      // 如果有敌人，攻击最近的一个
+      if (enemiesInRange.length > 0) {
+        // 按距离排序
+        enemiesInRange.sort((a, b) => {
+          const distA = Math.sqrt(Math.pow(a.row - tower.row, 2) + Math.pow(a.col - tower.col, 2));
+          const distB = Math.sqrt(Math.pow(b.row - tower.row, 2) + Math.pow(b.col - tower.col, 2));
+          return distA - distB;
+        });
+        
+        const target = enemiesInRange[0];
+        target.health -= tower.damage * tower.level;
+        
+        // 显示攻击特效
+        showAttackEffect(tower.row, tower.col, target.row, target.col);
+        playSound('tower-attack');
+      }
+    }
+
+    // 显示攻击特效
+    function showAttackEffect(fromRow, fromCol, toRow, toCol) {
+      const fromCell = gameMap.children[fromRow * 8 + fromCol];
+      const toCell = gameMap.children[toRow * 8 + toCol];
+      
+      const fromRect = fromCell.getBoundingClientRect();
+      const toRect = toCell.getBoundingClientRect();
+      
+      const fromX = fromRect.left + fromRect.width / 2;
+      const fromY = fromRect.top + fromRect.height / 2;
+      const toX = toRect.left + toRect.width / 2;
+      const toY = toRect.top + toRect.height / 2;
+      
+      const line = document.createElement('div');
+      line.classList.add('absolute', 'z-30');
+      line.style.height = '2px';
+      line.style.backgroundColor = '#FFD700';
+      line.style.transformOrigin = '0 50%';
+      
+      // 计算线段长度和角度
+      const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+      const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+      
+      line.style.width = `${length}px`;
+      line.style.transform = `rotate(${angle}deg)`;
+      line.style.left = `${fromX}px`;
+      line.style.top = `${fromY}px`;
+      
+      gameMap.appendChild(line);
+      
+      // 200ms后移除特效
+      setTimeout(() => {
+        line.remove();
+      }, 200);
+    }
+
+    // 结束游戏
+    function endGame() {
+      gameState.gamePaused = true;
+      clearInterval(gameLoopInterval);
+      clearInterval(waveTimerInterval);
+      clearInterval(resourceTimerInterval);
+      
+      // 更新游戏结束统计
+      survivedWavesDisplay.textContent = gameState.currentWave - 1;
+      maxGoldDisplay.textContent = gameState.resources.gold;
+      
+      // 显示游戏结束界面
+      gameOverScreen.classList.remove('hidden');
+      playSound('game-over');
+    }
+
+    // 播放音效（模拟）
+    function playSound(type) {
+      // 实际项目中可以添加音效
+      console.log(`Playing sound: ${type}`);
+    }
+
+    // 事件监听
+    document.getElementById('start-btn').addEventListener('click', () => {
+      // 初始化游戏状态
+      gameState.resources.gold = 100;
+      gameState.health = 100;
+      gameState.currentWave = 1;
+      gameState.waveTimer = 60;
+      gameState.gameStarted = true;
+      gameState.gamePaused = false;
+      gameState.map = Array(6).fill().map(() => Array(8).fill(null));
+      gameState.enemies = [];
+      gameState.buildings = [];
+      
+      // 初始化地图
+      initMap();
+      
+      // 隐藏主菜单，显示游戏界面
+      mainMenu.classList.add('hidden');
+      gameScreen.classList.remove('hidden');
+      
+      // 开始游戏循环
+      startGameLoop();
+      
+      playSound('game-start');
+    });
+
+    document.getElementById('settings-btn').addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      settingsScreen.classList.remove('hidden');
+    });
+
+    document.getElementById('close-settings-btn').addEventListener('click', () => {
+      settingsScreen.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+
+    document.getElementById('tutorial-btn').addEventListener('click', () => {
+      mainMenu.classList.add('hidden');
+      tutorialScreen.classList.remove('hidden');
+    });
+
+    document.getElementById('close-tutorial-btn').addEventListener('click', () => {
+      tutorialScreen.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+
+    document.getElementById('pause-btn').addEventListener('click', () => {
+      gameState.gamePaused = true;
+      pauseScreen.classList.remove('hidden');
+    });
+
+    document.getElementById('resume-btn').addEventListener('click', () => {
+      gameState.gamePaused = false;
+      pauseScreen.classList.add('hidden');
+    });
+
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      pauseScreen.classList.add('hidden');
+      document.getElementById('start-btn').click();
+    });
+
+    document.getElementById('exit-btn').addEventListener('click', () => {
+      gameState.gamePaused = true;
+      pauseScreen.classList.add('hidden');
+      gameScreen.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+
+    document.getElementById('retry-btn').addEventListener('click', () => {
+      gameOverScreen.classList.add('hidden');
+      document.getElementById('start-btn').click();
+    });
+
+    document.getElementById('home-btn').addEventListener('click', () => {
+      gameOverScreen.classList.add('hidden');
+      mainMenu.classList.remove('hidden');
+    });
+
+    // 建筑选择
+    buildingItems.forEach(item => {
+      item.addEventListener('click', () => {
+        const buildingType = item.dataset.building;
+        
+        // 取消之前的选择
+        buildingItems.forEach(i => i.classList.remove('border-2', 'border-primary'));
+        
+        // 选中当前建筑
+        item.classList.add('border-2', 'border-primary');
+        gameState.selectedBuilding = buildingType;
+      });
+    });
+
+    // 初始化游戏
+    function init() {
+      // 预加载资源
+      // 这里可以添加资源加载代码
+      
+      // 显示主菜单
+      mainMenu.classList.remove('hidden');
+    }
+
+    // 启动游戏
+    init();
+  </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '肖梓锜';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

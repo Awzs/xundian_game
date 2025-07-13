@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>双人猫抓老鼠游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#F97316',
+                        background: '#1E293B',
+                        surface: '#334155',
+                        text: '#F8FAFC',
+                    },
+                    fontFamily: {
+                        game: ['Segoe UI', 'Roboto', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .transition-transform {
+                transition-property: transform;
+                transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+                transition-duration: 150ms;
+            }
+        }
+    </style>
+</head>
+<body class="bg-background font-game text-text min-h-screen flex flex-col items-center justify-center p-4">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full bg-surface rounded-xl shadow-xl overflow-hidden">
+        <header class="p-6 border-b border-gray-700">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-center text-shadow">
+                <i class="fa fa-paw mr-2 text-primary"></i>猫抓老鼠 - 双人游戏
+            </h1>
+            <p class="text-center text-gray-300 mt-2">玩家1 (猫): WASD 移动 | 玩家2 (老鼠): 方向键移动</p>
+        </header>
+        
+        <main class="relative p-4 md:p-8">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1 flex flex-col">
+                    <!-- 游戏画布 -->
+                    <div class="relative w-full aspect-square bg-gray-800 rounded-lg overflow-hidden shadow-inner">
+                        <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                        
+                        <!-- 游戏开始界面 -->
+                        <div id="startScreen" class="absolute inset-0 bg-background/80 flex flex-col items-center justify-center">
+                            <h2 class="text-[clamp(1.25rem,2vw,2rem)] font-bold mb-4 text-primary">准备好了吗？</h2>
+                            <p class="text-gray-300 mb-6 text-center max-w-md">玩家1 (猫): WASD 移动<br>玩家2 (老鼠): 方向键移动</p>
+                            <button id="startButton" class="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <i class="fa fa-play mr-2"></i>开始游戏
+                            </button>
+                        </div>
+                        
+                        <!-- 游戏结束界面 -->
+                        <div id="endScreen" class="absolute inset-0 bg-background/80 flex-col items-center justify-center hidden">
+                            <h2 id="winnerText" class="text-[clamp(1.25rem,2vw,2rem)] font-bold mb-4 text-primary"></h2>
+                            <button id="restartButton" class="px-6 py-3 bg-primary hover:bg-primary/90 text-white font-bold rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                <i class="fa fa-refresh mr-2"></i>再来一局
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- 游戏信息 -->
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-gray-800 rounded-lg p-4 shadow">
+                            <h3 class="font-bold text-primary flex items-center">
+                                <i class="fa fa-user-circle mr-2"></i>玩家1 (猫)
+                            </h3>
+                            <p id="catScore" class="text-2xl font-bold mt-2">抓到: 0</p>
+                        </div>
+                        <div class="bg-gray-800 rounded-lg p-4 shadow">
+                            <h3 class="font-bold text-secondary flex items-center">
+                                <i class="fa fa-user-circle-o mr-2"></i>玩家2 (老鼠)
+                            </h3>
+                            <p id="mouseScore" class="text-2xl font-bold mt-2">存活: 0s</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 游戏控制和信息 -->
+                <div class="w-full md:w-80 space-y-4">
+                    <div class="bg-gray-800 rounded-lg p-4 shadow">
+                        <h3 class="font-bold text-lg mb-3 flex items-center">
+                            <i class="fa fa-info-circle mr-2 text-primary"></i>游戏规则
+                        </h3>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-green-400 mt-1 mr-2"></i>
+                                <span>猫(玩家1)需要抓住老鼠(玩家2)</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-green-400 mt-1 mr-2"></i>
+                                <span>老鼠需要存活30秒不被抓住</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-green-400 mt-1 mr-2"></i>
+                                <span>墙壁可以阻挡移动</span>
+                            </li>
+                            <li class="flex items-start">
+                                <i class="fa fa-check-circle text-green-400 mt-1 mr-2"></i>
+                                <span>游戏时间越长，老鼠移动速度越快</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-4 shadow">
+                        <h3 class="font-bold text-lg mb-3 flex items-center">
+                            <i class="fa fa-cog mr-2 text-primary"></i>游戏设置
+                        </h3>
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">游戏难度</label>
+                                <select id="difficulty" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                    <option value="easy">简单</option>
+                                    <option value="medium" selected>中等</option>
+                                    <option value="hard">困难</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-300 mb-1">游戏时间 (秒)</label>
+                                <input type="number" id="gameTime" min="10" max="120" value="30" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary/50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-gray-800 rounded-lg p-4 shadow">
+                        <h3 class="font-bold text-lg mb-3 flex items-center">
+                            <i class="fa fa-trophy mr-2 text-yellow-500"></i>游戏统计
+                        </h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">猫胜利次数:</span>
+                                <span id="catWins" class="font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">老鼠胜利次数:</span>
+                                <span id="mouseWins" class="font-bold">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-400">总游戏次数:</span>
+                                <span id="totalGames" class="font-bold">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="p-4 text-center text-gray-500 text-sm border-t border-gray-700">
+            <p>双人猫抓老鼠游戏 &copy; 2025</p>
+        </footer>
+    </div>
+
+    <script>
+        // 游戏状态和配置
+        const gameState = {
+            isRunning: false,
+            catWins: 0,
+            mouseWins: 0,
+            totalGames: 0,
+            gameTime: 30, // 默认30秒
+            difficulty: 'medium',
+            startTime: 0,
+            lastTime: 0,
+            score: 0
+        };
+        
+        // 游戏对象
+        const cat = {
+            x: 100,
+            y: 100,
+            width: 30,
+            height: 30,
+            speed: 5,
+            color: '#3B82F6',
+            dx: 0,
+            dy: 0
+        };
+        
+        const mouse = {
+            x: 400,
+            y: 400,
+            width: 25,
+            height: 25,
+            baseSpeed: 4,
+            speed: 4,
+            color: '#F97316',
+            dx: 0,
+            dy: 0
+        };
+        
+        // 障碍物
+        const obstacles = [];
+        
+        // 初始化画布
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // 初始化界面元素
+        const startScreen = document.getElementById('startScreen');
+        const endScreen = document.getElementById('endScreen');
+        const winnerText = document.getElementById('winnerText');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const catScore = document.getElementById('catScore');
+        const mouseScore = document.getElementById('mouseScore');
+        const difficultySelect = document.getElementById('difficulty');
+        const gameTimeInput = document.getElementById('gameTime');
+        const catWinsElement = document.getElementById('catWins');
+        const mouseWinsElement = document.getElementById('mouseWins');
+        const totalGamesElement = document.getElementById('totalGames');
+        
+        // 设置画布尺寸
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            const size = Math.min(container.clientWidth, container.clientHeight);
+            canvas.width = size;
+            canvas.height = size;
+        }
+        
+        // 监听窗口大小变化
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // 初始化障碍物
+        function initObstacles() {
+            obstacles.length = 0;
+            
+            // 随机生成障碍物
+            const obstacleCount = gameState.difficulty === 'easy' ? 5 : 
+                                 gameState.difficulty === 'medium' ? 10 : 15;
+            
+            for (let i = 0; i < obstacleCount; i++) {
+                const size = Math.random() * 60 + 40;
+                obstacles.push({
+                    x: Math.random() * (canvas.width - size),
+                    y: Math.random() * (canvas.height - size),
+                    width: size,
+                    height: size
+                });
+            }
+            
+            // 添加边界障碍物
+            const borderThickness = 10;
+            obstacles.push(
+                // 上边界
+                { x: 0, y: 0, width: canvas.width, height: borderThickness },
+                // 下边界
+                { x: 0, y: canvas.height - borderThickness, width: canvas.width, height: borderThickness },
+                // 左边界
+                { x: 0, y: 0, width: borderThickness, height: canvas.height },
+                // 右边界
+                { x: canvas.width - borderThickness, y: 0, width: borderThickness, height: canvas.height }
+            );
+        }
+        
+        // 检查碰撞
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        // 检查与障碍物的碰撞
+        function checkObstacleCollision(obj) {
+            for (const obstacle of obstacles) {
+                if (checkCollision(obj, obstacle)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // 移动对象并检查碰撞
+        function moveAndCheckCollision(obj, dx, dy) {
+            // 尝试移动
+            const tempX = obj.x + dx;
+            const tempY = obj.y + dy;
+            
+            // 保存当前位置
+            const oldX = obj.x;
+            const oldY = obj.y;
+            
+            // 尝试X方向移动
+            obj.x = tempX;
+            if (checkObstacleCollision(obj)) {
+                obj.x = oldX;
+            }
+            
+            // 尝试Y方向移动
+            obj.y = tempY;
+            if (checkObstacleCollision(obj)) {
+                obj.y = oldY;
+            }
+        }
+        
+        // 更新游戏状态
+        function update(deltaTime) {
+            if (!gameState.isRunning) return;
+            
+            // 移动猫
+            moveAndCheckCollision(cat, cat.dx * deltaTime, cat.dy * deltaTime);
+            
+            // 移动老鼠
+            moveAndCheckCollision(mouse, mouse.dx * deltaTime, mouse.dy * deltaTime);
+            
+            // 检查猫是否抓到老鼠
+            if (checkCollision(cat, mouse)) {
+                gameOver('cat');
+                return;
+            }
+            
+            // 计算游戏时间
+            const elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            mouseScore.textContent = `存活: ${Math.ceil(gameState.gameTime - elapsedTime)}s`;
+            
+            // 老鼠存活时间越长，速度越快
+            mouse.speed = mouse.baseSpeed + (elapsedTime / 5);
+            
+            // 检查游戏时间是否结束
+            if (elapsedTime >= gameState.gameTime) {
+                gameOver('mouse');
+            }
+        }
+        
+        // 绘制游戏
+        function draw() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制障碍物
+            ctx.fillStyle = '#475569';
+            for (const obstacle of obstacles) {
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+            
+            // 绘制猫
+            ctx.fillStyle = cat.color;
+            ctx.beginPath();
+            ctx.arc(cat.x + cat.width/2, cat.y + cat.height/2, cat.width/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制猫的眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(cat.x + cat.width/4, cat.y + cat.height/3, 4, 0, Math.PI * 2);
+            ctx.arc(cat.x + cat.width*3/4, cat.y + cat.height/3, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(cat.x + cat.width/4, cat.y + cat.height/3, 2, 0, Math.PI * 2);
+            ctx.arc(cat.x + cat.width*3/4, cat.y + cat.height/3, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制猫的耳朵
+            ctx.fillStyle = cat.color;
+            ctx.beginPath();
+            ctx.moveTo(cat.x + cat.width/2, cat.y);
+            ctx.lineTo(cat.x + cat.width/4, cat.y - cat.height/4);
+            ctx.lineTo(cat.x + cat.width/8, cat.y + cat.height/4);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(cat.x + cat.width/2, cat.y);
+            ctx.lineTo(cat.x + cat.width*3/4, cat.y - cat.height/4);
+            ctx.lineTo(cat.x + cat.width*7/8, cat.y + cat.height/4);
+            ctx.closePath();
+            ctx.fill();
+            
+            // 绘制老鼠
+            ctx.fillStyle = mouse.color;
+            ctx.beginPath();
+            ctx.arc(mouse.x + mouse.width/2, mouse.y + mouse.height/2, mouse.width/2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制老鼠的眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(mouse.x + mouse.width/4, mouse.y + mouse.height/3, 3, 0, Math.PI * 2);
+            ctx.arc(mouse.x + mouse.width*3/4, mouse.y + mouse.height/3, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(mouse.x + mouse.width/4, mouse.y + mouse.height/3, 1.5, 0, Math.PI * 2);
+            ctx.arc(mouse.x + mouse.width*3/4, mouse.y + mouse.height/3, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 绘制老鼠的尾巴
+            ctx.strokeStyle = mouse.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(mouse.x + mouse.width, mouse.y + mouse.height/2);
+            ctx.bezierCurveTo(
+                mouse.x + mouse.width + 20, mouse.y + mouse.height/2 - 10,
+                mouse.x + mouse.width + 30, mouse.y + mouse.height/2 + 10,
+                mouse.x + mouse.width + 40, mouse.y + mouse.height/2
+            );
+            ctx.stroke();
+            
+            // 绘制游戏时间进度条
+            const elapsedTime = (Date.now() - gameState.startTime) / 1000;
+            const progress = elapsedTime / gameState.gameTime;
+            
+            ctx.fillStyle = '#1E293B';
+            ctx.fillRect(10, 10, canvas.width - 20, 15);
+            
+            ctx.fillStyle = progress > 0.7 ? '#EF4444' : 
+                           progress > 0.4 ? '#F59E0B' : '#10B981';
+            ctx.fillRect(10, 10, (canvas.width - 20) * (1 - progress), 15);
+        }
+        
+        // 游戏主循环
+        function gameLoop(timestamp) {
+            if (!gameState.lastTime) {
+                gameState.lastTime = timestamp;
+            }
+            
+            const deltaTime = (timestamp - gameState.lastTime) / 16.67; // 归一化到60fps
+            gameState.lastTime = timestamp;
+            
+            update(deltaTime);
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            // 获取设置
+            gameState.difficulty = difficultySelect.value;
+            gameState.gameTime = parseInt(gameTimeInput.value) || 30;
+            
+            // 重置游戏对象
+            cat.x = canvas.width / 4;
+            cat.y = canvas.height / 2;
+            cat.speed = gameState.difficulty === 'easy' ? 4 : 
+                       gameState.difficulty === 'medium' ? 5 : 6;
+            
+            mouse.x = canvas.width * 3 / 4;
+            mouse.y = canvas.height / 2;
+            mouse.baseSpeed = gameState.difficulty === 'easy' ? 5 : 
+                             gameState.difficulty === 'medium' ? 4 : 3;
+            mouse.speed = mouse.baseSpeed;
+            
+            // 初始化障碍物
+            initObstacles();
+            
+            // 更新统计信息显示
+            catWinsElement.textContent = gameState.catWins;
+            mouseWinsElement.textContent = gameState.mouseWins;
+            totalGamesElement.textContent = gameState.totalGames;
+            
+            // 开始游戏
+            gameState.isRunning = true;
+            gameState.startTime = Date.now();
+            gameState.lastTime = 0;
+            
+            // 隐藏开始界面
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+        }
+        
+        // 游戏结束
+        function gameOver(winner) {
+            gameState.isRunning = false;
+            gameState.totalGames++;
+            
+            if (winner === 'cat') {
+                gameState.catWins++;
+                winnerText.innerHTML = '<i class="fa fa-trophy text-yellow-500 mr-2"></i>猫获胜！';
+                winnerText.className = 'text-[clamp(1.25rem,2vw,2rem)] font-bold mb-4 text-primary';
+            } else {
+                gameState.mouseWins++;
+                winnerText.innerHTML = '<i class="fa fa-trophy text-yellow-500 mr-2"></i>老鼠获胜！';
+                winnerText.className = 'text-[clamp(1.25rem,2vw,2rem)] font-bold mb-4 text-secondary';
+            }
+            
+            // 更新分数显示
+            catScore.textContent = `抓到: ${gameState.catWins}`;
+            mouseScore.textContent = `存活: ${gameState.mouseWins}次`;
+            
+            // 显示结束界面
+            endScreen.classList.remove('hidden');
+            endScreen.classList.add('flex');
+        }
+        
+        // 事件监听
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            // 猫控制 (WASD)
+            if (e.key === 'w' || e.key === 'W') {
+                cat.dy = -cat.speed;
+            }
+            if (e.key === 's' || e.key === 'S') {
+                cat.dy = cat.speed;
+            }
+            if (e.key === 'a' || e.key === 'A') {
+                cat.dx = -cat.speed;
+            }
+            if (e.key === 'd' || e.key === 'D') {
+                cat.dx = cat.speed;
+            }
+            
+            // 老鼠控制 (方向键)
+            if (e.key === 'ArrowUp') {
+                mouse.dy = -mouse.speed;
+            }
+            if (e.key === 'ArrowDown') {
+                mouse.dy = mouse.speed;
+            }
+            if (e.key === 'ArrowLeft') {
+                mouse.dx = -mouse.speed;
+            }
+            if (e.key === 'ArrowRight') {
+                mouse.dx = mouse.speed;
+            }
+        });
+        
+        document.addEventListener('keyup', (e) => {
+            // 猫控制 (WASD)
+            if (e.key === 'w' || e.key === 'W' || e.key === 's' || e.key === 'S') {
+                cat.dy = 0;
+            }
+            if (e.key === 'a' || e.key === 'A' || e.key === 'd' || e.key === 'D') {
+                cat.dx = 0;
+            }
+            
+            // 老鼠控制 (方向键)
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                mouse.dy = 0;
+            }
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                mouse.dx = 0;
+            }
+        });
+        
+        // 启动游戏循环
+        requestAnimationFrame(gameLoop);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '未知';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>    

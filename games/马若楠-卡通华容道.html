@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>卡通数字华容道</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 配置Tailwind自定义颜色和字体 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#6366F1',
+            secondary: '#EC4899',
+            accent: '#F59E0B',
+            light: '#F3F4F6',
+            dark: '#1F2937',
+          },
+          fontFamily: {
+            comic: ['"Comic Sans MS"', '"Bubblegum Sans"', 'cursive'],
+          },
+        },
+      }
+    }
+  </script>
+  
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .puzzle-shadow {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      }
+      .animate-slide {
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .card-hover {
+        transition: all 0.2s ease;
+      }
+      .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      }
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-purple-100 to-pink-100 min-h-screen font-comic flex flex-col items-center justify-center p-4">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+  <!-- 游戏标题 -->
+  <div class="text-center mb-6">
+    <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-primary text-shadow mb-2">
+      <i class="fa fa-puzzle-piece text-accent mr-2"></i>卡通数字华容道
+    </h1>
+    <p class="text-gray-600 text-lg">将数字按顺序排列，挑战你的脑力！</p>
+  </div>
+  
+  <!-- 游戏信息面板 -->
+  <div class="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-lg mb-6 w-full max-w-md">
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-primary/10 rounded-lg p-3 flex items-center justify-center">
+        <i class="fa fa-clock-o text-primary text-xl mr-2"></i>
+        <span class="text-dark font-bold text-xl" id="timer">00:00</span>
+      </div>
+      <div class="bg-secondary/10 rounded-lg p-3 flex items-center justify-center">
+        <i class="fa fa-exchange text-secondary text-xl mr-2"></i>
+        <span class="text-dark font-bold text-xl" id="moves">0</span>
+        <span class="text-gray-500 ml-1">步</span>
+      </div>
+    </div>
+    
+    <!-- 控制按钮 -->
+    <div class="flex justify-center mt-4 gap-3">
+      <button id="restart" class="bg-accent hover:bg-accent/90 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl flex items-center">
+        <i class="fa fa-refresh mr-2"></i>重新开始
+      </button>
+      <select id="difficulty" class="bg-white border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/50">
+        <option value="3">3x3 简单</option>
+        <option value="4" selected>4x4 中等</option>
+        <option value="5">5x5 困难</option>
+      </select>
+    </div>
+  </div>
+  
+  <!-- 游戏棋盘 -->
+  <div id="game-container" class="relative w-full max-w-md aspect-square bg-white/60 backdrop-blur-sm rounded-2xl p-4 puzzle-shadow">
+    <div id="puzzle-board" class="grid w-full h-full gap-3"></div>
+    
+    <!-- 完成提示层 -->
+    <div id="success-modal" class="absolute inset-0 bg-primary/90 rounded-2xl flex flex-col items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500">
+      <div class="text-center p-6">
+        <div class="text-[clamp(3rem,8vw,5rem)] text-yellow-300 mb-4">🎉</div>
+        <h2 class="text-white text-[clamp(1.5rem,4vw,2.5rem)] font-bold mb-2">恭喜你!</h2>
+        <p class="text-white/90 text-lg mb-4">你成功完成了华容道挑战!</p>
+        <div class="bg-white/20 rounded-lg p-3 mb-6">
+          <p class="text-white font-bold">用时: <span id="final-time">00:00</span></p>
+          <p class="text-white font-bold">步数: <span id="final-moves">0</span></p>
+        </div>
+        <button id="play-again" class="bg-white text-primary font-bold py-2 px-6 rounded-full transition-all duration-300 hover:bg-yellow-300 hover:text-primary transform hover:scale-105">
+          再来一局
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 页脚信息 -->
+  <div class="mt-8 text-center text-gray-500 text-sm">
+    <p>使用键盘方向键或点击数字移动方块</p>
+    <p class="mt-2">© 2025 卡通华容道游戏</p>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // 游戏配置
+      let size = 4; // 默认4x4
+      let puzzle = [];
+      let emptyPos = { row: size - 1, col: size - 1 };
+      let moves = 0;
+      let timer = 0;
+      let timerInterval;
+      let isGameStarted = false;
+      let isGameCompleted = false;
+      
+      // 卡通角色颜色映射
+      const colors = [
+        'bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400',
+        'bg-purple-400', 'bg-pink-400', 'bg-indigo-400', 'bg-teal-400',
+        'bg-orange-400', 'bg-amber-400', 'bg-emerald-400', 'bg-cyan-400',
+        'bg-sky-400', 'bg-fuchsia-400', 'bg-rose-400', 'bg-lime-400',
+        'bg-olive-400', 'bg-maroon-400', 'bg-navy-400', 'bg-charcoal-400',
+        'bg-silver-400', 'bg-gold-400', 'bg-bronze-400', 'bg-copper-400'
+      ];
+      
+      // 卡通图标映射
+      const icons = [
+        'fa-smile-o', 'fa-heart-o', 'fa-star-o', 'fa-bell-o',
+        'fa-coffee', 'fa-moon-o', 'fa-sun-o', 'fa-leaf',
+        'fa-diamond', 'fa-paper-plane-o', 'fa-rocket', 'fa-tree',
+        'fa-car', 'fa-plane', 'fa-ship', 'fa-bicycle',
+        'fa-gamepad', 'fa-music', 'fa-paint-brush', 'fa-book',
+        'fa-graduation-cap', 'fa-camera', 'fa-video-camera', 'fa-paw'
+      ];
+      
+      // DOM 元素
+      const puzzleBoard = document.getElementById('puzzle-board');
+      const movesCounter = document.getElementById('moves');
+      const timerDisplay = document.getElementById('timer');
+      const restartButton = document.getElementById('restart');
+      const difficultySelect = document.getElementById('difficulty');
+      const successModal = document.getElementById('success-modal');
+      const finalTimeDisplay = document.getElementById('final-time');
+      const finalMovesDisplay = document.getElementById('final-moves');
+      const playAgainButton = document.getElementById('play-again');
+      
+      // 初始化游戏
+      function initGame() {
+        // 重置游戏状态
+        moves = 0;
+        movesCounter.textContent = moves;
+        stopTimer();
+        timer = 0;
+        timerDisplay.textContent = '00:00';
+        isGameStarted = false;
+        isGameCompleted = false;
+        successModal.classList.add('opacity-0', 'pointer-events-none');
+        
+        // 获取难度设置
+        size = parseInt(difficultySelect.value);
+        emptyPos = { row: size - 1, col: size - 1 };
+        
+        // 清空棋盘
+        puzzleBoard.innerHTML = '';
+        puzzleBoard.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+        
+        // 生成拼图数据
+        generatePuzzle();
+        
+        // 渲染棋盘
+        renderBoard();
+        
+        // 添加键盘控制
+        document.addEventListener('keydown', handleKeyPress);
+      }
+      
+      // 生成随机可解的拼图
+      function generatePuzzle() {
+        // 创建有序数组
+        const numbers = Array(size * size - 1).fill().map((_, i) => i + 1);
+        
+        // 洗牌算法
+        for (let i = numbers.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+        }
+        
+        // 转换为二维数组
+        puzzle = [];
+        for (let i = 0; i < size; i++) {
+          const row = [];
+          for (let j = 0; j < size; j++) {
+            const index = i * size + j;
+            if (index < numbers.length) {
+              row.push(numbers[index]);
+            } else {
+              row.push(null); // 空白方块
+            }
+          }
+          puzzle.push(row);
+        }
+        
+        // 检查是否可解，如果不可解则重新生成
+        if (!isSolvable(puzzle, size)) {
+          generatePuzzle();
+        }
+      }
+      
+      // 检查拼图是否可解
+      function isSolvable(puzzle, size) {
+        // 将二维数组展平为一维数组
+        const flatPuzzle = puzzle.flat();
+        
+        // 计算逆序数
+        let inversions = 0;
+        const puzzleWithoutEmpty = flatPuzzle.filter(num => num !== null);
+        
+        for (let i = 0; i < puzzleWithoutEmpty.length; i++) {
+          for (let j = i + 1; j < puzzleWithoutEmpty.length; j++) {
+            if (puzzleWithoutEmpty[i] > puzzleWithoutEmpty[j]) {
+              inversions++;
+            }
+          }
+        }
+        
+        // 对于奇数大小的棋盘，逆序数必须为偶数
+        if (size % 2 === 1) {
+          return inversions % 2 === 0;
+        } 
+        // 对于偶数大小的棋盘，取决于空白方块所在的行
+        else {
+          // 找到空白方块的行
+          const emptyRow = flatPuzzle.indexOf(null) / size;
+          
+          // 如果空白方块在偶数行(0, 2, 4...)，则逆序数必须为奇数
+          if (Math.floor(emptyRow) % 2 === 0) {
+            return inversions % 2 === 1;
+          } 
+          // 如果空白方块在奇数行(1, 3, 5...)，则逆序数必须为偶数
+          else {
+            return inversions % 2 === 0;
+          }
+        }
+      }
+      
+      // 渲染棋盘
+      function renderBoard() {
+        puzzleBoard.innerHTML = '';
+        
+        for (let i = 0; i < size; i++) {
+          for (let j = 0; j < size; j++) {
+            const tile = document.createElement('div');
+            const value = puzzle[i][j];
+            
+            if (value !== null) {
+              // 计算颜色和图标索引
+              const colorIndex = (value - 1) % colors.length;
+              const iconIndex = (value - 1) % icons.length;
+              
+              // 设置方块样式
+              tile.className = `${colors[colorIndex]} rounded-xl shadow-lg flex items-center justify-center card-hover animate-slide cursor-pointer`;
+              tile.innerHTML = `
+                <div class="text-center">
+                  <i class="fa ${icons[iconIndex]} text-white text-3xl mb-1"></i>
+                  <div class="text-white font-bold text-2xl">${value}</div>
+                </div>
+              `;
+              
+              // 添加点击事件
+              tile.addEventListener('click', () => moveTile(i, j));
+              
+              // 设置数据属性
+              tile.dataset.row = i;
+              tile.dataset.col = j;
+            } else {
+              // 空白方块
+              tile.className = 'bg-transparent rounded-xl';
+            }
+            
+            puzzleBoard.appendChild(tile);
+          }
+        }
+      }
+      
+      // 移动方块
+      function moveTile(row, col) {
+        // 如果游戏已完成则不执行任何操作
+        if (isGameCompleted) return;
+        
+        // 如果第一次移动，开始计时
+        if (!isGameStarted) {
+          startTimer();
+          isGameStarted = true;
+        }
+        
+        // 检查是否可以移动
+        if (
+          (row === emptyPos.row && Math.abs(col - emptyPos.col) === 1) ||
+          (col === emptyPos.col && Math.abs(row - emptyPos.row) === 1)
+        ) {
+          // 交换方块和空白位置
+          puzzle[emptyPos.row][emptyPos.col] = puzzle[row][col];
+          puzzle[row][col] = null;
+          
+          // 更新空白位置
+          emptyPos.row = row;
+          emptyPos.col = col;
+          
+          // 更新移动次数
+          moves++;
+          movesCounter.textContent = moves;
+          
+          // 重新渲染棋盘
+          renderBoard();
+          
+          // 检查是否完成
+          if (isCompleted()) {
+            completeGame();
+          }
+        }
+      }
+      
+      // 键盘控制
+      function handleKeyPress(e) {
+        if (isGameCompleted) return;
+        
+        const { row, col } = emptyPos;
+        
+        switch (e.key) {
+          case 'ArrowUp':
+            if (row < size - 1) moveTile(row + 1, col);
+            break;
+          case 'ArrowDown':
+            if (row > 0) moveTile(row - 1, col);
+            break;
+          case 'ArrowLeft':
+            if (col < size - 1) moveTile(row, col + 1);
+            break;
+          case 'ArrowRight':
+            if (col > 0) moveTile(row, col - 1);
+            break;
+        }
+      }
+      
+      // 检查游戏是否完成
+      function isCompleted() {
+        let count = 1;
+        for (let i = 0; i < size; i++) {
+          for (let j = 0; j < size; j++) {
+            if (i === size - 1 && j === size - 1) {
+              // 最后一个位置应该是空的
+              if (puzzle[i][j] !== null) return false;
+            } else {
+              // 其他位置应该按顺序排列
+              if (puzzle[i][j] !== count) return false;
+              count++;
+            }
+          }
+        }
+        return true;
+      }
+      
+      // 游戏完成处理
+      function completeGame() {
+        stopTimer();
+        isGameCompleted = true;
+        
+        // 更新完成信息
+        finalTimeDisplay.textContent = timerDisplay.textContent;
+        finalMovesDisplay.textContent = moves;
+        
+        // 显示成功模态框
+        setTimeout(() => {
+          successModal.classList.remove('opacity-0', 'pointer-events-none');
+        }, 500);
+        
+        // 移除键盘控制
+        document.removeEventListener('keydown', handleKeyPress);
+      }
+      
+      // 开始计时器
+      function startTimer() {
+        timerInterval = setInterval(() => {
+          timer++;
+          const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
+          const seconds = (timer % 60).toString().padStart(2, '0');
+          timerDisplay.textContent = `${minutes}:${seconds}`;
+        }, 1000);
+      }
+      
+      // 停止计时器
+      function stopTimer() {
+        clearInterval(timerInterval);
+      }
+      
+      // 事件监听器
+      restartButton.addEventListener('click', initGame);
+      playAgainButton.addEventListener('click', initGame);
+      difficultySelect.addEventListener('change', initGame);
+      
+      // 初始化游戏
+      initGame();
+    });
+  </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '马若楠';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

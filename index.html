@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>体智夏令营 - 游戏创作展</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --hover-scale: 1.05;
+        }
+
+        * {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        body {
+            background: #0f0f1e;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        /* 背景动画 */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #0f0f1e, #1a1a2e, #16213e);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            z-index: -2;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 星星背景 */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        /* 玻璃态效果 */
+        .glass {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* 卡片悬浮效果 */
+        .game-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-style: preserve-3d;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+        }
+
+        /* 按钮动画 */
+        .btn-primary {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn-primary:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* 信件模态框样式 */
+        .letter-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+
+        .letter-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translate(-50%, -60%); opacity: 0; }
+            to { transform: translate(-50%, -50%); opacity: 1; }
+        }
+
+        /* 筛选按钮样式 */
+        .filter-btn {
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-btn.active {
+            background: var(--primary-gradient);
+            transform: scale(1.1);
+        }
+
+        /* 滚动条样式 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.5);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.7);
+        }
+
+        /* 加载动画 */
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- 动态背景 -->
+    <div class="animated-bg"></div>
+    <div class="stars" id="starsContainer"></div>
+
+    <!-- 信件模态框 -->
+    <div id="letterModal" class="letter-modal">
+        <div class="letter-content">
+            <button onclick="closeLetter()" class="absolute top-4 right-4 text-gray-600 hover:text-gray-800 text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-3xl font-bold mb-6 text-center">
+                <i class="fas fa-envelope-open-heart text-red-500 mr-2"></i>
+                致体智夏令营的小创客们
+            </h2>
+            <div class="space-y-4 text-lg leading-relaxed">
+                <p>亲爱的孩子们、家长们：</p>
+                <p>还记得2025年7月那个难忘的夏天吗？在云南昆明寻甸仁德一小的校园里，"体智夏令营"让我们相聚。在华东师范大学体育与健康学院老师们的陪伴下，你们不仅锻炼了体魄，更用智慧创造了这些精彩的游戏作品。</p>
+                <p>看着这140个游戏，每一个都是你们努力的见证。从五子棋到贪吃蛇，从像素世界到星际战机，你们用5天时间证明了：<strong class="text-purple-600">"体智"并进，创意无限！</strong></p>
+                <p>这个网站将永远保存你们的作品，让更多人看到仁德一小孩子们的才华。希望你们记住这段美好时光，继续在"体智"的道路上勇敢前行！</p>
+                <p>感谢仁德一小的支持，感谢家长们的信任，更要感谢每一位认真创作的孩子！</p>
+                <p class="mt-4 p-4 bg-purple-100 bg-opacity-20 rounded-xl">
+                    <i class="fas fa-info-circle text-purple-600 mr-2"></i>
+                    <strong>温馨提示：</strong>如果你想优化自己的游戏代码，或者有新的作品想要添加到网站上，请在体智夏令营的微信群中联系王老师，我们会帮助你实现梦想！
+                </p>
+                <p class="text-right mt-8">
+                    <span class="text-purple-600 font-bold">—— 华东师范大学体智夏令营项目组</span><br>
+                    <span class="text-sm text-gray-600">2025年7月</span>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 固定导航栏 -->
+    <nav class="fixed top-0 left-0 right-0 glass z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2 sm:space-x-4">
+                <i class="fas fa-rocket text-2xl sm:text-3xl text-yellow-400 animate-pulse"></i>
+                <h1 class="text-lg sm:text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                    体智夏令营游戏创作展
+                </h1>
+            </div>
+            <button onclick="openLetter()" class="glass px-3 py-2 sm:px-4 rounded-full hover:bg-white hover:bg-opacity-20 transition-all text-sm sm:text-base">
+                <i class="fas fa-envelope text-yellow-400 sm:mr-2"></i>
+                <span class="hidden sm:inline">查看信件</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="pt-24 pb-12 px-4">
+        <!-- 英雄区域 -->
+        <section class="max-w-6xl mx-auto mb-12 text-center">
+            <h2 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-4 animate-fade-in">
+                体智夏令营 · 孩子们的创意游戏世界
+            </h2>
+            <p class="text-lg sm:text-xl text-gray-300 mb-4">"点燃好奇之光，探索无限可能"</p>
+            <p class="text-sm sm:text-base text-gray-400">2025年7月7日-11日 · 云南昆明寻甸仁德一小</p>
+            <p class="text-xs sm:text-sm text-gray-500 mb-8">华东师范大学体育与健康学院主办</p>
+            
+            <!-- 统计数据 -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                <div class="glass rounded-2xl p-6 transform hover:scale-105 transition-all">
+                    <i class="fas fa-gamepad text-4xl text-purple-400 mb-2"></i>
+                    <h3 class="text-3xl font-bold">140</h3>
+                    <p class="text-gray-300">精彩游戏</p>
+                </div>
+                <div class="glass rounded-2xl p-6 transform hover:scale-105 transition-all">
+                    <i class="fas fa-users text-4xl text-blue-400 mb-2"></i>
+                    <h3 class="text-3xl font-bold">37</h3>
+                    <p class="text-gray-300">位小创客</p>
+                </div>
+                <div class="glass rounded-2xl p-6 transform hover:scale-105 transition-all">
+                    <i class="fas fa-code text-4xl text-green-400 mb-2"></i>
+                    <h3 class="text-3xl font-bold">12</h3>
+                    <p class="text-gray-300">游戏类别</p>
+                </div>
+                <div class="glass rounded-2xl p-6 transform hover:scale-105 transition-all">
+                    <i class="fas fa-star text-4xl text-yellow-400 mb-2"></i>
+                    <h3 class="text-3xl font-bold">∞</h3>
+                    <p class="text-gray-300">创意无限</p>
+                </div>
+            </div>
+
+            <!-- 随机游戏按钮 -->
+            <button onclick="playRandomGame()" class="btn-primary bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white px-8 py-4 rounded-full text-lg font-bold shadow-2xl transform hover:scale-110 transition-all">
+                <i class="fas fa-dice mr-3 animate-spin"></i>
+                随机探索一个游戏
+                <i class="fas fa-magic ml-3"></i>
+            </button>
+        </section>
+
+        <!-- 筛选和搜索 -->
+        <section class="max-w-6xl mx-auto mb-8">
+            <div class="glass rounded-3xl p-6">
+                <!-- 搜索框 -->
+                <div class="mb-6">
+                    <div class="relative max-w-md mx-auto">
+                        <input type="text" id="searchInput" placeholder="搜索游戏或作者..." 
+                               class="w-full px-6 py-3 pl-12 rounded-full bg-white bg-opacity-10 text-white placeholder-gray-400 focus:bg-opacity-20 focus:outline-none focus:ring-2 focus:ring-purple-400 transition-all">
+                        <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                    </div>
+                </div>
+                
+                <!-- 分类筛选 -->
+                <div class="flex flex-wrap gap-3 justify-center">
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all active" data-category="all">
+                        <i class="fas fa-th mr-2"></i>全部游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="棋类游戏">
+                        <i class="fas fa-chess mr-2"></i>棋类游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="休闲游戏">
+                        <i class="fas fa-smile mr-2"></i>休闲游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="射击游戏">
+                        <i class="fas fa-crosshairs mr-2"></i>射击游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="益智游戏">
+                        <i class="fas fa-puzzle-piece mr-2"></i>益智游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="动作游戏">
+                        <i class="fas fa-running mr-2"></i>动作游戏
+                    </button>
+                    <button class="filter-btn glass px-6 py-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-all" data-category="平台游戏">
+                        <i class="fas fa-layer-group mr-2"></i>平台游戏
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 创作之星 -->
+        <section class="max-w-6xl mx-auto mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass rounded-3xl p-6 text-center transform hover:scale-105 transition-all">
+                    <h3 class="text-xl font-bold mb-4 text-yellow-400">
+                        <i class="fas fa-trophy mr-2"></i>创作之星
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span>🥇 普俊杰</span>
+                            <span class="text-yellow-400 font-bold">11个游戏</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>🥈 朱浩宇</span>
+                            <span class="text-gray-300 font-bold">7个游戏</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>🥉 陈舒研</span>
+                            <span class="text-orange-400 font-bold">6个游戏</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-3xl p-6 text-center transform hover:scale-105 transition-all">
+                    <h3 class="text-xl font-bold mb-4 text-orange-400">
+                        <i class="fas fa-fire mr-2"></i>热门主题
+                    </h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span>🐍 贪吃蛇系列</span>
+                            <span class="text-orange-400 font-bold">44个作品</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>⚫ 五子棋系列</span>
+                            <span class="text-orange-300 font-bold">22个作品</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span>🐱 猫抓老鼠</span>
+                            <span class="text-orange-200 font-bold">11个作品</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="glass rounded-3xl p-6 text-center transform hover:scale-105 transition-all">
+                    <h3 class="text-xl font-bold mb-4 text-purple-400">
+                        <i class="fas fa-gem mr-2"></i>特色推荐
+                    </h3>
+                    <div class="space-y-3 text-left">
+                        <div class="cursor-pointer hover:text-purple-300 transition-colors" onclick="openGame('朱浩宇-2D像素版我的世界.html')">
+                            <i class="fas fa-cube mr-2"></i>2D像素版我的世界
+                        </div>
+                        <div class="cursor-pointer hover:text-purple-300 transition-colors" onclick="openGame('余梓玉-古风中国象棋.html')">
+                            <i class="fas fa-chess-king mr-2"></i>古风中国象棋
+                        </div>
+                        <div class="cursor-pointer hover:text-purple-300 transition-colors" onclick="openGame('白佳玉-特种兵模拟器.html')">
+                            <i class="fas fa-user-ninja mr-2"></i>特种兵模拟器
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 游戏网格 -->
+        <section class="max-w-7xl mx-auto">
+            <div id="gamesGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <!-- 游戏卡片将由JavaScript生成 -->
+            </div>
+            <div id="noResults" class="hidden text-center py-12">
+                <i class="fas fa-search text-6xl text-gray-600 mb-4"></i>
+                <p class="text-xl text-gray-400">没有找到相关游戏，试试其他关键词吧！</p>
+            </div>
+            <div id="loading" class="text-center py-12">
+                <div class="loader mx-auto mb-4"></div>
+                <p class="text-gray-400">正在加载游戏数据...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="glass mt-12 py-8">
+        <div class="max-w-6xl mx-auto text-center">
+            <p class="text-gray-300">
+                <i class="fas fa-heart text-red-500 animate-pulse"></i> 
+                感谢仁德一小的每一位小创客，你们的创意让世界更美好！
+            </p>
+            <p class="text-sm text-gray-500 mt-2">
+                体智夏令营 · 华东师范大学体育与健康学院 · 2025
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // 游戏数据直接嵌入
+        const gamesDatabase = [
+            {"id":"game_001","filename":"丁宁远-俄罗斯方块(1).html","title":"俄罗斯方块","author":"丁宁远","category":"益智游戏","style":"经典","difficulty":"中等","version":1,"tags":["经典","益智","方块"],"description":"经典俄罗斯方块游戏第一版"},
+            {"id":"game_002","filename":"丁宁远-俄罗斯方块(2).html","title":"俄罗斯方块","author":"丁宁远","category":"益智游戏","style":"经典","difficulty":"中等","version":2,"tags":["经典","益智","方块"],"description":"经典俄罗斯方块游戏改进版"},
+            {"id":"game_003","filename":"丁宁远(推测)-经典推箱子游戏.html","title":"经典推箱子游戏","author":"丁宁远","authorConfidence":"推测","category":"益智游戏","style":"经典","difficulty":"中等","tags":["益智","推箱子","经典"],"description":"考验逻辑思维的推箱子游戏"},
+            {"id":"game_004","filename":"余梓玉-五子棋0708.html","title":"五子棋","author":"余梓玉","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","经典"],"description":"经典五子棋对弈游戏"},
+            {"id":"game_005","filename":"余梓玉-古风中国象棋.html","title":"古风中国象棋","author":"余梓玉","category":"棋类游戏","style":"古风","difficulty":"困难","tags":["策略","中国风","双人"],"description":"古典风格的中国象棋游戏"},
+            {"id":"game_006","filename":"余梓玉_可爱贪吃蛇.html","title":"可爱贪吃蛇","author":"余梓玉","category":"休闲游戏","style":"可爱","difficulty":"简单","tags":["休闲","可爱风","单人"],"description":"萌系风格的贪吃蛇游戏"},
+            {"id":"game_007","filename":"余梓玉(推测)-恐怖躲猫猫 - 多人版.html","title":"恐怖躲猫猫 - 多人版","author":"余梓玉","authorConfidence":"推测","category":"动作游戏","style":"恐怖","difficulty":"中等","playerCount":"多人","tags":["恐怖","多人","动作"],"description":"多人版恐怖风格躲猫猫游戏"},
+            {"id":"game_008","filename":"余沐珂-五子棋游戏(1).html","title":"五子棋游戏","author":"余沐珂","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","经典"],"description":"五子棋游戏第一版"},
+            {"id":"game_009","filename":"余沐珂-五子棋游戏(2).html","title":"五子棋游戏","author":"余沐珂","category":"棋类游戏","style":"经典","difficulty":"中等","version":2,"tags":["策略","双人","经典"],"description":"五子棋游戏改进版"},
+            {"id":"game_010","filename":"余沐珂-可爱贪吃蛇.html","title":"可爱贪吃蛇","author":"余沐珂","category":"休闲游戏","style":"可爱","difficulty":"简单","tags":["休闲","可爱","贪吃蛇"],"description":"可爱风格的贪吃蛇游戏"},
+            {"id":"game_011","filename":"唐悉皓-贪吃蛇游戏-snake game.html","title":"贪吃蛇游戏","englishName":"Snake Game","author":"唐悉皓","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","经典","单人"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_012","filename":"唐悉皓(推测)-古风贪吃蛇.html","title":"古风贪吃蛇","author":"唐悉皓","authorConfidence":"推测","category":"休闲游戏","style":"古风","difficulty":"简单","tags":["贪吃蛇","古风","单人"],"description":"古风主题的贪吃蛇游戏"},
+            {"id":"game_013","filename":"孟毓硕-五子棋.html","title":"五子棋","author":"孟毓硕","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_014","filename":"孟毓硕-五子棋游戏.html","title":"五子棋游戏","author":"孟毓硕","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"另一版本的五子棋游戏"},
+            {"id":"game_015","filename":"孟毓硕-贪吃蛇.html","title":"贪吃蛇","author":"孟毓硕","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","休闲","单人"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_016","filename":"张博涵-五子棋 0708(1).html","title":"五子棋","author":"张博涵","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","棋类"],"description":"五子棋游戏第一版"},
+            {"id":"game_017","filename":"张博涵-五子棋 0708(2).html","title":"五子棋","author":"张博涵","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","version":2,"tags":["策略","双人","棋类"],"description":"五子棋游戏第二版"},
+            {"id":"game_018","filename":"张博涵-像素三角州.html","title":"像素三角州","author":"张博涵","category":"射击游戏","style":"像素","difficulty":"中等","tags":["像素","射击","复古"],"description":"像素风格的射击冒险游戏"},
+            {"id":"game_019","filename":"张博涵-星际战机.html","title":"星际战机","author":"张博涵","category":"射击游戏","style":"科技","difficulty":"中等","tags":["射击","太空","科技感"],"description":"未来科技风格的太空射击游戏"},
+            {"id":"game_020","filename":"张博涵(推测)-星际战机.html","title":"星际战机","author":"张博涵","authorConfidence":"推测","category":"射击游戏","style":"科技","difficulty":"中等","tags":["射击","太空","科技感"],"description":"星际战机另一版本"},
+            {"id":"game_021","filename":"张嘉怡-3D海洋版贪吃蛇游戏.html","title":"3D海洋版贪吃蛇","author":"张嘉怡","category":"休闲游戏","style":"海洋","difficulty":"中等","tags":["3D","海洋","创新"],"description":"具有3D效果的海洋主题贪吃蛇"},
+            {"id":"game_022","filename":"张嘉怡-海洋版贪吃蛇.html","title":"海洋版贪吃蛇","author":"张嘉怡","category":"休闲游戏","style":"海洋","difficulty":"简单","tags":["海洋","贪吃蛇","休闲"],"description":"海洋主题的贪吃蛇游戏"},
+            {"id":"game_023","filename":"张嘉悦-卡通数字华容道.html","title":"卡通数字华容道","author":"张嘉悦","category":"益智游戏","style":"卡通","difficulty":"中等","tags":["益智","卡通","数字"],"description":"卡通风格的数字华容道谜题"},
+            {"id":"game_024","filename":"张嘉悦-贪吃蛇游戏.html","title":"贪吃蛇游戏","author":"张嘉悦","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","休闲","经典"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_025","filename":"张溪芸-五子棋-0708.html","title":"五子棋","author":"张溪芸","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_026","filename":"张溪芸-太空射击游戏.html","title":"太空射击游戏","author":"张溪芸","category":"射击游戏","style":"太空","difficulty":"中等","tags":["射击","太空","动作"],"description":"太空背景的射击游戏"},
+            {"id":"game_027","filename":"张溪芸(推测)-地面射击游戏.html","title":"地面射击游戏","author":"张溪芸","authorConfidence":"推测","category":"射击游戏","style":"军事","difficulty":"中等","tags":["射击","地面","动作"],"description":"地面战斗射击游戏"},
+            {"id":"game_028","filename":"徐思齐-像素贪吃蛇.html","title":"像素贪吃蛇","author":"徐思齐","category":"休闲游戏","style":"像素","difficulty":"简单","tags":["像素","贪吃蛇","复古"],"description":"像素风格的贪吃蛇游戏"},
+            {"id":"game_029","filename":"施宇轩-推箱子游戏.html","title":"推箱子游戏","author":"施宇轩","category":"益智游戏","style":"经典","difficulty":"中等","tags":["益智","推箱子","逻辑"],"description":"经典推箱子益智游戏"},
+            {"id":"game_030","filename":"施宇轩-贪吃蛇游戏-0708.html","title":"贪吃蛇游戏","author":"施宇轩","date":"2024-07-08","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","休闲","经典"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_031","filename":"施宇轩(推测)-五子棋.html","title":"五子棋","author":"施宇轩","authorConfidence":"推测","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_032","filename":"普俊杰-五子棋 0708(1).html","title":"五子棋","author":"普俊杰","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","棋类"],"description":"五子棋游戏第一版"},
+            {"id":"game_033","filename":"普俊杰-五子棋 0708(2).html","title":"五子棋","author":"普俊杰","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","version":2,"tags":["策略","双人","棋类"],"description":"五子棋游戏第二版"},
+            {"id":"game_034","filename":"普俊杰(推测)-五子棋0709.html","title":"五子棋","author":"普俊杰","authorConfidence":"推测","date":"2024-07-09","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋游戏7月9日版本"},
+            {"id":"game_035","filename":"普俊杰-扫雷(1).html","title":"扫雷","author":"普俊杰","category":"益智游戏","style":"经典","difficulty":"中等","version":1,"tags":["益智","扫雷","经典"],"description":"经典扫雷游戏"},
+            {"id":"game_036","filename":"普俊杰(推测)-扫雷.html","title":"扫雷","author":"普俊杰","authorConfidence":"推测","category":"益智游戏","style":"经典","difficulty":"中等","tags":["益智","扫雷","经典"],"description":"扫雷游戏"},
+            {"id":"game_037","filename":"普俊杰(推测)-像素扫雷.html","title":"像素扫雷","author":"普俊杰","authorConfidence":"推测","category":"益智游戏","style":"像素","difficulty":"中等","tags":["益智","扫雷","像素"],"description":"像素风格的扫雷游戏"},
+            {"id":"game_038","filename":"普俊杰-抛物体运动模拟器.html","title":"抛物体运动模拟器","author":"普俊杰","category":"教育游戏","style":"科学","difficulty":"中等","tags":["物理","模拟","教育"],"description":"物理抛物线运动模拟器"},
+            {"id":"game_039","filename":"普俊杰-数独游戏-sudoku.html","title":"数独游戏","englishName":"Sudoku","author":"普俊杰","category":"益智游戏","style":"经典","difficulty":"困难","tags":["数独","逻辑","挑战"],"description":"经典数独逻辑挑战游戏"},
+            {"id":"game_040","filename":"普俊杰-贪吃蛇 0708(1).html","title":"贪吃蛇","author":"普俊杰","date":"2024-07-08","category":"休闲游戏","style":"经典","difficulty":"简单","version":1,"tags":["贪吃蛇","休闲","经典"],"description":"贪吃蛇游戏"},
+            {"id":"game_041","filename":"普俊杰(推测)-坦克大战.html","title":"坦克大战","author":"普俊杰","authorConfidence":"推测","category":"射击游戏","style":"军事","difficulty":"中等","tags":["坦克","射击","军事"],"description":"经典坦克大战游戏"},
+            {"id":"game_042","filename":"普俊杰(推测)-猫抓老鼠.html","title":"猫抓老鼠","author":"普俊杰","authorConfidence":"推测","category":"动作游戏","style":"卡通","difficulty":"简单","tags":["追逐","卡通","动作"],"description":"猫抓老鼠追逐游戏"},
+            {"id":"game_043","filename":"普俊杰(推测)-猫抓老鼠双人游戏.html","title":"猫抓老鼠双人游戏","author":"普俊杰","authorConfidence":"推测","category":"动作游戏","style":"卡通","difficulty":"简单","playerCount":"双人","tags":["双人","卡通","追逐"],"description":"双人版猫鼠追逐游戏"},
+            {"id":"game_044","filename":"朱泓亦-五子棋.html","title":"五子棋","author":"朱泓亦","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_045","filename":"朱泓亦-森林冰火人双人游戏.html","title":"森林冰火人双人游戏","author":"朱泓亦","category":"平台游戏","style":"森林","difficulty":"中等","playerCount":"双人","tags":["双人","冰火","冒险"],"description":"经典森林冰火人双人协作游戏"},
+            {"id":"game_046","filename":"朱泓亦-科技感扫雷.html","title":"科技感扫雷","author":"朱泓亦","category":"益智游戏","style":"科技","difficulty":"中等","tags":["益智","科技","扫雷"],"description":"未来科技风格的扫雷游戏"},
+            {"id":"game_047","filename":"朱浩宇-2D像素版我的世界.html","title":"2D像素版我的世界","author":"朱浩宇","category":"沙盒游戏","style":"像素","difficulty":"中等","tags":["沙盒","像素","建造"],"description":"2D像素风格的世界建造游戏"},
+            {"id":"game_048","filename":"朱浩宇-五子棋游戏.html","title":"五子棋游戏","author":"朱浩宇","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_049","filename":"朱浩宇-像素森林迷火人.html","title":"像素森林迷火人","author":"朱浩宇","category":"平台游戏","style":"像素","difficulty":"中等","tags":["像素","冒险","森林"],"description":"像素风格的森林冒险游戏"},
+            {"id":"game_050","filename":"朱浩宇-像素贪吃蛇(3).html","title":"像素贪吃蛇","author":"朱浩宇","category":"休闲游戏","style":"像素","difficulty":"简单","version":3,"tags":["像素","贪吃蛇","复古"],"description":"像素风格贪吃蛇第三版"},
+            {"id":"game_051","filename":"朱浩宇-像素贪吃蛇-0708.html","title":"像素贪吃蛇","author":"朱浩宇","date":"2024-07-08","category":"休闲游戏","style":"像素","difficulty":"简单","tags":["像素","贪吃蛇","复古"],"description":"像素风格贪吃蛇游戏"},
+            {"id":"game_052","filename":"朱浩宇-像素鸟.html","title":"像素鸟","author":"朱浩宇","category":"休闲游戏","style":"像素","difficulty":"困难","tags":["像素","飞行","挑战"],"description":"像素风格的飞行挑战游戏"},
+            {"id":"game_053","filename":"朱浩宇-复古贪吃蛇.html","title":"复古贪吃蛇","author":"朱浩宇","category":"休闲游戏","style":"复古","difficulty":"简单","tags":["复古","贪吃蛇","经典"],"description":"复古风格的贪吃蛇游戏"},
+            {"id":"game_054","filename":"李喆灏-像素鸟(1).html","title":"像素鸟","author":"李喆灏","category":"休闲游戏","style":"像素","difficulty":"困难","version":1,"tags":["像素","飞行","挑战"],"description":"像素鸟游戏第一版"},
+            {"id":"game_055","filename":"李喆灏-像素鸟(2).html","title":"像素鸟","author":"李喆灏","category":"休闲游戏","style":"像素","difficulty":"困难","version":2,"tags":["像素","飞行","挑战"],"description":"像素鸟游戏第二版"},
+            {"id":"game_056","filename":"李喆灏-国际象棋.html","title":"国际象棋","author":"李喆灏","category":"棋类游戏","style":"经典","difficulty":"困难","tags":["策略","双人","国际象棋"],"description":"经典国际象棋游戏"},
+            {"id":"game_057","filename":"李喆灏-坦克大战.html","title":"坦克大战","author":"李喆灏","category":"射击游戏","style":"军事","difficulty":"中等","tags":["坦克","射击","军事"],"description":"经典坦克大战游戏"},
+            {"id":"game_058","filename":"李喆灏-贪吃蛇 0708(1).html","title":"贪吃蛇","author":"李喆灏","date":"2024-07-08","category":"休闲游戏","style":"经典","difficulty":"简单","version":1,"tags":["贪吃蛇","休闲","经典"],"description":"贪吃蛇游戏"},
+            {"id":"game_059","filename":"李喆灏(推测)-五子棋 0708(1).html","title":"五子棋","author":"李喆灏","authorConfidence":"推测","date":"2024-07-08","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","棋类"],"description":"五子棋游戏"},
+            {"id":"game_060","filename":"李昊哲-大鱼吃小鱼.html","title":"大鱼吃小鱼","author":"李昊哲","category":"休闲游戏","style":"海洋","difficulty":"简单","tags":["海洋","成长","休闲"],"description":"海洋生态的成长冒险游戏"},
+            {"id":"game_061","filename":"李昊哲-打地鼠.html","title":"打地鼠","author":"李昊哲","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["反应","休闲","卡通"],"description":"经典打地鼠反应游戏"},
+            {"id":"game_062","filename":"李昊哲-极速赛车.html","title":"极速赛车","author":"李昊哲","category":"竞速游戏","style":"现代","difficulty":"中等","tags":["竞速","赛车","刺激"],"description":"高速刺激的竞速游戏"},
+            {"id":"game_063","filename":"李昊哲-消消乐.html","title":"消消乐","author":"李昊哲","category":"益智游戏","style":"卡通","difficulty":"简单","tags":["益智","消除","休闲"],"description":"经典三消游戏"},
+            {"id":"game_064","filename":"李昊哲-猫捉老鼠 - 双人游戏.html","title":"猫捉老鼠 - 双人游戏","author":"李昊哲","category":"动作游戏","style":"卡通","difficulty":"简单","playerCount":"双人","tags":["双人","卡通","追逐"],"description":"双人猫鼠追逐游戏"},
+            {"id":"game_065","filename":"李昊哲-迷宫探险.html","title":"迷宫探险","author":"李昊哲","category":"冒险游戏","style":"冒险","difficulty":"中等","tags":["迷宫","探险","解谜"],"description":"充满挑战的迷宫探险游戏"},
+            {"id":"game_066","filename":"李梓贤-俄罗斯方块tetris.html","title":"俄罗斯方块","englishName":"Tetris","author":"李梓贤","category":"益智游戏","style":"经典","difficulty":"中等","tags":["经典","益智","方块"],"description":"经典俄罗斯方块游戏"},
+            {"id":"game_067","filename":"李梓贤-地铁跑酷 - 可爱版-subway surfers.html","title":"地铁跑酷 - 可爱版","englishName":"Subway Surfers","author":"李梓贤","category":"跑酷游戏","style":"可爱","difficulty":"中等","tags":["跑酷","可爱","城市"],"description":"可爱版本的地铁跑酷游戏"},
+            {"id":"game_068","filename":"李汐宸-像素贪吃蛇.html","title":"像素贪吃蛇","author":"李汐宸","category":"休闲游戏","style":"像素","difficulty":"简单","tags":["像素","贪吃蛇","复古"],"description":"像素风格的贪吃蛇游戏"},
+            {"id":"game_069","filename":"李汐宸-简易我的世界.html","title":"简易我的世界","author":"李汐宸","category":"沙盒游戏","style":"简约","difficulty":"简单","tags":["沙盒","建造","简易"],"description":"简化版的世界建造游戏"},
+            {"id":"game_070","filename":"熊梓扬-五子棋游戏.html","title":"五子棋游戏","author":"熊梓扬","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_071","filename":"王茗骏-大鱼吃小鱼 0709.html","title":"大鱼吃小鱼","author":"王茗骏","date":"2024-07-09","category":"休闲游戏","style":"海洋","difficulty":"简单","tags":["海洋","成长","休闲"],"description":"海洋生态的成长游戏"},
+            {"id":"game_072","filename":"王茗骏-贪吃蛇 0709.html","title":"贪吃蛇","author":"王茗骏","date":"2024-07-09","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","休闲","经典"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_073","filename":"田润锦-像素鸟复古版.html","title":"像素鸟复古版","author":"田润锦","category":"休闲游戏","style":"复古","difficulty":"困难","tags":["像素","飞行","复古"],"description":"复古风格的像素鸟游戏"},
+            {"id":"game_074","filename":"田润锦-复古贪吃蛇.html","title":"复古贪吃蛇","author":"田润锦","category":"休闲游戏","style":"复古","difficulty":"简单","tags":["复古","贪吃蛇","经典"],"description":"复古风格的贪吃蛇游戏"},
+            {"id":"game_075","filename":"田润锦-猫抓老鼠双人游戏.html","title":"猫抓老鼠双人游戏","author":"田润锦","category":"动作游戏","style":"卡通","difficulty":"简单","playerCount":"双人","tags":["双人","卡通","追逐"],"description":"双人版猫鼠追逐游戏"},
+            {"id":"game_076","filename":"白佳玉-特种兵模拟器.html","title":"特种兵模拟器","author":"白佳玉","category":"射击游戏","style":"军事","difficulty":"中等","tags":["军事","射击","模拟"],"description":"特种兵战斗模拟游戏"},
+            {"id":"game_077","filename":"白佳玉-猫抓老鼠.html","title":"猫抓老鼠","author":"白佳玉","category":"动作游戏","style":"卡通","difficulty":"简单","tags":["追逐","卡通","动作"],"description":"猫抓老鼠追逐游戏"},
+            {"id":"game_078","filename":"白佳玉-经典扫雷.html","title":"经典扫雷","author":"白佳玉","category":"益智游戏","style":"经典","difficulty":"中等","tags":["益智","扫雷","经典"],"description":"经典扫雷游戏"},
+            {"id":"game_079","filename":"罗贤颖-像素鸟.html","title":"像素鸟","author":"罗贤颖","category":"休闲游戏","style":"像素","difficulty":"困难","tags":["像素","飞行","挑战"],"description":"像素风格的飞行挑战游戏"},
+            {"id":"game_080","filename":"罗贤颖-多巴胺色调贪吃蛇-0708.html","title":"多巴胺色调贪吃蛇","author":"罗贤颖","date":"2024-07-08","category":"休闲游戏","style":"多巴胺","difficulty":"简单","tags":["贪吃蛇","多巴胺","色彩"],"description":"多巴胺配色的贪吃蛇游戏"},
+            {"id":"game_081","filename":"罗贤颖-跑酷游戏.html","title":"跑酷游戏","author":"罗贤颖","category":"跑酷游戏","style":"现代","difficulty":"中等","tags":["跑酷","动作","挑战"],"description":"刺激的跑酷挑战游戏"},
+            {"id":"game_082","filename":"肖梓锜-古风躺平发育(1).html","title":"古风躺平发育","author":"肖梓锜","category":"休闲游戏","style":"古风","difficulty":"简单","version":1,"tags":["古风","休闲","养成"],"description":"古风主题的休闲养成游戏"},
+            {"id":"game_083","filename":"肖梓锜-数独游戏.html","title":"数独游戏","author":"肖梓锜","category":"益智游戏","style":"经典","difficulty":"困难","tags":["数独","逻辑","益智"],"description":"经典数独逻辑游戏"},
+            {"id":"game_084","filename":"肖梓锜-经典五子棋(1).html","title":"经典五子棋","author":"肖梓锜","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","棋类"],"description":"经典五子棋第一版"},
+            {"id":"game_085","filename":"肖梓锜-经典五子棋(2).html","title":"经典五子棋","author":"肖梓锜","category":"棋类游戏","style":"经典","difficulty":"中等","version":2,"tags":["策略","双人","棋类"],"description":"经典五子棋第二版"},
+            {"id":"game_086","filename":"肖梓锜-高级扫雷游戏-0709.html","title":"高级扫雷游戏","author":"肖梓锜","date":"2024-07-09","category":"益智游戏","style":"经典","difficulty":"困难","tags":["益智","扫雷","高级"],"description":"高难度扫雷挑战游戏"},
+            {"id":"game_087","filename":"董睿涛-2D枪战模拟器.html","title":"2D枪战模拟器","author":"董睿涛","category":"射击游戏","style":"军事","difficulty":"中等","tags":["射击","2D","模拟"],"description":"2D视角的枪战模拟游戏"},
+            {"id":"game_088","filename":"陈舒研-多巴胺风格贪吃蛇.html","title":"多巴胺风格贪吃蛇","author":"陈舒研","category":"休闲游戏","style":"多巴胺","difficulty":"简单","tags":["贪吃蛇","多巴胺","色彩"],"description":"多巴胺配色的贪吃蛇游戏"},
+            {"id":"game_089","filename":"陈舒研-猫抓老鼠跑酷.html","title":"猫抓老鼠跑酷","author":"陈舒研","category":"跑酷游戏","style":"卡通","difficulty":"中等","tags":["跑酷","猫鼠","动作"],"description":"猫鼠主题的跑酷游戏"},
+            {"id":"game_090","filename":"陈舒研-猫鼠大作战 - 皮肤版.html","title":"猫鼠大作战 - 皮肤版","author":"陈舒研","category":"动作游戏","style":"卡通","difficulty":"中等","tags":["猫鼠","皮肤","对战"],"description":"带皮肤系统的猫鼠大战"},
+            {"id":"game_091","filename":"陈舒研-经典贪吃蛇游戏.html","title":"经典贪吃蛇游戏","author":"陈舒研","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","经典","休闲"],"description":"经典贪吃蛇游戏"},
+            {"id":"game_092","filename":"陈舒研(推测)-猫抓老鼠游戏(6).html","title":"猫抓老鼠游戏","author":"陈舒研","authorConfidence":"推测","category":"动作游戏","style":"卡通","difficulty":"简单","version":6,"tags":["猫鼠","追逐","动作"],"description":"猫抓老鼠游戏第六版"},
+            {"id":"game_093","filename":"陈舒研(推测)-猫鼠大作战 - 皮肤版.html","title":"猫鼠大作战 - 皮肤版","author":"陈舒研","authorConfidence":"推测","category":"动作游戏","style":"卡通","difficulty":"中等","tags":["猫鼠","皮肤","对战"],"description":"带皮肤系统的猫鼠大战另一版本"},
+            {"id":"game_094","filename":"陈芊彤-卡通数字华容道.html","title":"卡通数字华容道","author":"陈芊彤","category":"益智游戏","style":"卡通","difficulty":"中等","tags":["益智","华容道","数字"],"description":"卡通风格的数字华容道谜题"},
+            {"id":"game_095","filename":"陈芊彤-卡通贪吃蛇游戏-0708.html","title":"卡通贪吃蛇游戏","author":"陈芊彤","date":"2024-07-08","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["贪吃蛇","卡通","休闲"],"description":"卡通风格的贪吃蛇游戏"},
+            {"id":"game_096","filename":"马文然-恐龙小游戏.html","title":"恐龙小游戏","author":"马文然","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["恐龙","跳跃","休闲"],"description":"恐龙跳跃小游戏"},
+            {"id":"game_097","filename":"马文然-火柴人战争.html","title":"火柴人战争","author":"马文然","category":"动作游戏","style":"简约","difficulty":"中等","tags":["火柴人","战斗","动作"],"description":"火柴人战斗游戏"},
+            {"id":"game_098","filename":"马普林-像素俄罗斯方块.html","title":"像素俄罗斯方块","author":"马普林","category":"益智游戏","style":"像素","difficulty":"中等","tags":["俄罗斯方块","像素","益智"],"description":"像素风格的俄罗斯方块"},
+            {"id":"game_099","filename":"马普林-围棋游戏 - 与电脑对战.html","title":"围棋游戏 - 与电脑对战","author":"马普林","category":"棋类游戏","style":"经典","difficulty":"困难","playerCount":"人机","tags":["围棋","策略","人机对战"],"description":"与电脑对战的围棋游戏"},
+            {"id":"game_100","filename":"马浩然-五子琪(1).html","title":"五子棋","author":"马浩然","category":"棋类游戏","style":"经典","difficulty":"中等","version":1,"tags":["策略","双人","棋类"],"description":"五子棋游戏第一版"},
+            {"id":"game_101","filename":"马浩然-五子琪(2).html","title":"五子棋","author":"马浩然","category":"棋类游戏","style":"经典","difficulty":"中等","version":2,"tags":["策略","双人","棋类"],"description":"五子棋游戏第二版"},
+            {"id":"game_102","filename":"马浩然-记忆配对游戏.html","title":"记忆配对游戏","author":"马浩然","category":"益智游戏","style":"卡通","difficulty":"简单","tags":["记忆","配对","益智"],"description":"考验记忆力的配对游戏"},
+            {"id":"game_103","filename":"马浩然_现代化贪吃蛇游戏-snake-game (1).html","title":"现代化贪吃蛇游戏","englishName":"Snake Game","author":"马浩然","category":"休闲游戏","style":"现代","difficulty":"简单","version":1,"tags":["贪吃蛇","现代","休闲"],"description":"现代风格的贪吃蛇游戏"},
+            {"id":"game_104","filename":"马绮遥-冰火人游戏.html","title":"冰火人游戏","author":"马绮遥","category":"平台游戏","style":"卡通","difficulty":"中等","tags":["冰火人","平台","冒险"],"description":"冰火人冒险游戏"},
+            {"id":"game_105","filename":"马绮遥-森林冰火人.html","title":"森林冰火人","author":"马绮遥","category":"平台游戏","style":"森林","difficulty":"中等","tags":["冰火人","森林","双人"],"description":"森林主题的冰火人游戏"},
+            {"id":"game_106","filename":"马绮遥-猫抓老鼠游戏,单机双人小游戏.html","title":"猫抓老鼠游戏","subtitle":"单机双人小游戏","author":"马绮遥","category":"动作游戏","style":"卡通","difficulty":"简单","playerCount":"双人","tags":["猫鼠","双人","单机"],"description":"单机双人版猫鼠追逐"},
+            {"id":"game_107","filename":"马舶媛-卡通贪吃蛇.html","title":"卡通贪吃蛇","author":"马舶媛","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["贪吃蛇","卡通","休闲"],"description":"卡通风格的贪吃蛇游戏"},
+            {"id":"game_108","filename":"马舶媛-森林冰火人.html","title":"森林冰火人","author":"马舶媛","category":"平台游戏","style":"森林","difficulty":"中等","tags":["冰火人","森林","冒险"],"description":"森林背景的冰火人游戏"},
+            {"id":"game_109","filename":"马舶媛(推测)-卡通贪吃蛇-snake game.html","title":"卡通贪吃蛇","englishName":"Snake Game","author":"马舶媛","authorConfidence":"推测","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["贪吃蛇","卡通","休闲"],"description":"卡通贪吃蛇另一版本"},
+            {"id":"game_110","filename":"马若楠-五子棋.html","title":"五子棋","author":"马若楠","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_111","filename":"马若楠-卡通华容道.html","title":"卡通华容道","author":"马若楠","category":"益智游戏","style":"卡通","difficulty":"中等","tags":["益智","华容道","卡通"],"description":"卡通风格的华容道游戏"},
+            {"id":"game_112","filename":"马若楠-卡通贪吃蛇.html","title":"卡通贪吃蛇","author":"马若楠","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["贪吃蛇","卡通","休闲"],"description":"卡通风格贪吃蛇游戏"},
+            {"id":"game_113","filename":"马若楠-数字记忆挑战.html","title":"数字记忆挑战","author":"马若楠","category":"益智游戏","style":"简约","difficulty":"中等","tags":["记忆","数字","挑战"],"description":"数字记忆力挑战游戏"},
+            {"id":"game_114","filename":"马金秋-2048.html","title":"2048","author":"马金秋","category":"益智游戏","style":"简约","difficulty":"中等","tags":["数字","益智","2048"],"description":"经典2048数字合并游戏"},
+            {"id":"game_115","filename":"马金秋-五子棋.html","title":"五子棋","author":"马金秋","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_116","filename":"马金秋-单人跑酷游戏.html","title":"单人跑酷游戏","author":"马金秋","category":"跑酷游戏","style":"现代","difficulty":"中等","tags":["跑酷","单人","动作"],"description":"单人跑酷挑战游戏"},
+            {"id":"game_117","filename":"马金秋-卡通贪吃蛇.html","title":"卡通贪吃蛇","author":"马金秋","category":"休闲游戏","style":"卡通","difficulty":"简单","tags":["贪吃蛇","卡通","休闲"],"description":"卡通风格贪吃蛇游戏"},
+            {"id":"game_118","filename":"马钎睿-0709古风贪吃蛇.html","title":"古风贪吃蛇","author":"马钎睿","date":"2024-07-09","category":"休闲游戏","style":"古风","difficulty":"简单","tags":["贪吃蛇","古风","休闲"],"description":"古风主题贪吃蛇7月9日版"},
+            {"id":"game_119","filename":"马钎睿-古风贪吃蛇-0708.html","title":"古风贪吃蛇","author":"马钎睿","date":"2024-07-08","category":"休闲游戏","style":"古风","difficulty":"简单","tags":["贪吃蛇","古风","休闲"],"description":"古风主题贪吃蛇7月8日版"},
+            {"id":"game_120","filename":"马钎睿(推测)-古风贪吃蛇.html","title":"古风贪吃蛇","author":"马钎睿","authorConfidence":"推测","category":"休闲游戏","style":"古风","difficulty":"简单","tags":["贪吃蛇","古风","休闲"],"description":"古风主题贪吃蛇游戏"},
+            {"id":"game_121","filename":"未知-2D Shooting Simulator.html","title":"2D Shooting Simulator","author":"未知","category":"射击游戏","style":"简约","difficulty":"中等","tags":["射击","2D","模拟"],"description":"2D射击模拟器"},
+            {"id":"game_122","filename":"未知-Shooting Game.html","title":"Shooting Game","author":"未知","category":"射击游戏","style":"经典","difficulty":"中等","tags":["射击","动作","经典"],"description":"射击游戏"},
+            {"id":"game_123","filename":"未知-cat mouse game(1).html","title":"Cat Mouse Game","author":"未知","category":"动作游戏","style":"卡通","difficulty":"简单","version":1,"tags":["猫鼠","追逐","动作"],"description":"猫鼠追逐游戏"},
+            {"id":"game_124","filename":"未知-snake game(1).html","title":"Snake Game","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","version":1,"tags":["贪吃蛇","经典","休闲"],"description":"贪吃蛇游戏第一版"},
+            {"id":"game_125","filename":"未知-snake game(2).html","title":"Snake Game","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","version":2,"tags":["贪吃蛇","经典","休闲"],"description":"贪吃蛇游戏第二版"},
+            {"id":"game_126","filename":"未知-snake game(3).html","title":"Snake Game","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","version":3,"tags":["贪吃蛇","经典","休闲"],"description":"贪吃蛇游戏第三版"},
+            {"id":"game_127","filename":"未知-snake game(4).html","title":"Snake Game","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","version":4,"tags":["贪吃蛇","经典","休闲"],"description":"贪吃蛇游戏第四版"},
+            {"id":"game_128","filename":"未知-snake3d.html","title":"Snake 3D","author":"未知","category":"休闲游戏","style":"3D","difficulty":"中等","tags":["贪吃蛇","3D","创新"],"description":"3D版贪吃蛇游戏"},
+            {"id":"game_129","filename":"未知-stickman fight game.html","title":"Stickman Fight Game","author":"未知","category":"动作游戏","style":"简约","difficulty":"中等","tags":["火柴人","格斗","动作"],"description":"火柴人格斗游戏"},
+            {"id":"game_130","filename":"未知-五子棋游戏.html","title":"五子棋游戏","author":"未知","category":"棋类游戏","style":"经典","difficulty":"中等","tags":["策略","双人","棋类"],"description":"五子棋对弈游戏"},
+            {"id":"game_131","filename":"未知-像素小鱼模拟器.html","title":"像素小鱼模拟器","author":"未知","category":"模拟游戏","style":"像素","difficulty":"简单","tags":["像素","模拟","海洋"],"description":"像素风格的小鱼模拟器"},
+            {"id":"game_132","filename":"未知-像素贪吃蛇.html","title":"像素贪吃蛇","author":"未知","category":"休闲游戏","style":"像素","difficulty":"简单","tags":["像素","贪吃蛇","复古"],"description":"像素风格贪吃蛇游戏"},
+            {"id":"game_133","filename":"未知-双人猫抓老鼠游戏.html","title":"双人猫抓老鼠游戏","author":"未知","category":"动作游戏","style":"卡通","difficulty":"简单","playerCount":"双人","tags":["双人","猫鼠","追逐"],"description":"双人版猫鼠追逐游戏"},
+            {"id":"game_134","filename":"未知-复古贪吃蛇.html","title":"复古贪吃蛇","author":"未知","category":"休闲游戏","style":"复古","difficulty":"简单","tags":["复古","贪吃蛇","经典"],"description":"复古风格贪吃蛇游戏"},
+            {"id":"game_135","filename":"未知-复古贪吃蛇（2）.html","title":"复古贪吃蛇","author":"未知","category":"休闲游戏","style":"复古","difficulty":"简单","version":2,"tags":["复古","贪吃蛇","经典"],"description":"复古贪吃蛇第二版"},
+            {"id":"game_136","filename":"未知-多人贪吃蛇游戏.html","title":"多人贪吃蛇游戏","author":"未知","category":"休闲游戏","style":"经典","difficulty":"中等","playerCount":"多人","tags":["多人","贪吃蛇","竞技"],"description":"支持多人对战的贪吃蛇"},
+            {"id":"game_137","filename":"未知-多巴胺风格贪吃蛇.html","title":"多巴胺风格贪吃蛇","author":"未知","category":"休闲游戏","style":"多巴胺","difficulty":"简单","tags":["贪吃蛇","多巴胺","色彩"],"description":"多巴胺配色贪吃蛇游戏"},
+            {"id":"game_138","filename":"未知-火柴人大战机器人.html","title":"火柴人大战机器人","author":"未知","category":"动作游戏","style":"简约","difficulty":"中等","tags":["火柴人","机器人","战斗"],"description":"火柴人与机器人的战斗"},
+            {"id":"game_139","filename":"未知-蛋仔派对游戏.html","title":"蛋仔派对游戏","author":"未知","category":"休闲游戏","style":"可爱","difficulty":"简单","tags":["派对","可爱","休闲"],"description":"蛋仔主题的派对游戏"},
+            {"id":"game_140","filename":"未知-贪吃蛇游戏.html","title":"贪吃蛇游戏","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","经典","休闲"],"description":"经典贪吃蛇游戏"}
+        ];
+
+        // 全局变量
+        let gamesData = gamesDatabase;
+        let filteredGames = [...gamesData];
+
+        // 生成星星背景
+        function generateStars() {
+            const starsContainer = document.getElementById('starsContainer');
+            const numStars = 100;
+            
+            for (let i = 0; i < numStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // 信件功能
+        function checkFirstVisit() {
+            const hasVisited = localStorage.getItem('hasVisitedGamesWorkshop');
+            if (!hasVisited) {
+                setTimeout(() => {
+                    openLetter();
+                    localStorage.setItem('hasVisitedGamesWorkshop', 'true');
+                }, 1000);
+            }
+        }
+
+        function openLetter() {
+            document.getElementById('letterModal').style.display = 'block';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeLetter() {
+            document.getElementById('letterModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // 移动端提醒
+        function checkDevice() {
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                const notice = document.createElement('div');
+                notice.className = 'fixed bottom-4 left-4 right-4 glass p-4 rounded-2xl text-center z-50 animate-pulse';
+                notice.innerHTML = `
+                    <p class="text-yellow-400">
+                        <i class="fas fa-desktop mr-2"></i>
+                        建议使用电脑打开链接，体验最佳哦！
+                    </p>
+                `;
+                document.body.appendChild(notice);
+                
+                // 10秒后自动消失
+                setTimeout(() => {
+                    notice.style.opacity = '0';
+                    notice.style.transition = 'opacity 0.5s';
+                    setTimeout(() => notice.remove(), 500);
+                }, 10000);
+            }
+        }
+
+        // 初始化函数
+        function initializeGames() {
+            const loadingEl = document.getElementById('loading');
+            
+            // 隐藏加载提示
+            loadingEl.style.display = 'none';
+            
+            // 渲染游戏
+            renderGames();
+            
+            console.log(`成功加载 ${gamesData.length} 个游戏`);
+        }
+
+        // 渲染游戏卡片
+        function renderGames() {
+            const grid = document.getElementById('gamesGrid');
+            const noResults = document.getElementById('noResults');
+            
+            if (filteredGames.length === 0) {
+                grid.innerHTML = '';
+                noResults.classList.remove('hidden');
+                return;
+            }
+            
+            noResults.classList.add('hidden');
+            
+            // 难度颜色映射
+            const difficultyColors = {
+                '简单': 'from-green-400 to-green-600',
+                '中等': 'from-yellow-400 to-orange-500',
+                '困难': 'from-red-400 to-red-600'
+            };
+            
+            grid.innerHTML = filteredGames.map(game => `
+                <div class="game-card glass rounded-2xl p-5 cursor-pointer group" 
+                     onclick="openGame('${game.filename}')">
+                    <div class="mb-3">
+                        <span class="inline-block px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${difficultyColors[game.difficulty] || 'from-purple-400 to-purple-600'} text-white">
+                            ${game.difficulty || '中等'}
+                        </span>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2 group-hover:text-purple-300 transition-colors">${game.title}</h3>
+                    <p class="text-gray-300 text-sm mb-3">
+                        <i class="fas fa-user mr-1 text-xs"></i>${game.author}
+                    </p>
+                    <div class="flex flex-wrap gap-1 mb-4">
+                        ${game.tags.slice(0, 2).map(tag => 
+                            `<span class="glass text-xs px-2 py-1 rounded-full">#${tag}</span>`
+                        ).join('')}
+                    </div>
+                    <button class="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 py-2.5 rounded-full text-sm font-medium transition-all transform hover:scale-105">
+                        <i class="fas fa-play mr-2"></i>开始游戏
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // 打开游戏
+        function openGame(filename) {
+            window.open(`./games/${filename}`, '_blank');
+        }
+
+        // 随机游戏
+        function playRandomGame() {
+            if (gamesData.length === 0) {
+                alert('游戏数据还在加载中，请稍后再试！');
+                return;
+            }
+            
+            const randomGame = gamesData[Math.floor(Math.random() * gamesData.length)];
+            openGame(randomGame.filename);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 生成星星背景
+            generateStars();
+            
+            // 检查设备类型
+            checkDevice();
+            
+            // 检查首次访问
+            checkFirstVisit();
+            
+            // 初始化游戏数据
+            initializeGames();
+            
+            // 筛选功能
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const category = this.dataset.category;
+                    
+                    // 更新按钮样式
+                    document.querySelectorAll('.filter-btn').forEach(b => {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    
+                    // 筛选游戏
+                    if (category === 'all') {
+                        filteredGames = [...gamesData];
+                    } else {
+                        filteredGames = gamesData.filter(game => game.category === category);
+                    }
+                    
+                    renderGames();
+                });
+            });
+            
+            // 搜索功能
+            document.getElementById('searchInput').addEventListener('input', function() {
+                const search = this.value.toLowerCase();
+                
+                if (search === '') {
+                    filteredGames = [...gamesData];
+                } else {
+                    filteredGames = gamesData.filter(game => 
+                        game.title.toLowerCase().includes(search) ||
+                        game.author.toLowerCase().includes(search) ||
+                        game.tags.some(tag => tag.toLowerCase().includes(search))
+                    );
+                }
+                
+                renderGames();
+            });
+            
+            // 点击模态框背景关闭
+            document.getElementById('letterModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeLetter();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

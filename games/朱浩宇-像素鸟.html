@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素鸟</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4CAF50',
+                        secondary: '#FFC107',
+                        accent: '#FF5722',
+                        dark: '#212121',
+                        light: '#F5F5F5'
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'cursive', 'system-ui']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixelated {
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+            .game-shadow {
+                box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-primary min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden font-game">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 游戏标题 -->
+    <h1 class="text-[clamp(1.5rem,5vw,3rem)] text-secondary mb-4 text-shadow animate-pulse">像素鸟</h1>
+    
+    <!-- 游戏容器 -->
+    <div class="relative w-full max-w-md aspect-[3/4] game-shadow bg-dark rounded-lg overflow-hidden">
+        <!-- 游戏画布 -->
+        <canvas id="gameCanvas" class="w-full h-full bg-[#87CEEB] pixelated"></canvas>
+        
+        <!-- 游戏开始界面 -->
+        <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-dark/80 text-white p-6 z-10">
+            <i class="fa fa-play-circle-o text-6xl mb-6 text-secondary animate-bounce"></i>
+            <p class="text-center mb-8">点击屏幕或按空格键飞行</p>
+            <button id="startButton" class="bg-secondary hover:bg-secondary/80 text-dark px-6 py-3 rounded-md transition-all duration-300 transform hover:scale-105">开始游戏</button>
+        </div>
+        
+        <!-- 游戏结束界面 -->
+        <div id="endScreen" class="absolute inset-0 flex-col items-center justify-center bg-dark/80 text-white p-6 z-10 hidden">
+            <h2 class="text-2xl mb-4 text-accent">游戏结束</h2>
+            <p class="mb-2">得分: <span id="finalScore" class="text-secondary">0</span></p>
+            <p class="mb-6">最高分: <span id="highScore" class="text-secondary">0</span></p>
+            <button id="restartButton" class="bg-secondary hover:bg-secondary/80 text-dark px-6 py-3 rounded-md transition-all duration-300 transform hover:scale-105">再玩一次</button>
+        </div>
+        
+        <!-- 游戏暂停界面 -->
+        <div id="pauseScreen" class="absolute inset-0 flex-col items-center justify-center bg-dark/80 text-white p-6 z-10 hidden">
+            <i class="fa fa-pause-circle-o text-6xl mb-6 text-secondary"></i>
+            <button id="resumeButton" class="bg-secondary hover:bg-secondary/80 text-dark px-6 py-3 rounded-md transition-all duration-300 transform hover:scale-105">继续游戏</button>
+        </div>
+    </div>
+    
+    <!-- 游戏控制区 -->
+    <div class="flex justify-center mt-6 space-x-4">
+        <button id="soundButton" class="bg-dark hover:bg-dark/80 text-white p-3 rounded-full transition-all duration-300">
+            <i class="fa fa-volume-up"></i>
+        </button>
+        <button id="pauseButton" class="bg-dark hover:bg-dark/80 text-white p-3 rounded-full transition-all duration-300">
+            <i class="fa fa-pause"></i>
+        </button>
+    </div>
+    
+    <!-- 游戏说明 -->
+    <div class="mt-6 text-center text-light/80 text-sm">
+        <p>目标: 控制小鸟飞过尽可能多的管道而不碰撞</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取游戏元素
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const startScreen = document.getElementById('startScreen');
+            const endScreen = document.getElementById('endScreen');
+            const pauseScreen = document.getElementById('pauseScreen');
+            const startButton = document.getElementById('startButton');
+            const restartButton = document.getElementById('restartButton');
+            const resumeButton = document.getElementById('resumeButton');
+            const pauseButton = document.getElementById('pauseButton');
+            const soundButton = document.getElementById('soundButton');
+            const finalScoreElement = document.getElementById('finalScore');
+            const highScoreElement = document.getElementById('highScore');
+            
+            // 设置画布尺寸
+            canvas.width = 288;
+            canvas.height = 512;
+            
+            // 游戏状态
+            let gameState = 'start'; // start, playing, paused, ended
+            let score = 0;
+            let highScore = localStorage.getItem('flappyBirdHighScore') || 0;
+            let soundEnabled = true;
+            
+            // 更新高分显示
+            highScoreElement.textContent = highScore;
+            
+            // 游戏音效
+            const flapSound = new Audio('data:audio/wav;base64,UklGRoAAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            const pointSound = new Audio('data:audio/wav;base64,UklGRoAAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            const hitSound = new Audio('data:audio/wav;base64,UklGRoAAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            const dieSound = new Audio('data:audio/wav;base64,UklGRoAAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            const swooshSound = new Audio('data:audio/wav;base64,UklGRoAAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+            
+            // 游戏对象
+            const bird = {
+                x: 50,
+                y: 150,
+                width: 34,
+                height: 24,
+                velocity: 0,
+                gravity: 0.25,
+                jump: -6,
+                rotation: 0,
+                frames: [0, 1, 2, 1],
+                currentFrame: 0,
+                frameCount: 0,
+                animateSpeed: 5,
+                
+                draw() {
+                    // 绘制小鸟
+                    ctx.save();
+                    ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                    ctx.rotate(this.rotation);
+                    
+                    // 小鸟身体
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.width / 2, this.height / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 小鸟翅膀
+                    ctx.fillStyle = '#FFA500';
+                    ctx.beginPath();
+                    ctx.ellipse(-this.width / 6, -this.height / 4, this.width / 4, this.height / 6, -Math.PI / 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 小鸟眼睛
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(this.width / 4, -this.height / 8, this.height / 8, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = 'black';
+                    ctx.beginPath();
+                    ctx.arc(this.width / 4 + this.height / 16, -this.height / 8, this.height / 16, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // 小鸟嘴
+                    ctx.fillStyle = '#FF6347';
+                    ctx.beginPath();
+                    ctx.moveTo(this.width / 2, 0);
+                    ctx.lineTo(this.width / 2 + this.width / 4, this.height / 6);
+                    ctx.lineTo(this.width / 2 + this.width / 4, -this.height / 6);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // 小鸟脚
+                    ctx.strokeStyle = '#FF6347';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(-this.width / 4, this.height / 2);
+                    ctx.lineTo(-this.width / 4 - this.width / 10, this.height / 2 + this.height / 4);
+                    ctx.moveTo(0, this.height / 2);
+                    ctx.lineTo(0 - this.width / 10, this.height / 2 + this.height / 4);
+                    ctx.stroke();
+                    
+                    ctx.restore();
+                },
+                
+                update() {
+                    // 动画帧
+                    this.frameCount++;
+                    if (this.frameCount % this.animateSpeed === 0) {
+                        this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+                    }
+                    
+                    // 应用重力
+                    this.velocity += this.gravity;
+                    this.y += this.velocity;
+                    
+                    // 限制最大速度
+                    if (this.velocity > 10) {
+                        this.velocity = 10;
+                    }
+                    
+                    // 旋转小鸟
+                    this.rotation = Math.min(Math.PI / 2, this.velocity * 0.1);
+                    
+                    // 地面碰撞检测
+                    if (this.y + this.height > canvas.height - 112) {
+                        this.y = canvas.height - 112 - this.height;
+                        if (gameState === 'playing') {
+                            gameOver();
+                        }
+                    }
+                    
+                    // 顶部碰撞检测
+                    if (this.y < 0) {
+                        this.y = 0;
+                        this.velocity = 0;
+                    }
+                },
+                
+                flap() {
+                    this.velocity = this.jump;
+                    if (soundEnabled) {
+                        flapSound.currentTime = 0;
+                        flapSound.play();
+                    }
+                }
+            };
+            
+            const pipes = {
+                pipeList: [],
+                width: 52,
+                height: 320,
+                gap: 150,
+                speed: 2,
+                spawnRate: 150,
+                spawnTimer: 0,
+                
+                draw() {
+                    this.pipeList.forEach(pipe => {
+                        // 上管道
+                        ctx.fillStyle = '#339933';
+                        ctx.fillRect(pipe.x, pipe.y, this.width, this.height);
+                        
+                        // 上管道顶部
+                        ctx.fillStyle = '#228B22';
+                        ctx.fillRect(pipe.x - 4, pipe.y + this.height, this.width + 8, 16);
+                        
+                        // 下管道
+                        ctx.fillStyle = '#339933';
+                        ctx.fillRect(pipe.x, pipe.y + this.height + this.gap, this.width, this.height);
+                        
+                        // 下管道顶部
+                        ctx.fillStyle = '#228B22';
+                        ctx.fillRect(pipe.x - 4, pipe.y + this.height + this.gap - 16, this.width + 8, 16);
+                    });
+                },
+                
+                update() {
+                    this.spawnTimer++;
+                    if (this.spawnTimer >= this.spawnRate) {
+                        this.spawn();
+                        this.spawnTimer = 0;
+                    }
+                    
+                    this.pipeList.forEach(pipe => {
+                        pipe.x -= this.speed;
+                        
+                        // 移除离开画布的管道
+                        if (pipe.x + this.width < 0) {
+                            this.pipeList.shift();
+                        }
+                        
+                        // 碰撞检测
+                        if (bird.x + bird.width > pipe.x && 
+                            bird.x < pipe.x + this.width && 
+                            (bird.y < pipe.y + this.height || 
+                             bird.y + bird.height > pipe.y + this.height + this.gap)) {
+                            if (gameState === 'playing') {
+                                gameOver();
+                            }
+                        }
+                        
+                        // 计分检测
+                        if (bird.x === pipe.x + this.width && gameState === 'playing') {
+                            score++;
+                            if (soundEnabled) {
+                                pointSound.currentTime = 0;
+                                pointSound.play();
+                            }
+                            updateScore();
+                        }
+                    });
+                },
+                
+                spawn() {
+                    const minY = -100;
+                    const maxY = canvas.height - this.height - this.gap - 112;
+                    const y = minY + Math.random() * (maxY - minY);
+                    
+                    this.pipeList.push({x: canvas.width, y});
+                },
+                
+                reset() {
+                    this.pipeList = [];
+                    this.spawnTimer = 0;
+                }
+            };
+            
+            const ground = {
+                x: 0,
+                y: canvas.height - 112,
+                width: 576,
+                height: 112,
+                speed: 2,
+                
+                draw() {
+                    // 绘制地面
+                    ctx.fillStyle = '#E8A838';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    
+                    // 绘制草地
+                    ctx.fillStyle = '#70B85D';
+                    ctx.fillRect(this.x, this.y, this.width, 16);
+                    
+                    // 绘制草地块
+                    ctx.fillStyle = '#70B85D';
+                    for (let i = 0; i < this.width; i += 32) {
+                        ctx.fillRect(this.x + i, this.y - 16, 32, 16);
+                    }
+                },
+                
+                update() {
+                    this.x -= this.speed;
+                    if (this.x <= -288) {
+                        this.x = 0;
+                    }
+                }
+            };
+            
+            const background = {
+                x: 0,
+                y: 0,
+                width: 576,
+                height: canvas.height,
+                speed: 1,
+                
+                draw() {
+                    // 绘制天空
+                    ctx.fillStyle = '#87CEEB';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // 绘制云朵
+                    ctx.fillStyle = 'white';
+                    for (let i = 0; i < 5; i++) {
+                        const cloudX = (this.x + i * 120) % this.width;
+                        const cloudY = 50 + Math.sin(i * 0.5 + Date.now() * 0.001) * 20;
+                        
+                        // 云朵形状
+                        ctx.beginPath();
+                        ctx.arc(cloudX, cloudY, 20, 0, Math.PI * 2);
+                        ctx.arc(cloudX + 25, cloudY - 10, 25, 0, Math.PI * 2);
+                        ctx.arc(cloudX + 55, cloudY, 20, 0, Math.PI * 2);
+                        ctx.arc(cloudX + 25, cloudY + 10, 30, 0, Math.PI * 2);
+                        ctx.arc(cloudX + 50, cloudY + 10, 25, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                },
+                
+                update() {
+                    this.x -= this.speed;
+                    if (this.x <= -288) {
+                        this.x = 0;
+                    }
+                }
+            };
+            
+            // 更新分数显示
+            function updateScore() {
+                document.querySelector('#scoreValue').textContent = score;
+            }
+            
+            // 游戏结束
+            function gameOver() {
+                gameState = 'ended';
+                if (soundEnabled) {
+                    hitSound.play();
+                    setTimeout(() => {
+                        dieSound.play();
+                    }, 300);
+                }
+                
+                // 更新最高分
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('flappyBirdHighScore', highScore);
+                    highScoreElement.textContent = highScore;
+                }
+                
+                finalScoreElement.textContent = score;
+                endScreen.style.display = 'flex';
+            }
+            
+            // 暂停游戏
+            function pauseGame() {
+                if (gameState === 'playing') {
+                    gameState = 'paused';
+                    pauseScreen.style.display = 'flex';
+                }
+            }
+            
+            // 恢复游戏
+            function resumeGame() {
+                if (gameState === 'paused') {
+                    gameState = 'playing';
+                    pauseScreen.style.display = 'none';
+                    animate();
+                }
+            }
+            
+            // 开始游戏
+            function startGame() {
+                gameState = 'playing';
+                score = 0;
+                updateScore();
+                
+                bird.y = 150;
+                bird.velocity = 0;
+                
+                pipes.reset();
+                
+                startScreen.style.display = 'none';
+                endScreen.style.display = 'none';
+                
+                if (soundEnabled) {
+                    swooshSound.play();
+                }
+                
+                animate();
+            }
+            
+            // 切换声音
+            function toggleSound() {
+                soundEnabled = !soundEnabled;
+                soundButton.innerHTML = soundEnabled ? '<i class="fa fa-volume-up"></i>' : '<i class="fa fa-volume-off"></i>';
+            }
+            
+            // 绘制游戏
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                background.draw();
+                pipes.draw();
+                ground.draw();
+                bird.draw();
+                
+                // 绘制分数
+                if (gameState === 'playing') {
+                    ctx.fillStyle = 'white';
+                    ctx.font = '30px "Press Start 2P", cursive';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(score, canvas.width / 2, 50);
+                }
+            }
+            
+            // 更新游戏状态
+            function update() {
+                if (gameState === 'playing') {
+                    background.update();
+                    pipes.update();
+                    ground.update();
+                    bird.update();
+                }
+            }
+            
+            // 游戏循环
+            function animate() {
+                if (gameState !== 'paused') {
+                    draw();
+                    update();
+                    
+                    if (gameState === 'playing') {
+                        requestAnimationFrame(animate);
+                    }
+                }
+            }
+            
+            // 事件监听
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            resumeButton.addEventListener('click', resumeGame);
+            pauseButton.addEventListener('click', pauseGame);
+            soundButton.addEventListener('click', toggleSound);
+            
+            // 键盘控制
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space') {
+                    if (gameState === 'start') {
+                        startGame();
+                    } else if (gameState === 'playing') {
+                        bird.flap();
+                    } else if (gameState === 'paused') {
+                        resumeGame();
+                    } else if (gameState === 'ended') {
+                        startGame();
+                    }
+                    e.preventDefault();
+                } else if (e.code === 'KeyP') {
+                    if (gameState === 'playing') {
+                        pauseGame();
+                    } else if (gameState === 'paused') {
+                        resumeGame();
+                    }
+                }
+            });
+            
+            // 鼠标/触摸控制
+            canvas.addEventListener('click', () => {
+                if (gameState === 'start') {
+                    startGame();
+                } else if (gameState === 'playing') {
+                    bird.flap();
+                } else if (gameState === 'paused') {
+                    resumeGame();
+                } else if (gameState === 'ended') {
+                    startGame();
+                }
+            });
+            
+            // 初始绘制
+            draw();
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '朱浩宇';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

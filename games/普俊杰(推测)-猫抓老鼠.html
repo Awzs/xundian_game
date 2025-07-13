@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫抓老鼠</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#F97316',
+                        background: '#F8FAFC',
+                        surface: '#FFFFFF',
+                        dark: '#1E293B',
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'cursive', 'system-ui'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixel-borders {
+                box-shadow: 
+                    0 -4px 0 0 #1E293B,
+                    0 4px 0 0 #1E293B,
+                    -4px 0 0 0 #1E293B,
+                    4px 0 0 0 #1E293B;
+            }
+            .game-shadow {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-background min-h-screen flex flex-col items-center justify-center p-4 font-game text-dark">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-3xl w-full bg-surface rounded-xl pixel-borders p-6 game-shadow">
+        <header class="text-center mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] text-primary mb-2">猫抓老鼠</h1>
+            <p class="text-sm text-gray-600">使用方向键移动猫，抓住所有老鼠!</p>
+        </header>
+        
+        <div class="flex flex-col md:flex-row gap-4">
+            <div class="flex-1 flex flex-col">
+                <div class="relative overflow-hidden rounded-lg pixel-borders bg-[#E2E8F0] mb-4 aspect-square" id="game-container">
+                    <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-clock-o text-secondary"></i>
+                        <span id="timer" class="text-lg">00:00</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-paw text-primary"></i>
+                        <span id="score" class="text-lg">0</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <i class="fa fa-trophy text-yellow-500"></i>
+                        <span id="highScore" class="text-lg">0</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-full md:w-64 flex flex-col gap-4">
+                <div class="bg-[#E2E8F0] rounded-lg pixel-borders p-4">
+                    <h2 class="text-lg font-bold mb-3 text-center">游戏控制</h2>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded pixel-borders flex items-center justify-center">
+                                <i class="fa fa-arrow-up"></i>
+                            </div>
+                            <span>向上移动</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded pixel-borders flex items-center justify-center">
+                                <i class="fa fa-arrow-down"></i>
+                            </div>
+                            <span>向下移动</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded pixel-borders flex items-center justify-center">
+                                <i class="fa fa-arrow-left"></i>
+                            </div>
+                            <span>向左移动</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-white rounded pixel-borders flex items-center justify-center">
+                                <i class="fa fa-arrow-right"></i>
+                            </div>
+                            <span>向右移动</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-[#E2E8F0] rounded-lg pixel-borders p-4">
+                    <h2 class="text-lg font-bold mb-3 text-center">游戏状态</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span>老鼠数量:</span>
+                            <span id="mice-count" class="font-bold">5</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>已抓住:</span>
+                            <span id="mice-caught" class="font-bold">0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span>剩余:</span>
+                            <span id="mice-remaining" class="font-bold">5</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="startBtn" class="bg-primary hover:bg-primary/90 text-white py-3 px-4 rounded-lg pixel-borders transition-all transform hover:scale-105 active:scale-95">
+                    <i class="fa fa-play mr-2"></i>开始游戏
+                </button>
+                <button id="resetBtn" class="bg-gray-600 hover:bg-gray-700 text-white py-3 px-4 rounded-lg pixel-borders transition-all transform hover:scale-105 active:scale-95">
+                    <i class="fa fa-refresh mr-2"></i>重置游戏
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-6 p-4 bg-[#E2E8F0]/50 rounded-lg pixel-borders">
+            <h2 class="text-lg font-bold mb-2">游戏说明</h2>
+            <ul class="list-disc pl-5 space-y-1 text-sm">
+                <li>控制猫抓住所有的老鼠</li>
+                <li>每抓住一只老鼠获得10分</li>
+                <li>游戏时间有限，尽量多抓老鼠</li>
+                <li>碰到墙壁会减速</li>
+                <li>难度会随时间增加</li>
+            </ul>
+        </div>
+    </div>
+    
+    <footer class="mt-8 text-center text-sm text-gray-500">
+        <p>© 2025 猫抓老鼠游戏 | 像素风格</p>
+    </footer>
+
+    <script>
+        // 游戏配置
+        const GAME_CONFIG = {
+            canvasWidth: 500,
+            canvasHeight: 500,
+            catSize: 30,
+            mouseSize: 20,
+            initialMiceCount: 5,
+            gameTime: 60, // 秒
+            catSpeed: 5,
+            mouseSpeed: 2,
+            wallThickness: 20,
+            scorePerMouse: 10
+        };
+
+        // 游戏状态
+        const gameState = {
+            isRunning: false,
+            score: 0,
+            highScore: localStorage.getItem('catMouseHighScore') || 0,
+            timeRemaining: GAME_CONFIG.gameTime,
+            timerInterval: null,
+            mice: [],
+            cat: {
+                x: 0,
+                y: 0,
+                dx: 0,
+                dy: 0,
+                speed: GAME_CONFIG.catSpeed
+            },
+            walls: [],
+            lastTimestamp: 0,
+            difficultyFactor: 1
+        };
+
+        // DOM 元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const scoreDisplay = document.getElementById('score');
+        const highScoreDisplay = document.getElementById('highScore');
+        const timerDisplay = document.getElementById('timer');
+        const miceCountDisplay = document.getElementById('mice-count');
+        const miceCaughtDisplay = document.getElementById('mice-caught');
+        const miceRemainingDisplay = document.getElementById('mice-remaining');
+        const gameContainer = document.getElementById('game-container');
+
+        // 设置Canvas尺寸
+        function resizeCanvas() {
+            const containerWidth = gameContainer.clientWidth;
+            const containerHeight = gameContainer.clientHeight;
+            const size = Math.min(containerWidth, containerHeight);
+            
+            canvas.width = GAME_CONFIG.canvasWidth;
+            canvas.height = GAME_CONFIG.canvasHeight;
+            
+            canvas.style.width = `${size}px`;
+            canvas.style.height = `${size}px`;
+        }
+
+        // 初始化游戏
+        function initGame() {
+            // 设置猫的初始位置
+            gameState.cat.x = canvas.width / 2;
+            gameState.cat.y = canvas.height / 2;
+            gameState.cat.dx = 0;
+            gameState.cat.dy = 0;
+            
+            // 清空老鼠数组
+            gameState.mice = [];
+            
+            // 创建墙壁
+            createWalls();
+            
+            // 创建初始老鼠
+            createMice(GAME_CONFIG.initialMiceCount);
+            
+            // 更新显示
+            updateDisplays();
+            
+            // 绘制游戏
+            drawGame();
+        }
+
+        // 创建墙壁
+        function createWalls() {
+            gameState.walls = [
+                // 上边界
+                { x: 0, y: 0, width: canvas.width, height: GAME_CONFIG.wallThickness },
+                // 下边界
+                { x: 0, y: canvas.height - GAME_CONFIG.wallThickness, width: canvas.width, height: GAME_CONFIG.wallThickness },
+                // 左边界
+                { x: 0, y: 0, width: GAME_CONFIG.wallThickness, height: canvas.height },
+                // 右边界
+                { x: canvas.width - GAME_CONFIG.wallThickness, y: 0, width: GAME_CONFIG.wallThickness, height: canvas.height }
+            ];
+            
+            // 添加一些随机障碍物
+            const obstacleCount = 5;
+            for (let i = 0; i < obstacleCount; i++) {
+                const width = 50 + Math.random() * 100;
+                const height = 20 + Math.random() * 60;
+                const x = GAME_CONFIG.wallThickness * 2 + Math.random() * (canvas.width - GAME_CONFIG.wallThickness * 4 - width);
+                const y = GAME_CONFIG.wallThickness * 2 + Math.random() * (canvas.height - GAME_CONFIG.wallThickness * 4 - height);
+                
+                gameState.walls.push({ x, y, width, height });
+            }
+        }
+
+        // 创建老鼠
+        function createMice(count) {
+            for (let i = 0; i < count; i++) {
+                let x, y;
+                let validPosition = false;
+                
+                // 确保老鼠不会生成在墙上或猫的位置
+                while (!validPosition) {
+                    x = GAME_CONFIG.wallThickness + Math.random() * (canvas.width - GAME_CONFIG.wallThickness * 2 - GAME_CONFIG.mouseSize);
+                    y = GAME_CONFIG.wallThickness + Math.random() * (canvas.height - GAME_CONFIG.wallThickness * 2 - GAME_CONFIG.mouseSize);
+                    
+                    validPosition = true;
+                    
+                    // 检查是否与墙重叠
+                    for (const wall of gameState.walls) {
+                        if (isColliding(
+                            { x, y, width: GAME_CONFIG.mouseSize, height: GAME_CONFIG.mouseSize },
+                            wall
+                        )) {
+                            validPosition = false;
+                            break;
+                        }
+                    }
+                    
+                    // 检查是否与猫重叠
+                    if (isColliding(
+                        { x, y, width: GAME_CONFIG.mouseSize, height: GAME_CONFIG.mouseSize },
+                        { 
+                            x: gameState.cat.x - GAME_CONFIG.catSize / 2, 
+                            y: gameState.cat.y - GAME_CONFIG.catSize / 2, 
+                            width: GAME_CONFIG.catSize, 
+                            height: GAME_CONFIG.catSize 
+                        }
+                    )) {
+                        validPosition = false;
+                    }
+                }
+                
+                gameState.mice.push({
+                    x,
+                    y,
+                    dx: (Math.random() - 0.5) * 2 * GAME_CONFIG.mouseSpeed,
+                    dy: (Math.random() - 0.5) * 2 * GAME_CONFIG.mouseSpeed,
+                    speed: GAME_CONFIG.mouseSpeed,
+                    lastDirectionChange: 0,
+                    directionChangeInterval: 1000 + Math.random() * 2000 // 1-3秒
+                });
+            }
+        }
+
+        // 检测碰撞
+        function isColliding(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+
+        // 更新游戏状态
+        function updateGame(timestamp) {
+            if (!gameState.isRunning) return;
+            
+            // 计算时间增量
+            const deltaTime = timestamp - gameState.lastTimestamp;
+            gameState.lastTimestamp = timestamp;
+            
+            // 更新难度
+            gameState.difficultyFactor = 1 + (GAME_CONFIG.gameTime - gameState.timeRemaining) / GAME_CONFIG.gameTime * 0.5;
+            
+            // 更新猫的位置
+            updateCatPosition(deltaTime);
+            
+            // 更新老鼠的位置
+            updateMicePositions(deltaTime);
+            
+            // 检测猫与老鼠的碰撞
+            checkCatMouseCollisions();
+            
+            // 重绘游戏
+            drawGame();
+            
+            // 请求下一帧
+            requestAnimationFrame(updateGame);
+        }
+
+        // 更新猫的位置
+        function updateCatPosition(deltaTime) {
+            // 计算新位置
+            let newX = gameState.cat.x + gameState.cat.dx * deltaTime * 0.1;
+            let newY = gameState.cat.y + gameState.cat.dy * deltaTime * 0.1;
+            
+            // 检测与墙的碰撞
+            const catBounds = {
+                x: newX - GAME_CONFIG.catSize / 2,
+                y: newY - GAME_CONFIG.catSize / 2,
+                width: GAME_CONFIG.catSize,
+                height: GAME_CONFIG.catSize
+            };
+            
+            let collisionDetected = false;
+            
+            for (const wall of gameState.walls) {
+                if (isColliding(catBounds, wall)) {
+                    collisionDetected = true;
+                    
+                    // 根据碰撞方向调整位置
+                    if (gameState.cat.dx > 0 && catBounds.x + catBounds.width > wall.x) {
+                        newX = wall.x - catBounds.width / 2;
+                    } else if (gameState.cat.dx < 0 && catBounds.x < wall.x + wall.width) {
+                        newX = wall.x + wall.width + catBounds.width / 2;
+                    }
+                    
+                    if (gameState.cat.dy > 0 && catBounds.y + catBounds.height > wall.y) {
+                        newY = wall.y - catBounds.height / 2;
+                    } else if (gameState.cat.dy < 0 && catBounds.y < wall.y + wall.height) {
+                        newY = wall.y + wall.height + catBounds.height / 2;
+                    }
+                    
+                    // 碰撞减速
+                    gameState.cat.dx *= 0.8;
+                    gameState.cat.dy *= 0.8;
+                }
+            }
+            
+            // 更新猫的位置
+            gameState.cat.x = newX;
+            gameState.cat.y = newY;
+        }
+
+        // 更新老鼠的位置
+        function updateMicePositions(deltaTime) {
+            for (const mouse of gameState.mice) {
+                // 随机改变方向
+                mouse.lastDirectionChange += deltaTime;
+                if (mouse.lastDirectionChange > mouse.directionChangeInterval) {
+                    mouse.dx = (Math.random() - 0.5) * 2 * GAME_CONFIG.mouseSpeed * gameState.difficultyFactor;
+                    mouse.dy = (Math.random() - 0.5) * 2 * GAME_CONFIG.mouseSpeed * gameState.difficultyFactor;
+                    mouse.lastDirectionChange = 0;
+                    mouse.directionChangeInterval = 1000 + Math.random() * 2000; // 1-3秒
+                }
+                
+                // 计算新位置
+                let newX = mouse.x + mouse.dx * deltaTime * 0.1;
+                let newY = mouse.y + mouse.dy * deltaTime * 0.1;
+                
+                // 检测与墙的碰撞
+                const mouseBounds = {
+                    x: newX - GAME_CONFIG.mouseSize / 2,
+                    y: newY - GAME_CONFIG.mouseSize / 2,
+                    width: GAME_CONFIG.mouseSize,
+                    height: GAME_CONFIG.mouseSize
+                };
+                
+                let collisionDetected = false;
+                
+                for (const wall of gameState.walls) {
+                    if (isColliding(mouseBounds, wall)) {
+                        collisionDetected = true;
+                        
+                        // 反弹
+                        if ((mouse.dx > 0 && mouseBounds.x + mouseBounds.width > wall.x) || 
+                            (mouse.dx < 0 && mouseBounds.x < wall.x + wall.width)) {
+                            mouse.dx = -mouse.dx;
+                        }
+                        
+                        if ((mouse.dy > 0 && mouseBounds.y + mouseBounds.height > wall.y) || 
+                            (mouse.dy < 0 && mouseBounds.y < wall.y + wall.height)) {
+                            mouse.dy = -mouse.dy;
+                        }
+                    }
+                }
+                
+                // 如果没有碰撞，更新位置
+                if (!collisionDetected) {
+                    mouse.x = newX;
+                    mouse.y = newY;
+                }
+            }
+        }
+
+        // 检测猫与老鼠的碰撞
+        function checkCatMouseCollisions() {
+            const catBounds = {
+                x: gameState.cat.x - GAME_CONFIG.catSize / 2,
+                y: gameState.cat.y - GAME_CONFIG.catSize / 2,
+                width: GAME_CONFIG.catSize,
+                height: GAME_CONFIG.catSize
+            };
+            
+            for (let i = gameState.mice.length - 1; i >= 0; i--) {
+                const mouse = gameState.mice[i];
+                const mouseBounds = {
+                    x: mouse.x - GAME_CONFIG.mouseSize / 2,
+                    y: mouse.y - GAME_CONFIG.mouseSize / 2,
+                    width: GAME_CONFIG.mouseSize,
+                    height: GAME_CONFIG.mouseSize
+                };
+                
+                if (isColliding(catBounds, mouseBounds)) {
+                    // 移除被抓住的老鼠
+                    gameState.mice.splice(i, 1);
+                    
+                    // 增加分数
+                    gameState.score += GAME_CONFIG.scorePerMouse;
+                    
+                    // 更新高分
+                    if (gameState.score > gameState.highScore) {
+                        gameState.highScore = gameState.score;
+                        localStorage.setItem('catMouseHighScore', gameState.highScore);
+                    }
+                    
+                    // 更新显示
+                    updateDisplays();
+                    
+                    // 创建新的老鼠
+                    if (gameState.mice.length < GAME_CONFIG.initialMiceCount) {
+                        createMice(1);
+                    }
+                }
+            }
+        }
+
+        // 绘制游戏
+        function drawGame() {
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            ctx.fillStyle = '#E2E8F0';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制墙壁
+            ctx.fillStyle = '#1E293B';
+            for (const wall of gameState.walls) {
+                ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+            }
+            
+            // 绘制老鼠
+            ctx.fillStyle = '#F97316';
+            for (const mouse of gameState.mice) {
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, GAME_CONFIG.mouseSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 老鼠眼睛
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(mouse.x - GAME_CONFIG.mouseSize / 5, mouse.y - GAME_CONFIG.mouseSize / 5, GAME_CONFIG.mouseSize / 10, 0, Math.PI * 2);
+                ctx.arc(mouse.x + GAME_CONFIG.mouseSize / 5, mouse.y - GAME_CONFIG.mouseSize / 5, GAME_CONFIG.mouseSize / 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(mouse.x - GAME_CONFIG.mouseSize / 5, mouse.y - GAME_CONFIG.mouseSize / 5, GAME_CONFIG.mouseSize / 20, 0, Math.PI * 2);
+                ctx.arc(mouse.x + GAME_CONFIG.mouseSize / 5, mouse.y - GAME_CONFIG.mouseSize / 5, GAME_CONFIG.mouseSize / 20, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 老鼠鼻子
+                ctx.fillStyle = '#FECACA';
+                ctx.beginPath();
+                ctx.arc(mouse.x, mouse.y, GAME_CONFIG.mouseSize / 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // 绘制猫
+            ctx.fillStyle = '#3B82F6';
+            ctx.beginPath();
+            ctx.arc(gameState.cat.x, gameState.cat.y, GAME_CONFIG.catSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 猫眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                gameState.cat.x - GAME_CONFIG.catSize / 4, 
+                gameState.cat.y - GAME_CONFIG.catSize / 5, 
+                GAME_CONFIG.catSize / 8, 0, Math.PI * 2
+            );
+            ctx.arc(
+                gameState.cat.x + GAME_CONFIG.catSize / 4, 
+                gameState.cat.y - GAME_CONFIG.catSize / 5, 
+                GAME_CONFIG.catSize / 8, 0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                gameState.cat.x - GAME_CONFIG.catSize / 4, 
+                gameState.cat.y - GAME_CONFIG.catSize / 5, 
+                GAME_CONFIG.catSize / 16, 0, Math.PI * 2
+            );
+            ctx.arc(
+                gameState.cat.x + GAME_CONFIG.catSize / 4, 
+                gameState.cat.y - GAME_CONFIG.catSize / 5, 
+                GAME_CONFIG.catSize / 16, 0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 猫耳朵
+            ctx.fillStyle = '#3B82F6';
+            ctx.beginPath();
+            ctx.moveTo(
+                gameState.cat.x - GAME_CONFIG.catSize / 3, 
+                gameState.cat.y - GAME_CONFIG.catSize / 2
+            );
+            ctx.lineTo(
+                gameState.cat.x - GAME_CONFIG.catSize / 5, 
+                gameState.cat.y - GAME_CONFIG.catSize / 1.5
+            );
+            ctx.lineTo(
+                gameState.cat.x - GAME_CONFIG.catSize / 1.5, 
+                gameState.cat.y - GAME_CONFIG.catSize / 1.5
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.moveTo(
+                gameState.cat.x + GAME_CONFIG.catSize / 3, 
+                gameState.cat.y - GAME_CONFIG.catSize / 2
+            );
+            ctx.lineTo(
+                gameState.cat.x + GAME_CONFIG.catSize / 5, 
+                gameState.cat.y - GAME_CONFIG.catSize / 1.5
+            );
+            ctx.lineTo(
+                gameState.cat.x + GAME_CONFIG.catSize / 1.5, 
+                gameState.cat.y - GAME_CONFIG.catSize / 1.5
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // 猫鼻子和嘴
+            ctx.fillStyle = '#FECACA';
+            ctx.beginPath();
+            ctx.arc(
+                gameState.cat.x, 
+                gameState.cat.y + GAME_CONFIG.catSize / 10, 
+                GAME_CONFIG.catSize / 10, 0, Math.PI * 2
+            );
+            ctx.fill();
+            
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(
+                gameState.cat.x, 
+                gameState.cat.y + GAME_CONFIG.catSize / 10, 
+                GAME_CONFIG.catSize / 10, 
+                Math.PI, Math.PI * 2
+            );
+            ctx.stroke();
+            
+            // 如果游戏未运行，显示开始提示
+            if (!gameState.isRunning) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '20px "Press Start 2P", cursive';
+                ctx.textAlign = 'center';
+                ctx.fillText('按开始按钮开始游戏', canvas.width / 2, canvas.height / 2 - 20);
+                
+                ctx.font = '14px "Press Start 2P", cursive';
+                ctx.fillText('使用方向键控制猫', canvas.width / 2, canvas.height / 2 + 20);
+            }
+            
+            // 如果游戏结束，显示结束信息
+            if (gameState.isRunning && gameState.timeRemaining <= 0) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '20px "Press Start 2P", cursive';
+                ctx.textAlign = 'center';
+                ctx.fillText('游戏结束!', canvas.width / 2, canvas.height / 2 - 30);
+                
+                ctx.font = '16px "Press Start 2P", cursive';
+                ctx.fillText(`最终得分: ${gameState.score}`, canvas.width / 2, canvas.height / 2);
+                
+                if (gameState.score >= gameState.highScore) {
+                    ctx.fillText('新纪录!', canvas.width / 2, canvas.height / 2 + 30);
+                }
+            }
+        }
+
+        // 更新显示
+        function updateDisplays() {
+            scoreDisplay.textContent = gameState.score;
+            highScoreDisplay.textContent = gameState.highScore;
+            
+            // 格式化时间
+            const minutes = Math.floor(gameState.timeRemaining / 60);
+            const seconds = gameState.timeRemaining % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            miceCountDisplay.textContent = GAME_CONFIG.initialMiceCount;
+            miceCaughtDisplay.textContent = gameState.score / GAME_CONFIG.scorePerMouse;
+            miceRemainingDisplay.textContent = gameState.mice.length;
+        }
+
+        // 开始游戏
+        function startGame() {
+            if (gameState.isRunning) return;
+            
+            // 重置游戏状态
+            gameState.isRunning = true;
+            gameState.score = 0;
+            gameState.timeRemaining = GAME_CONFIG.gameTime;
+            
+            // 初始化游戏
+            initGame();
+            
+            // 开始计时器
+            gameState.timerInterval = setInterval(() => {
+                gameState.timeRemaining--;
+                updateDisplays();
+                
+                if (gameState.timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+            
+            // 记录时间戳
+            gameState.lastTimestamp = performance.now();
+            
+            // 开始游戏循环
+            requestAnimationFrame(updateGame);
+            
+            // 更新按钮状态
+            startBtn.disabled = true;
+            startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            resetBtn.disabled = false;
+            resetBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        // 结束游戏
+        function endGame() {
+            gameState.isRunning = false;
+            clearInterval(gameState.timerInterval);
+            
+            // 更新显示
+            drawGame();
+            
+            // 更新按钮状态
+            startBtn.disabled = false;
+            startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            startBtn.innerHTML = '<i class="fa fa-play mr-2"></i>重新开始';
+        }
+
+        // 重置游戏
+        function resetGame() {
+            if (!gameState.isRunning) {
+                initGame();
+                return;
+            }
+            
+            endGame();
+            initGame();
+        }
+
+        // 键盘控制
+        function handleKeyDown(e) {
+            if (!gameState.isRunning) return;
+            
+            switch (e.key) {
+                case 'ArrowUp':
+                    gameState.cat.dy = -gameState.cat.speed;
+                    break;
+                case 'ArrowDown':
+                    gameState.cat.dy = gameState.cat.speed;
+                    break;
+                case 'ArrowLeft':
+                    gameState.cat.dx = -gameState.cat.speed;
+                    break;
+                case 'ArrowRight':
+                    gameState.cat.dx = gameState.cat.speed;
+                    break;
+            }
+        }
+
+        function handleKeyUp(e) {
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'ArrowDown':
+                    gameState.cat.dy = 0;
+                    break;
+                case 'ArrowLeft':
+                case 'ArrowRight':
+                    gameState.cat.dx = 0;
+                    break;
+            }
+        }
+
+        // 初始化
+        function init() {
+            // 调整Canvas大小
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 设置高分
+            highScoreDisplay.textContent = gameState.highScore;
+            
+            // 初始化游戏
+            initGame();
+            
+            // 添加事件监听器
+            startBtn.addEventListener('click', startGame);
+            resetBtn.addEventListener('click', resetGame);
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+        }
+
+        // 启动应用
+        init();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '普俊杰';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

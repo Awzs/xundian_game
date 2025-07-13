@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跑酷游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .game-shadow {
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            }
+            .pixel-art {
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full mx-auto">
+        <!-- 游戏标题 -->
+        <header class="text-center mb-6">
+            <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-indigo-600 mb-2">
+                超级跑酷
+            </h1>
+            <p class="text-gray-600 text-lg">按 <kbd class="px-2 py-1 bg-gray-200 rounded text-gray-800">空格</kbd> 或 <kbd class="px-2 py-1 bg-gray-200 rounded text-gray-800">↑</kbd> 跳跃</p>
+        </header>
+
+        <!-- 游戏容器 -->
+        <div class="relative game-shadow rounded-xl overflow-hidden bg-white">
+            <!-- 游戏分数 -->
+            <div class="absolute top-4 left-4 bg-dark/80 text-white px-4 py-2 rounded-full text-lg font-bold flex items-center z-10">
+                <i class="fa fa-star mr-2 text-yellow-400"></i>
+                <span id="score">0</span>
+            </div>
+
+            <!-- 游戏区域 -->
+            <canvas id="gameCanvas" class="w-full h-[500px] bg-gradient-to-b from-sky-300 to-blue-500"></canvas>
+
+            <!-- 游戏控制 -->
+            <div class="flex justify-center gap-4 p-4 bg-gray-100">
+                <button id="startBtn" class="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center">
+                    <i class="fa fa-play mr-2"></i> 开始游戏
+                </button>
+                <button id="restartBtn" class="px-6 py-3 bg-secondary hover:bg-secondary/90 text-white rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 flex items-center hidden">
+                    <i class="fa fa-refresh mr-2"></i> 重新开始
+                </button>
+            </div>
+        </div>
+
+        <!-- 游戏说明 -->
+        <div class="mt-8 bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg">
+            <h2 class="text-xl font-bold text-dark mb-4 flex items-center">
+                <i class="fa fa-info-circle text-primary mr-2"></i> 游戏说明
+            </h2>
+            <ul class="space-y-2 text-gray-700">
+                <li class="flex items-start">
+                    <i class="fa fa-check-circle text-secondary mt-1 mr-2"></i>
+                    <span>控制角色跳跃，避开障碍物</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa fa-check-circle text-secondary mt-1 mr-2"></i>
+                    <span>游戏时间越长，分数越高</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa fa-check-circle text-secondary mt-1 mr-2"></i>
+                    <span>随着时间推移，游戏速度会逐渐加快</span>
+                </li>
+                <li class="flex items-start">
+                    <i class="fa fa-exclamation-triangle text-amber-500 mt-1 mr-2"></i>
+                    <span>撞到障碍物游戏结束</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 获取游戏元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const scoreDisplay = document.getElementById('score');
+
+        // 设置画布尺寸
+        canvas.width = 800;
+        canvas.height = 500;
+
+        // 游戏状态
+        let isGameStarted = false;
+        let isGameOver = false;
+        let score = 0;
+        let animationId;
+        let lastTime = 0;
+        let obstacleInterval = 2000; // 毫秒
+        let lastObstacleTime = 0;
+        let speed = 5;
+        let speedIncreaseInterval = 5000; // 每5秒增加一次速度
+        let lastSpeedIncreaseTime = 0;
+
+        // 角色属性
+        const character = {
+            x: 100,
+            y: canvas.height - 100,
+            width: 50,
+            height: 70,
+            velocityY: 0,
+            jumping: false,
+            jumpStrength: -15,
+            gravity: 0.7,
+            color: '#3B82F6',
+            draw() {
+                // 绘制角色
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 绘制眼睛
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width * 0.3, this.y + this.height * 0.3, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width * 0.7, this.y + this.height * 0.3, 5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制瞳孔
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(this.x + this.width * 0.3, this.y + this.height * 0.3, 2, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width * 0.7, this.y + this.height * 0.3, 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制微笑
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(this.x + this.width * 0.5, this.y + this.height * 0.6, 10, 0, Math.PI);
+                ctx.stroke();
+            },
+            jump() {
+                if (!this.jumping) {
+                    this.velocityY = this.jumpStrength;
+                    this.jumping = true;
+                }
+            },
+            update(deltaTime) {
+                // 应用重力
+                this.velocityY += this.gravity;
+                this.y += this.velocityY;
+                
+                // 防止角色掉出画布底部
+                if (this.y > canvas.height - this.height) {
+                    this.y = canvas.height - this.height;
+                    this.velocityY = 0;
+                    this.jumping = false;
+                }
+                
+                this.draw();
+            }
+        };
+
+        // 障碍物数组
+        let obstacles = [];
+
+        // 障碍物类
+        class Obstacle {
+            constructor() {
+                this.width = 40 + Math.random() * 30;
+                this.height = 50 + Math.random() * 80;
+                this.x = canvas.width;
+                this.y = canvas.height - this.height;
+                this.color = '#1F2937';
+                this.speed = speed;
+            }
+            
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 绘制障碍物细节
+                ctx.fillStyle = '#374151';
+                ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, this.height - 10);
+                
+                // 绘制窗户
+                ctx.fillStyle = '#93C5FD';
+                const windowCount = Math.floor(this.height / 20);
+                for (let i = 0; i < windowCount; i++) {
+                    ctx.fillRect(
+                        this.x + 10, 
+                        this.y + 10 + i * 20, 
+                        this.width - 20, 
+                        10
+                    );
+                }
+            }
+            
+            update() {
+                this.x -= speed;
+                this.draw();
+            }
+        }
+
+        // 背景类
+        class Background {
+            constructor() {
+                this.x1 = 0;
+                this.x2 = canvas.width;
+                this.speed = 1;
+                this.clouds = [];
+                
+                // 生成云朵
+                for (let i = 0; i < 10; i++) {
+                    this.clouds.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * 150 + 50,
+                        width: 60 + Math.random() * 80,
+                        height: 30 + Math.random() * 20,
+                        speed: 0.5 + Math.random()
+                    });
+                }
+            }
+            
+            drawCloud(x, y, width, height) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                
+                // 绘制云朵
+                ctx.beginPath();
+                ctx.arc(x + width * 0.25, y + height * 0.5, height * 0.5, 0, Math.PI * 2);
+                ctx.arc(x + width * 0.5, y + height * 0.3, height * 0.6, 0, Math.PI * 2);
+                ctx.arc(x + width * 0.75, y + height * 0.5, height * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制底部
+                ctx.fillRect(x, y + height * 0.5, width, height * 0.5);
+            }
+            
+            drawGround() {
+                ctx.fillStyle = '#10B981';
+                ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+                
+                // 绘制小草
+                ctx.fillStyle = '#15803D';
+                for (let i = 0; i < canvas.width; i += 20) {
+                    const grassHeight = 10 + Math.random() * 10;
+                    ctx.beginPath();
+                    ctx.moveTo(i, canvas.height - 30);
+                    ctx.bezierCurveTo(
+                        i + 5, canvas.height - 30 - grassHeight,
+                        i + 10, canvas.height - 30 - grassHeight,
+                        i + 15, canvas.height - 30
+                    );
+                    ctx.fill();
+                }
+            }
+            
+            update() {
+                // 更新背景位置
+                this.x1 -= this.speed;
+                this.x2 -= this.speed;
+                
+                // 如果背景超出画布，重置位置
+                if (this.x1 <= -canvas.width) this.x1 = canvas.width;
+                if (this.x2 <= -canvas.width) this.x2 = canvas.width;
+                
+                // 绘制天空
+                ctx.fillStyle = '#E0F2FE';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制云朵
+                for (const cloud of this.clouds) {
+                    cloud.x -= cloud.speed;
+                    if (cloud.x < -cloud.width) cloud.x = canvas.width;
+                    this.drawCloud(cloud.x, cloud.y, cloud.width, cloud.height);
+                }
+                
+                // 绘制地面
+                this.drawGround();
+            }
+        }
+
+        // 创建背景
+        const background = new Background();
+
+        // 检测碰撞
+        function checkCollision(character, obstacle) {
+            return (
+                character.x < obstacle.x + obstacle.width &&
+                character.x + character.width > obstacle.x &&
+                character.y < obstacle.y + obstacle.height &&
+                character.y + character.height > obstacle.y
+            );
+        }
+
+        // 更新分数
+        function updateScore() {
+            score++;
+            scoreDisplay.textContent = score;
+        }
+
+        // 增加游戏速度
+        function increaseSpeed(currentTime) {
+            if (currentTime - lastSpeedIncreaseTime > speedIncreaseInterval) {
+                speed += 0.5;
+                lastSpeedIncreaseTime = currentTime;
+            }
+        }
+
+        // 生成障碍物
+        function spawnObstacle(currentTime) {
+            if (currentTime - lastObstacleTime > obstacleInterval) {
+                obstacles.push(new Obstacle());
+                lastObstacleTime = currentTime;
+                
+                // 随机调整障碍物生成间隔
+                obstacleInterval = 1500 + Math.random() * 1000;
+            }
+        }
+
+        // 游戏循环
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime || 0;
+            lastTime = timestamp;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 更新背景
+            background.update();
+            
+            if (isGameStarted && !isGameOver) {
+                // 更新角色
+                character.update(deltaTime);
+                
+                // 更新分数
+                updateScore();
+                
+                // 增加游戏速度
+                increaseSpeed(timestamp);
+                
+                // 生成障碍物
+                spawnObstacle(timestamp);
+                
+                // 更新障碍物
+                for (let i = 0; i < obstacles.length; i++) {
+                    obstacles[i].update();
+                    
+                    // 检测碰撞
+                    if (checkCollision(character, obstacles[i])) {
+                        gameOver();
+                        break;
+                    }
+                    
+                    // 移除离开画布的障碍物
+                    if (obstacles[i].x + obstacles[i].width < 0) {
+                        obstacles.splice(i, 1);
+                        i--;
+                    }
+                }
+            } else if (isGameOver) {
+                // 绘制游戏结束界面
+                drawGameOverScreen();
+            } else {
+                // 绘制开始界面
+                drawStartScreen();
+            }
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // 绘制开始界面
+        function drawStartScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('超级跑酷', canvas.width / 2, canvas.height / 2 - 50);
+            
+            ctx.font = '20px Arial';
+            ctx.fillText('按开始按钮或空格键开始游戏', canvas.width / 2, canvas.height / 2 + 10);
+            ctx.fillText('按空格键或上箭头键跳跃', canvas.width / 2, canvas.height / 2 + 50);
+        }
+
+        // 绘制游戏结束界面
+        function drawGameOverScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'white';
+            ctx.font = '36px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('游戏结束', canvas.width / 2, canvas.height / 2 - 60);
+            
+            ctx.font = '24px Arial';
+            ctx.fillText(`最终得分: ${score}`, canvas.width / 2, canvas.height / 2);
+            
+            ctx.font = '20px Arial';
+            ctx.fillText('按重新开始按钮或空格键再来一次', canvas.width / 2, canvas.height / 2 + 50);
+        }
+
+        // 开始游戏
+        function startGame() {
+            if (!isGameStarted) {
+                isGameStarted = true;
+                isGameOver = false;
+                score = 0;
+                speed = 5;
+                obstacles = [];
+                lastTime = 0;
+                lastObstacleTime = 0;
+                lastSpeedIncreaseTime = 0;
+                
+                startBtn.classList.add('hidden');
+                restartBtn.classList.remove('hidden');
+                
+                // 重置角色位置
+                character.y = canvas.height - 100;
+                character.velocityY = 0;
+                character.jumping = false;
+            }
+        }
+
+        // 游戏结束
+        function gameOver() {
+            isGameOver = true;
+            restartBtn.classList.remove('hidden');
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            isGameStarted = false;
+            startGame();
+        }
+
+        // 事件监听
+        startBtn.addEventListener('click', startGame);
+        restartBtn.addEventListener('click', restartGame);
+
+        // 键盘控制
+        document.addEventListener('keydown', (e) => {
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && isGameStarted && !isGameOver) {
+                character.jump();
+            } else if ((e.code === 'Space' || e.code === 'Enter') && !isGameStarted) {
+                if (isGameOver) {
+                    restartGame();
+                } else {
+                    startGame();
+                }
+            }
+        });
+
+        // 触摸控制 (移动端)
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (isGameStarted && !isGameOver) {
+                character.jump();
+            } else if (!isGameStarted) {
+                if (isGameOver) {
+                    restartGame();
+                } else {
+                    startGame();
+                }
+            }
+        });
+
+        // 启动游戏循环
+        requestAnimationFrame(gameLoop);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '罗贤颖';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

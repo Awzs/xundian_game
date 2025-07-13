@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>特种兵模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E40AF',
+                        secondary: '#1E293B',
+                        accent: '#10B981',
+                        danger: '#EF4444',
+                        terrain: '#166534',
+                        sand: '#D4AF37',
+                        water: '#3B82F6',
+                        uniform: '#22543D'
+                    },
+                    fontFamily: {
+                        military: ['Arial Black', 'sans-serif']
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .text-shadow-sm {
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            }
+            .bg-camo {
+                background-image: 
+                    linear-gradient(90deg, rgba(22,101,52,0.8) 50%, transparent 50%),
+                    linear-gradient(rgba(22,101,52,0.8) 50%, transparent 50%);
+                background-size: 50px 50px;
+            }
+            .border-camo {
+                border-image: repeating-linear-gradient(45deg, #166534, #22543D, #166534 20px) 1;
+            }
+            .animate-flash {
+                animation: flash 0.5s ease-out;
+            }
+            @keyframes flash {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.5; }
+            }
+            .animate-shake {
+                animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+            }
+            @keyframes shake {
+                10%, 90% { transform: translate3d(-1px, 0, 0); }
+                20%, 80% { transform: translate3d(2px, 0, 0); }
+                30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+                40%, 60% { transform: translate3d(4px, 0, 0); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 font-military text-white min-h-screen flex flex-col">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 顶部导航栏 -->
+    <header class="bg-secondary/90 backdrop-blur-md border-b-2 border-primary/50 sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <i class="fa fa-shield text-primary text-2xl"></i>
+                <h1 class="text-[clamp(1.25rem,3vw,1.75rem)] font-bold text-shadow">特种兵模拟器</h1>
+            </div>
+            <nav class="hidden md:flex gap-6">
+                <a href="#" class="hover:text-primary transition-colors duration-300 flex items-center gap-1">
+                    <i class="fa fa-home"></i>
+                    <span>首页</span>
+                </a>
+                <a href="#" class="hover:text-primary transition-colors duration-300 flex items-center gap-1">
+                    <i class="fa fa-book"></i>
+                    <span>任务</span>
+                </a>
+                <a href="#" class="hover:text-primary transition-colors duration-300 flex items-center gap-1">
+                    <i class="fa fa-cog"></i>
+                    <span>设置</span>
+                </a>
+                <a href="#" class="hover:text-primary transition-colors duration-300 flex items-center gap-1">
+                    <i class="fa fa-trophy"></i>
+                    <span>成就</span>
+                </a>
+            </nav>
+            <button class="md:hidden text-2xl">
+                <i class="fa fa-bars"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col md:flex-row gap-6">
+        <!-- 左侧面板 - 玩家信息 -->
+        <aside class="md:w-1/4 bg-secondary/70 rounded-xl p-4 border border-primary/30 shadow-lg">
+            <div class="text-center mb-6">
+                <div class="relative w-24 h-24 mx-auto mb-3">
+                    <img src="https://picsum.photos/seed/soldier/200/200" alt="特种兵头像" class="rounded-full border-2 border-primary w-full h-full object-cover">
+                    <div class="absolute -top-1 -right-1 bg-accent rounded-full w-6 h-6 flex items-center justify-center">
+                        <i class="fa fa-star text-xs"></i>
+                    </div>
+                </div>
+                <h2 class="text-xl font-bold">特种兵</h2>
+                <p class="text-gray-400 text-sm">精英作战单位</p>
+            </div>
+
+            <!-- 状态条 -->
+            <div class="space-y-4 mb-6">
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>生命值</span>
+                        <span>100/100</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div class="bg-danger h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>体力</span>
+                        <span>85/100</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div class="bg-accent h-2.5 rounded-full" style="width: 85%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>弹药</span>
+                        <span>30/30</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2.5">
+                        <div class="bg-primary h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 装备 -->
+            <div class="mb-6">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fa fa-shopping-bag text-primary"></i>
+                    装备
+                </h3>
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-crosshairs text-xl mb-1"></i>
+                        <p class="text-xs">突击步枪</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-bomb text-xl mb-1"></i>
+                        <p class="text-xs">手雷 x3</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-shield text-xl mb-1"></i>
+                        <p class="text-xs">防弹衣</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-eye text-xl mb-1"></i>
+                        <p class="text-xs">夜视仪</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-map text-xl mb-1"></i>
+                        <p class="text-xs">地图</p>
+                    </div>
+                    <div class="bg-gray-800 rounded-lg p-2 text-center hover:bg-gray-700 transition-colors cursor-pointer">
+                        <i class="fa fa-medkit text-xl mb-1"></i>
+                        <p class="text-xs">医疗包 x2</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 通讯 -->
+            <div>
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fa fa-headphones text-primary"></i>
+                    通讯
+                </h3>
+                <div class="bg-gray-800 rounded-lg p-3 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-accent rounded-full animate-pulse"></div>
+                        <span>指挥官: "准备行动，目标已确认。"</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                        <span>队员1: "收到，准备就绪。"</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                        <span>队员2: "前方发现敌人巡逻队。"</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 中央游戏区域 -->
+        <section class="md:w-2/4 bg-terrain/50 rounded-xl overflow-hidden border border-primary/30 shadow-lg flex flex-col">
+            <!-- 游戏地图/视图 -->
+            <div class="relative flex-grow" id="gameArea">
+                <!-- 游戏地图将通过JS渲染 -->
+                <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                
+                <!-- 游戏中的HUD元素 -->
+                <div class="absolute bottom-4 left-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-compass text-primary"></i>
+                            <span>N</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-map-marker text-danger"></i>
+                            <span>2.5km</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-sun-o text-yellow-400"></i>
+                            <span>夜间</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-thermometer-half text-blue-400"></i>
+                            <span>18°C</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <i class="fa fa-tint text-blue-500"></i>
+                            <span>65%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 任务提示 -->
+                <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm rounded-lg p-2 px-4">
+                    <p class="text-center">主要任务: 摧毁敌军通讯站</p>
+                </div>
+            </div>
+
+            <!-- 游戏控制面板 -->
+            <div class="bg-secondary/90 p-4 border-t border-primary/30">
+                <div class="flex flex-wrap gap-3 mb-3">
+                    <button id="moveBtn" class="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-location-arrow"></i>
+                        <span>移动</span>
+                    </button>
+                    <button id="shootBtn" class="bg-danger hover:bg-danger/80 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-crosshairs"></i>
+                        <span>射击</span>
+                    </button>
+                    <button id="grenadeBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-bomb"></i>
+                        <span>手雷</span>
+                    </button>
+                    <button id="crouchBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-user-secret"></i>
+                        <span>蹲下</span>
+                    </button>
+                    <button id="zoomBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-search-plus"></i>
+                        <span>瞄准镜</span>
+                    </button>
+                    <button id="reloadBtn" class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center gap-1">
+                        <i class="fa fa-refresh"></i>
+                        <span>换弹</span>
+                    </button>
+                </div>
+                
+                <div class="flex justify-between items-center">
+                    <div class="text-sm text-gray-300">
+                        <span>任务进度: 45%</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors">
+                            <i class="fa fa-save"></i>
+                        </button>
+                        <button class="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors">
+                            <i class="fa fa-question-circle"></i>
+                        </button>
+                        <button class="bg-gray-700 hover:bg-gray-600 p-2 rounded-lg transition-colors">
+                            <i class="fa fa-sliders"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 右侧面板 - 任务和地图 -->
+        <aside class="md:w-1/4 bg-secondary/70 rounded-xl p-4 border border-primary/30 shadow-lg flex flex-col gap-6">
+            <!-- 任务面板 -->
+            <div class="bg-gray-800/70 rounded-lg p-3 flex-grow">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fa fa-list-alt text-primary"></i>
+                    任务
+                </h3>
+                <div class="space-y-3">
+                    <div class="bg-gray-900/70 rounded-lg p-3 border-l-4 border-primary">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold">主要任务</h4>
+                            <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">进行中</span>
+                        </div>
+                        <p class="text-sm mb-2">摧毁敌军通讯站，切断敌方指挥系统。</p>
+                        <div class="w-full bg-gray-700 rounded-full h-1.5 mb-1">
+                            <div class="bg-primary h-1.5 rounded-full" style="width: 45%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400">45% 完成</p>
+                    </div>
+                    
+                    <div class="bg-gray-900/70 rounded-lg p-3 border-l-4 border-accent">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold">次要任务</h4>
+                            <span class="text-xs bg-accent/20 text-accent px-2 py-1 rounded-full">未完成</span>
+                        </div>
+                        <p class="text-sm mb-2">营救被俘虏的特工。</p>
+                        <div class="w-full bg-gray-700 rounded-full h-1.5 mb-1">
+                            <div class="bg-accent h-1.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <p class="text-xs text-gray-400">0% 完成</p>
+                    </div>
+                    
+                    <div class="bg-gray-900/70 rounded-lg p-3 border-l-4 border-gray-500">
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold">情报</h4>
+                            <span class="text-xs bg-gray-700/50 text-gray-300 px-2 py-1 rounded-full">已收集</span>
+                        </div>
+                        <p class="text-sm">敌军通讯站位于山谷中，周围有重兵把守。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 地图面板 -->
+            <div class="bg-gray-800/70 rounded-lg p-3">
+                <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
+                    <i class="fa fa-map text-primary"></i>
+                    战术地图
+                </h3>
+                <div class="relative aspect-square bg-gray-900 rounded-lg overflow-hidden border border-primary/30">
+                    <!-- 地图将通过JS渲染 -->
+                    <canvas id="mapCanvas" class="w-full h-full"></canvas>
+                    
+                    <!-- 地图标记 -->
+                    <div class="absolute top-1/4 left-1/3 w-3 h-3 bg-danger rounded-full animate-pulse"></div>
+                    <div class="absolute top-1/2 left-2/3 w-3 h-3 bg-primary rounded-full"></div>
+                    <div class="absolute bottom-1/4 right-1/3 w-3 h-3 bg-accent rounded-full"></div>
+                    
+                    <!-- 地图缩放控制 -->
+                    <div class="absolute bottom-2 right-2 flex flex-col bg-black/50 backdrop-blur-sm rounded-lg">
+                        <button class="p-1 hover:bg-gray-800">
+                            <i class="fa fa-plus text-xs"></i>
+                        </button>
+                        <div class="border-t border-gray-700 w-full"></div>
+                        <button class="p-1 hover:bg-gray-800">
+                            <i class="fa fa-minus text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2 flex justify-between text-xs text-gray-400">
+                    <div>你在这里 <i class="fa fa-map-marker text-primary"></i></div>
+                    <div>目标 <i class="fa fa-map-marker text-danger"></i></div>
+                    <div>友军 <i class="fa fa-map-marker text-accent"></i></div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- 底部信息 -->
+    <footer class="bg-secondary/90 border-t-2 border-primary/50 py-3 mt-8">
+        <div class="container mx-auto px-4 text-center text-sm text-gray-400">
+            <p>© 2025 特种兵模拟器 | 训练从未停止</p>
+        </div>
+    </footer>
+
+    <script>
+        // 游戏主逻辑
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取画布和上下文
+            const gameCanvas = document.getElementById('gameCanvas');
+            const gameCtx = gameCanvas.getContext('2d');
+            const mapCanvas = document.getElementById('mapCanvas');
+            const mapCtx = mapCanvas.getContext('2d');
+            
+            // 设置画布尺寸
+            function resizeCanvases() {
+                gameCanvas.width = gameCanvas.offsetWidth;
+                gameCanvas.height = gameCanvas.offsetHeight;
+                mapCanvas.width = mapCanvas.offsetWidth;
+                mapCanvas.height = mapCanvas.offsetHeight;
+                
+                // 重新渲染
+                drawGameScene();
+                drawMap();
+            }
+            
+            // 初始化时调整画布大小
+            resizeCanvases();
+            
+            // 窗口大小改变时调整画布大小
+            window.addEventListener('resize', resizeCanvases);
+            
+            // 绘制游戏场景
+            function drawGameScene() {
+                // 清空画布
+                gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+                
+                // 绘制背景（地形）
+                const gradient = gameCtx.createLinearGradient(0, 0, 0, gameCanvas.height);
+                gradient.addColorStop(0, '#1E3A8A'); // 深蓝色天空
+                gradient.addColorStop(0.5, '#166534'); // 绿色植被
+                gradient.addColorStop(1, '#0F172A'); // 深色地面
+                
+                gameCtx.fillStyle = gradient;
+                gameCtx.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+                
+                // 绘制简单的地形特征
+                drawTerrain();
+                
+                // 绘制玩家
+                drawPlayer();
+                
+                // 绘制敌人
+                drawEnemies();
+                
+                // 绘制掩体
+                drawCover();
+                
+                // 绘制准星
+                drawCrosshair();
+            }
+            
+            // 绘制地形特征
+            function drawTerrain() {
+                // 绘制一些简单的地形特征
+                gameCtx.fillStyle = '#0F172A'; // 深色地面
+                
+                // 绘制山丘
+                gameCtx.beginPath();
+                gameCtx.moveTo(0, gameCanvas.height * 0.7);
+                gameCtx.bezierCurveTo(
+                    gameCanvas.width * 0.25, gameCanvas.height * 0.6,
+                    gameCanvas.width * 0.5, gameCanvas.height * 0.8,
+                    gameCanvas.width * 0.75, gameCanvas.height * 0.65
+                );
+                gameCtx.lineTo(gameCanvas.width, gameCanvas.height * 0.8);
+                gameCtx.lineTo(gameCanvas.width, gameCanvas.height);
+                gameCtx.lineTo(0, gameCanvas.height);
+                gameCtx.closePath();
+                gameCtx.fill();
+                
+                // 绘制一些树木
+                const treePositions = [
+                    { x: gameCanvas.width * 0.15, y: gameCanvas.height * 0.65 },
+                    { x: gameCanvas.width * 0.3, y: gameCanvas.height * 0.6 },
+                    { x: gameCanvas.width * 0.45, y: gameCanvas.height * 0.7 },
+                    { x: gameCanvas.width * 0.65, y: gameCanvas.height * 0.65 },
+                    { x: gameCanvas.width * 0.8, y: gameCanvas.height * 0.68 }
+                ];
+                
+                treePositions.forEach(pos => {
+                    // 树干
+                    gameCtx.fillStyle = '#784212';
+                    gameCtx.fillRect(pos.x, pos.y, 8, 30);
+                    
+                    // 树冠
+                    gameCtx.fillStyle = '#166534';
+                    gameCtx.beginPath();
+                    gameCtx.arc(pos.x + 4, pos.y - 15, 15, 0, Math.PI * 2);
+                    gameCtx.fill();
+                });
+            }
+            
+            // 绘制玩家
+            function drawPlayer() {
+                const playerSize = 20;
+                const playerX = gameCanvas.width / 2 - playerSize / 2;
+                const playerY = gameCanvas.height * 0.75 - playerSize;
+                
+                // 玩家身体
+                gameCtx.fillStyle = '#0F172A'; // 深色制服
+                gameCtx.fillRect(playerX, playerY, playerSize, playerSize);
+                
+                // 玩家头盔
+                gameCtx.fillStyle = '#1E293B';
+                gameCtx.beginPath();
+                gameCtx.arc(playerX + playerSize / 2, playerY, playerSize / 2, 0, Math.PI);
+                gameCtx.fill();
+                
+                // 玩家枪
+                gameCtx.fillStyle = '#475569';
+                gameCtx.fillRect(playerX + playerSize, playerY + playerSize / 4, playerSize, playerSize / 4);
+            }
+            
+            // 绘制敌人
+            function drawEnemies() {
+                const enemySize = 15;
+                const enemyPositions = [
+                    { x: gameCanvas.width * 0.2, y: gameCanvas.height * 0.65 },
+                    { x: gameCanvas.width * 0.7, y: gameCanvas.height * 0.6 },
+                    { x: gameCanvas.width * 0.55, y: gameCanvas.height * 0.55 }
+                ];
+                
+                enemyPositions.forEach(pos => {
+                    // 敌人身体
+                    gameCtx.fillStyle = '#991B1B'; // 红色制服
+                    gameCtx.fillRect(pos.x, pos.y, enemySize, enemySize);
+                    
+                    // 敌人头盔
+                    gameCtx.fillStyle = '#7F1D1D';
+                    gameCtx.beginPath();
+                    gameCtx.arc(pos.x + enemySize / 2, pos.y, enemySize / 2, 0, Math.PI);
+                    gameCtx.fill();
+                    
+                    // 敌人枪
+                    gameCtx.fillStyle = '#475569';
+                    gameCtx.fillRect(pos.x - enemySize / 2, pos.y + enemySize / 4, enemySize / 2, enemySize / 4);
+                });
+            }
+            
+            // 绘制掩体
+            function drawCover() {
+                const coverPositions = [
+                    { x: gameCanvas.width * 0.3, y: gameCanvas.height * 0.7, width: 40, height: 20 },
+                    { x: gameCanvas.width * 0.6, y: gameCanvas.height * 0.75, width: 50, height: 15 }
+                ];
+                
+                coverPositions.forEach(pos => {
+                    // 掩体
+                    gameCtx.fillStyle = '#475569';
+                    gameCtx.fillRect(pos.x, pos.y, pos.width, pos.height);
+                    
+                    // 迷彩纹理
+                    gameCtx.fillStyle = '#166534';
+                    gameCtx.fillRect(pos.x + 5, pos.y + 5, 10, 10);
+                    gameCtx.fillRect(pos.x + 30, pos.y + 5, 10, 5);
+                });
+            }
+            
+            // 绘制准星
+            function drawCrosshair() {
+                const centerX = gameCanvas.width / 2;
+                const centerY = gameCanvas.height / 2;
+                const size = 15;
+                
+                gameCtx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                gameCtx.lineWidth = 2;
+                
+                // 十字线
+                gameCtx.beginPath();
+                gameCtx.moveTo(centerX - size, centerY);
+                gameCtx.lineTo(centerX - size / 2, centerY);
+                gameCtx.moveTo(centerX + size / 2, centerY);
+                gameCtx.lineTo(centerX + size, centerY);
+                gameCtx.moveTo(centerX, centerY - size);
+                gameCtx.lineTo(centerX, centerY - size / 2);
+                gameCtx.moveTo(centerX, centerY + size / 2);
+                gameCtx.lineTo(centerX, centerY + size);
+                gameCtx.stroke();
+                
+                // 中心点
+                gameCtx.beginPath();
+                gameCtx.arc(centerX, centerY, 1, 0, Math.PI * 2);
+                gameCtx.stroke();
+            }
+            
+            // 绘制地图
+            function drawMap() {
+                // 清空画布
+                mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+                
+                // 绘制地图背景
+                mapCtx.fillStyle = '#166534'; // 绿色地形
+                mapCtx.fillRect(0, 0, mapCanvas.width, mapCanvas.height);
+                
+                // 绘制简单的地图轮廓
+                mapCtx.strokeStyle = '#0F172A';
+                mapCtx.lineWidth = 2;
+                mapCtx.strokeRect(1, 1, mapCanvas.width - 2, mapCanvas.height - 2);
+                
+                // 绘制地形特征
+                drawMapTerrain();
+                
+                // 绘制玩家位置
+                drawMapPlayer();
+                
+                // 绘制敌人位置
+                drawMapEnemies();
+                
+                // 绘制目标位置
+                drawMapObjectives();
+            }
+            
+            // 绘制地图地形
+            function drawMapTerrain() {
+                // 绘制河流
+                mapCtx.fillStyle = '#3B82F6';
+                mapCtx.beginPath();
+                mapCtx.moveTo(0, mapCanvas.height * 0.3);
+                mapCtx.bezierCurveTo(
+                    mapCanvas.width * 0.25, mapCanvas.height * 0.2,
+                    mapCanvas.width * 0.5, mapCanvas.height * 0.4,
+                    mapCanvas.width, mapCanvas.height * 0.35
+                );
+                mapCtx.lineWidth = 10;
+                mapCtx.stroke();
+                
+                // 绘制建筑物
+                const buildings = [
+                    { x: mapCanvas.width * 0.2, y: mapCanvas.height * 0.6, width: 15, height: 15 },
+                    { x: mapCanvas.width * 0.4, y: mapCanvas.height * 0.4, width: 20, height: 15 },
+                    { x: mapCanvas.width * 0.7, y: mapCanvas.height * 0.7, width: 15, height: 20 }
+                ];
+                
+                buildings.forEach(building => {
+                    mapCtx.fillStyle = '#475569';
+                    mapCtx.fillRect(building.x, building.y, building.width, building.height);
+                });
+            }
+            
+            // 绘制地图上的玩家
+            function drawMapPlayer() {
+                const playerSize = 8;
+                const playerX = mapCanvas.width * 0.5;
+                const playerY = mapCanvas.height * 0.7;
+                
+                mapCtx.fillStyle = '#1E40AF'; // 蓝色表示玩家
+                mapCtx.beginPath();
+                mapCtx.arc(playerX, playerY, playerSize, 0, Math.PI * 2);
+                mapCtx.fill();
+                
+                // 方向指示器
+                mapCtx.strokeStyle = '#fff';
+                mapCtx.lineWidth = 2;
+                mapCtx.beginPath();
+                mapCtx.moveTo(playerX, playerY);
+                mapCtx.lineTo(playerX, playerY - playerSize * 1.5);
+                mapCtx.stroke();
+            }
+            
+            // 绘制地图上的敌人
+            function drawMapEnemies() {
+                const enemySize = 6;
+                const enemyPositions = [
+                    { x: mapCanvas.width * 0.3, y: mapCanvas.height * 0.4 },
+                    { x: mapCanvas.width * 0.6, y: mapCanvas.height * 0.5 },
+                    { x: mapCanvas.width * 0.8, y: mapCanvas.height * 0.3 }
+                ];
+                
+                enemyPositions.forEach(pos => {
+                    mapCtx.fillStyle = '#991B1B'; // 红色表示敌人
+                    mapCtx.beginPath();
+                    mapCtx.arc(pos.x, pos.y, enemySize, 0, Math.PI * 2);
+                    mapCtx.fill();
+                });
+            }
+            
+            // 绘制地图上的目标
+            function drawMapObjectives() {
+                const objectiveSize = 10;
+                const objectiveX = mapCanvas.width * 0.25;
+                const objectiveY = mapCanvas.height * 0.25;
+                
+                // 目标标记
+                mapCtx.strokeStyle = '#EF4444';
+                mapCtx.lineWidth = 2;
+                mapCtx.beginPath();
+                mapCtx.arc(objectiveX, objectiveY, objectiveSize, 0, Math.PI * 2);
+                mapCtx.stroke();
+                
+                // 十字标记
+                mapCtx.beginPath();
+                mapCtx.moveTo(objectiveX - objectiveSize / 2, objectiveY);
+                mapCtx.lineTo(objectiveX + objectiveSize / 2, objectiveY);
+                mapCtx.moveTo(objectiveX, objectiveY - objectiveSize / 2);
+                mapCtx.lineTo(objectiveX, objectiveY + objectiveSize / 2);
+                mapCtx.stroke();
+            }
+            
+            // 游戏控制按钮事件
+            const moveBtn = document.getElementById('moveBtn');
+            const shootBtn = document.getElementById('shootBtn');
+            const grenadeBtn = document.getElementById('grenadeBtn');
+            const crouchBtn = document.getElementById('crouchBtn');
+            const zoomBtn = document.getElementById('zoomBtn');
+            const reloadBtn = document.getElementById('reloadBtn');
+            
+            moveBtn.addEventListener('click', function() {
+                showActionMessage('正在移动...');
+                this.classList.add('animate-pulse-fast');
+                setTimeout(() => this.classList.remove('animate-pulse-fast'), 1000);
+            });
+            
+            shootBtn.addEventListener('click', function() {
+                showActionMessage('射击!');
+                gameCanvas.classList.add('animate-shake');
+                setTimeout(() => gameCanvas.classList.remove('animate-shake'), 300);
+                
+                // 模拟后坐力
+                this.classList.add('animate-shake');
+                setTimeout(() => this.classList.remove('animate-shake'), 300);
+            });
+            
+            grenadeBtn.addEventListener('click', function() {
+                showActionMessage('投掷手雷!');
+                gameCanvas.classList.add('animate-flash');
+                setTimeout(() => gameCanvas.classList.remove('animate-flash'), 500);
+                
+                this.classList.add('animate-pulse-fast');
+                setTimeout(() => this.classList.remove('animate-pulse-fast'), 1000);
+            });
+            
+            crouchBtn.addEventListener('click', function() {
+                showActionMessage('蹲下!');
+                this.classList.toggle('bg-accent');
+            });
+            
+            zoomBtn.addEventListener('click', function() {
+                showActionMessage('瞄准镜已开启');
+                this.classList.toggle('bg-accent');
+                
+                // 模拟缩放效果
+                if (this.classList.contains('bg-accent')) {
+                    gameCtx.scale(1.5, 1.5);
+                    gameCtx.translate(-gameCanvas.width * 0.167, -gameCanvas.height * 0.167);
+                } else {
+                    gameCtx.setTransform(1, 0, 0, 1, 0, 0);
+                }
+                drawGameScene();
+            });
+            
+            reloadBtn.addEventListener('click', function() {
+                showActionMessage('换弹中...');
+                this.classList.add('animate-pulse-fast');
+                setTimeout(() => this.classList.remove('animate-pulse-fast'), 2000);
+            });
+            
+            // 显示游戏动作消息
+            function showActionMessage(message) {
+                const messageBox = document.createElement('div');
+                messageBox.className = 'fixed top-1/3 left-1/2 transform -translate-x-1/2 bg-black/80 backdrop-blur-md text-white py-2 px-6 rounded-full text-lg z-50';
+                messageBox.textContent = message;
+                document.body.appendChild(messageBox);
+                
+                setTimeout(() => {
+                    messageBox.classList.add('opacity-0', 'transition-opacity', 'duration-1000');
+                    setTimeout(() => document.body.removeChild(messageBox), 1000);
+                }, 1500);
+            }
+            
+            // 初始渲染
+            drawGameScene();
+            drawMap();
+            
+            // 模拟游戏循环
+            setInterval(() => {
+                // 简单的游戏循环，更新游戏状态
+                drawGameScene();
+            }, 1000 / 30); // 约30FPS
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '白佳玉';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

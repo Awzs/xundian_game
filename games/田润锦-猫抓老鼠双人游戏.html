@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫抓老鼠双人游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        dark: '#1F2937',
+                        light: '#F3F4F6'
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .game-gradient {
+                background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            }
+            .btn-hover {
+                transition: all 0.3s ease;
+            }
+            .btn-hover:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-light min-h-screen flex flex-col items-center justify-center p-4">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-6xl w-full mx-auto">
+        <!-- 游戏标题 -->
+        <header class="text-center mb-8">
+            <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-game text-warning text-shadow mb-4">猫抓老鼠</h1>
+            <p class="text-gray-300 text-lg max-w-2xl mx-auto">双人游戏 - 玩家1 (猫) 使用WASD移动，玩家2 (老鼠) 使用方向键移动。抓住老鼠或避免被抓住！</p>
+        </header>
+
+        <!-- 游戏区域和控制面板 -->
+        <div class="flex flex-col lg:flex-row gap-6">
+            <!-- 游戏画布 -->
+            <div class="flex-1 relative bg-dark rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700">
+                <canvas id="gameCanvas" class="w-full h-full"></canvas>
+                
+                <!-- 游戏开始界面 -->
+                <div id="startScreen" class="absolute inset-0 flex flex-col items-center justify-center bg-dark/90 z-10">
+                    <h2 class="text-2xl font-game text-warning mb-8">准备开始!</h2>
+                    <button id="startButton" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg btn-hover text-lg">
+                        <i class="fa fa-play mr-2"></i>开始游戏
+                    </button>
+                </div>
+                
+                <!-- 游戏结束界面 -->
+                <div id="endScreen" class="absolute inset-0 flex-col items-center justify-center bg-dark/90 z-10 hidden">
+                    <h2 id="endMessage" class="text-2xl font-game text-warning mb-4"></h2>
+                    <button id="restartButton" class="bg-secondary hover:bg-secondary/80 text-white font-bold py-3 px-8 rounded-lg shadow-lg btn-hover text-lg">
+                        <i class="fa fa-refresh mr-2"></i>再来一局
+                    </button>
+                </div>
+            </div>
+
+            <!-- 游戏信息和控制 -->
+            <div class="lg:w-80 space-y-6">
+                <!-- 游戏状态 -->
+                <div class="bg-dark rounded-xl p-5 shadow-lg border border-gray-700">
+                    <h2 class="text-xl font-bold mb-4 text-primary border-b border-gray-700 pb-2">游戏状态</h2>
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">时间</span>
+                            <span id="gameTime" class="font-bold text-white">00:00</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">猫位置</span>
+                            <span id="catPosition" class="font-bold text-primary">X: 0, Y: 0</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">老鼠位置</span>
+                            <span id="mousePosition" class="font-bold text-secondary">X: 0, Y: 0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 游戏控制 -->
+                <div class="bg-dark rounded-xl p-5 shadow-lg border border-gray-700">
+                    <h2 class="text-xl font-bold mb-4 text-primary border-b border-gray-700 pb-2">游戏控制</h2>
+                    <div class="space-y-3">
+                        <div>
+                            <h3 class="font-bold text-gray-300 mb-2">猫 (玩家1)</h3>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-start-2 bg-gray-800 rounded p-2 text-center">W</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">A</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">S</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">D</div>
+                            </div>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-300 mb-2">老鼠 (玩家2)</h3>
+                            <div class="grid grid-cols-3 gap-2">
+                                <div class="col-start-2 bg-gray-800 rounded p-2 text-center">↑</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">←</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">↓</div>
+                                <div class="bg-gray-800 rounded p-2 text-center">→</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 游戏说明 -->
+                <div class="bg-dark rounded-xl p-5 shadow-lg border border-gray-700">
+                    <h2 class="text-xl font-bold mb-4 text-primary border-b border-gray-700 pb-2">游戏说明</h2>
+                    <ul class="space-y-2 text-gray-300">
+                        <li class="flex items-start">
+                            <i class="fa fa-paw text-warning mt-1 mr-2"></i>
+                            <span>猫的目标是在限定时间内抓住老鼠</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-mouse-pointer text-secondary mt-1 mr-2"></i>
+                            <span>老鼠的目标是存活尽可能长的时间</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-clock-o text-primary mt-1 mr-2"></i>
+                            <span>游戏时间为60秒，时间到后如果老鼠存活则获胜</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-star text-warning mt-1 mr-2"></i>
+                            <span>墙壁可以穿过，但会减速</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 页脚 -->
+        <footer class="mt-8 text-center text-gray-500 text-sm">
+            <p>© 2025 猫抓老鼠双人游戏 | 使用键盘控制 | 享受游戏乐趣!</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取游戏元素
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const startScreen = document.getElementById('startScreen');
+            const endScreen = document.getElementById('endScreen');
+            const endMessage = document.getElementById('endMessage');
+            const startButton = document.getElementById('startButton');
+            const restartButton = document.getElementById('restartButton');
+            const gameTimeElement = document.getElementById('gameTime');
+            const catPositionElement = document.getElementById('catPosition');
+            const mousePositionElement = document.getElementById('mousePosition');
+            
+            // 设置画布尺寸
+            function resizeCanvas() {
+                const container = canvas.parentElement;
+                canvas.width = Math.min(800, container.clientWidth);
+                canvas.height = Math.min(600, window.innerHeight - 300);
+                
+                // 如果游戏正在进行中，重新绘制
+                if (gameState === 'playing') {
+                    drawGame();
+                }
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // 游戏状态
+            let gameState = 'ready'; // ready, playing, ended
+            let gameTime = 0;
+            let gameTimer = null;
+            let lastTime = 0;
+            
+            // 游戏配置
+            const config = {
+                catSpeed: 5,
+                mouseSpeed: 5,
+                wallSlowdown: 0.6,
+                gameDuration: 60, // 游戏时长（秒）
+                gridSize: 40, // 网格大小
+                wallDensity: 0.15 // 墙壁密度
+            };
+            
+            // 玩家对象
+            const cat = {
+                x: 100,
+                y: 100,
+                width: 30,
+                height: 30,
+                speed: config.catSpeed,
+                color: '#EF4444',
+                keys: {
+                    up: 'KeyW',
+                    down: 'KeyS',
+                    left: 'KeyA',
+                    right: 'KeyD'
+                },
+                moving: {
+                    up: false,
+                    down: false,
+                    left: false,
+                    right: false
+                }
+            };
+            
+            const mouse = {
+                x: 300,
+                y: 300,
+                width: 25,
+                height: 25,
+                speed: config.mouseSpeed,
+                color: '#10B981',
+                keys: {
+                    up: 'ArrowUp',
+                    down: 'ArrowDown',
+                    left: 'ArrowLeft',
+                    right: 'ArrowRight'
+                },
+                moving: {
+                    up: false,
+                    down: false,
+                    left: false,
+                    right: false
+                }
+            };
+            
+            // 墙壁数组
+            let walls = [];
+            
+            // 生成随机墙壁
+            function generateWalls() {
+                walls = [];
+                const wallCount = Math.floor((canvas.width * canvas.height) / (config.gridSize * config.gridSize) * config.wallDensity);
+                
+                for (let i = 0; i < wallCount; i++) {
+                    // 随机位置和大小
+                    const wall = {
+                        x: Math.floor(Math.random() * (canvas.width - config.gridSize)),
+                        y: Math.floor(Math.random() * (canvas.height - config.gridSize)),
+                        width: Math.floor(Math.random() * config.gridSize) + config.gridSize,
+                        height: Math.floor(Math.random() * config.gridSize) + config.gridSize
+                    };
+                    
+                    // 确保墙壁不会太靠近玩家起始位置
+                    const catDistance = Math.hypot(wall.x - cat.x, wall.y - cat.y);
+                    const mouseDistance = Math.hypot(wall.x - mouse.x, wall.y - mouse.y);
+                    
+                    if (catDistance > 100 && mouseDistance > 100) {
+                        walls.push(wall);
+                    }
+                }
+            }
+            
+            // 键盘事件监听
+            document.addEventListener('keydown', function(e) {
+                // 猫的控制
+                if (e.code === cat.keys.up) cat.moving.up = true;
+                if (e.code === cat.keys.down) cat.moving.down = true;
+                if (e.code === cat.keys.left) cat.moving.left = true;
+                if (e.code === cat.keys.right) cat.moving.right = true;
+                
+                // 老鼠的控制
+                if (e.code === mouse.keys.up) mouse.moving.up = true;
+                if (e.code === mouse.keys.down) mouse.moving.down = true;
+                if (e.code === mouse.keys.left) mouse.moving.left = true;
+                if (e.code === mouse.keys.right) mouse.moving.right = true;
+            });
+            
+            document.addEventListener('keyup', function(e) {
+                // 猫的控制
+                if (e.code === cat.keys.up) cat.moving.up = false;
+                if (e.code === cat.keys.down) cat.moving.down = false;
+                if (e.code === cat.keys.left) cat.moving.left = false;
+                if (e.code === cat.keys.right) cat.moving.right = false;
+                
+                // 老鼠的控制
+                if (e.code === mouse.keys.up) mouse.moving.up = false;
+                if (e.code === mouse.keys.down) mouse.moving.down = false;
+                if (e.code === mouse.keys.left) mouse.moving.left = false;
+                if (e.code === mouse.keys.right) mouse.moving.right = false;
+            });
+            
+            // 检查碰撞
+            function checkCollision(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+            
+            // 检查与墙壁的碰撞
+            function checkWallCollision(rect) {
+                for (let wall of walls) {
+                    if (checkCollision(rect, wall)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            
+            // 计算在墙壁中的速度
+            function getSpeedInWalls(rect, baseSpeed) {
+                let slowdownFactor = 1;
+                
+                for (let wall of walls) {
+                    if (checkCollision(rect, wall)) {
+                        slowdownFactor = config.wallSlowdown;
+                        break;
+                    }
+                }
+                
+                return baseSpeed * slowdownFactor;
+            }
+            
+            // 更新游戏状态
+            function updateGame(deltaTime) {
+                if (gameState !== 'playing') return;
+                
+                // 更新猫的位置
+                let catSpeed = getSpeedInWalls(cat, cat.speed);
+                if (cat.moving.up) cat.y -= catSpeed;
+                if (cat.moving.down) cat.y += catSpeed;
+                if (cat.moving.left) cat.x -= catSpeed;
+                if (cat.moving.right) cat.x += catSpeed;
+                
+                // 边界检查
+                if (cat.x < 0) cat.x = 0;
+                if (cat.x + cat.width > canvas.width) cat.x = canvas.width - cat.width;
+                if (cat.y < 0) cat.y = 0;
+                if (cat.y + cat.height > canvas.height) cat.y = canvas.height - cat.height;
+                
+                // 更新老鼠的位置
+                let mouseSpeed = getSpeedInWalls(mouse, mouse.speed);
+                if (mouse.moving.up) mouse.y -= mouseSpeed;
+                if (mouse.moving.down) mouse.y += mouseSpeed;
+                if (mouse.moving.left) mouse.x -= mouseSpeed;
+                if (mouse.moving.right) mouse.x += mouseSpeed;
+                
+                // 边界检查
+                if (mouse.x < 0) mouse.x = 0;
+                if (mouse.x + mouse.width > canvas.width) mouse.x = canvas.width - mouse.width;
+                if (mouse.y < 0) mouse.y = 0;
+                if (mouse.y + mouse.height > canvas.height) mouse.y = canvas.height - mouse.height;
+                
+                // 更新游戏时间
+                gameTime += deltaTime / 1000;
+                if (gameTime >= config.gameDuration) {
+                    endGame('老鼠获胜！存活时间到！');
+                    return;
+                }
+                
+                // 更新显示的游戏时间
+                const minutes = Math.floor(gameTime / 60).toString().padStart(2, '0');
+                const seconds = Math.floor(gameTime % 60).toString().padStart(2, '0');
+                gameTimeElement.textContent = `${minutes}:${seconds}`;
+                
+                // 更新位置显示
+                catPositionElement.textContent = `X: ${Math.floor(cat.x)}, Y: ${Math.floor(cat.y)}`;
+                mousePositionElement.textContent = `X: ${Math.floor(mouse.x)}, Y: ${Math.floor(mouse.y)}`;
+                
+                // 检查猫是否抓住了老鼠
+                if (checkCollision(cat, mouse)) {
+                    endGame('猫获胜！抓住了老鼠！');
+                }
+            }
+            
+            // 绘制游戏
+            function drawGame() {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制背景
+                ctx.fillStyle = '#1F2937';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制网格
+                ctx.strokeStyle = '#374151';
+                ctx.lineWidth = 1;
+                
+                for (let x = 0; x < canvas.width; x += config.gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, canvas.height);
+                    ctx.stroke();
+                }
+                
+                for (let y = 0; y < canvas.height; y += config.gridSize) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(canvas.width, y);
+                    ctx.stroke();
+                }
+                
+                // 绘制墙壁
+                ctx.fillStyle = '#4B5563';
+                for (let wall of walls) {
+                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                    
+                    // 墙壁边框
+                    ctx.strokeStyle = '#6B7280';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+                }
+                
+                // 绘制猫
+                ctx.fillStyle = cat.color;
+                ctx.fillRect(cat.x, cat.y, cat.width, cat.height);
+                
+                // 猫的眼睛
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(cat.x + cat.width * 0.25, cat.y + cat.height * 0.25, 5, 5);
+                ctx.fillRect(cat.x + cat.width * 0.65, cat.y + cat.height * 0.25, 5, 5);
+                
+                // 绘制老鼠
+                ctx.fillStyle = mouse.color;
+                ctx.fillRect(mouse.x, mouse.y, mouse.width, mouse.height);
+                
+                // 老鼠的眼睛
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(mouse.x + mouse.width * 0.25, mouse.y + mouse.height * 0.25, 4, 4);
+                ctx.fillRect(mouse.x + mouse.width * 0.65, mouse.y + mouse.height * 0.25, 4, 4);
+                
+                // 绘制游戏时间
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                const minutes = Math.floor(gameTime / 60).toString().padStart(2, '0');
+                const seconds = Math.floor(gameTime % 60).toString().padStart(2, '0');
+                ctx.fillText(`时间: ${minutes}:${seconds}`, canvas.width / 2, 30);
+                
+                // 如果游戏暂停，显示提示
+                if (gameState === 'ready') {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '24px Arial';
+                    ctx.fillText('按开始按钮开始游戏', canvas.width / 2, canvas.height / 2);
+                }
+            }
+            
+            // 游戏循环
+            function gameLoop(timestamp) {
+                if (!lastTime) lastTime = timestamp;
+                const deltaTime = timestamp - lastTime;
+                lastTime = timestamp;
+                
+                updateGame(deltaTime);
+                drawGame();
+                
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // 开始游戏
+            function startGame() {
+                // 重置游戏状态
+                gameState = 'playing';
+                gameTime = 0;
+                startScreen.classList.add('hidden');
+                endScreen.classList.add('hidden');
+                
+                // 随机放置玩家
+                cat.x = canvas.width * 0.25;
+                cat.y = canvas.height * 0.5;
+                mouse.x = canvas.width * 0.75;
+                mouse.y = canvas.height * 0.5;
+                
+                // 重置移动状态
+                for (let key in cat.moving) {
+                    cat.moving[key] = false;
+                }
+                
+                for (let key in mouse.moving) {
+                    mouse.moving[key] = false;
+                }
+                
+                // 生成新的墙壁
+                generateWalls();
+                
+                // 开始游戏循环
+                requestAnimationFrame(gameLoop);
+            }
+            
+            // 结束游戏
+            function endGame(message) {
+                gameState = 'ended';
+                endMessage.textContent = message;
+                endScreen.classList.remove('hidden');
+                endScreen.style.display = 'flex';
+            }
+            
+            // 事件监听
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', startGame);
+            
+            // 初始化显示
+            drawGame();
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '田润锦';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

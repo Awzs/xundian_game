@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>冰火人游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fire: '#FF5252',
+                        ice: '#4FC3F7',
+                        platform: '#607D8B',
+                        obstacle: '#263238',
+                        goal: '#FFEB3B',
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'cursive'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-borders {
+                box-shadow: 0 -4px 0 0 rgba(0, 0, 0, 0.2), 0 4px 0 0 rgba(0, 0, 0, 0.2), -4px 0 0 0 rgba(0, 0, 0, 0.2), 4px 0 0 0 rgba(0, 0, 0, 0.2);
+            }
+            .game-shadow {
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 font-game text-white">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="w-full max-w-4xl bg-gray-800 rounded-xl overflow-hidden game-shadow">
+        <header class="bg-gray-700 p-4 text-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-white mb-2">冰火人合作冒险</h1>
+            <p class="text-gray-300 text-sm">两位玩家合作，克服重重困难，到达终点！</p>
+        </header>
+        
+        <div class="flex flex-col md:flex-row">
+            <div class="w-full md:w-2/3 bg-gray-800 p-4 relative">
+                <div id="game-container" class="relative w-full h-[50vh] md:h-[60vh] bg-gray-900 rounded-lg overflow-hidden pixel-borders">
+                    <!-- 游戏画布将在这里渲染 -->
+                </div>
+                
+                <div class="flex justify-between mt-4 text-sm">
+                    <div class="text-fire">
+                        <i class="fa fa-user mr-1"></i> 火人: WASD 移动
+                    </div>
+                    <div class="text-ice">
+                        <i class="fa fa-user mr-1"></i> 冰人: 方向键移动
+                    </div>
+                </div>
+            </div>
+            
+            <div class="w-full md:w-1/3 bg-gray-700 p-4">
+                <div class="bg-gray-800 rounded-lg p-4 mb-4">
+                    <h2 class="text-lg font-bold mb-2 text-gray-100">游戏说明</h2>
+                    <ul class="text-gray-300 text-sm space-y-2">
+                        <li><i class="fa fa-circle text-xs mr-2 text-fire"></i>火人只能通过红色平台</li>
+                        <li><i class="fa fa-circle text-xs mr-2 text-ice"></i>冰人只能通过蓝色平台</li>
+                        <li><i class="fa fa-exchange text-xs mr-2 text-goal"></i>合作解开机关到达终点</li>
+                        <li><i class="fa fa-ban text-xs mr-2 text-obstacle"></i>避开黑色障碍物</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <h2 class="text-lg font-bold mb-2 text-gray-100">游戏状态</h2>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-gray-300 text-sm">关卡:</span>
+                        <span id="level" class="text-white font-bold">1</span>
+                    </div>
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-gray-300 text-sm">时间:</span>
+                        <span id="timer" class="text-white font-bold">00:00</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300 text-sm">移动次数:</span>
+                        <span id="moves" class="text-white font-bold">0</span>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <button id="start-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                            <i class="fa fa-play mr-2"></i> 开始游戏
+                        </button>
+                        <button id="reset-btn" class="w-full mt-2 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center">
+                            <i class="fa fa-refresh mr-2"></i> 重置游戏
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer class="bg-gray-700 p-4 text-center text-sm text-gray-400">
+            <p>使用HTML5 Canvas和JavaScript制作的冰火人合作游戏</p>
+        </footer>
+    </div>
+
+    <script>
+        // 游戏常量
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 450;
+        const CHARACTER_SIZE = 30;
+        const PLATFORM_THICKNESS = 20;
+        const OBSTACLE_SIZE = 20;
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -10;
+        const MOVEMENT_SPEED = 5;
+
+        // 游戏状态
+        let gameState = {
+            isRunning: false,
+            level: 1,
+            timer: 0,
+            moves: 0,
+            lastTime: 0,
+            platforms: [],
+            obstacles: [],
+            goals: [],
+            fireCharacter: {
+                x: 50,
+                y: 350,
+                width: CHARACTER_SIZE,
+                height: CHARACTER_SIZE,
+                velocityY: 0,
+                isJumping: false,
+                color: '#FF5252',
+                controls: {
+                    up: 87,    // W
+                    left: 65,  // A
+                    right: 68, // D
+                    down: 83   // S
+                }
+            },
+            iceCharacter: {
+                x: 100,
+                y: 350,
+                width: CHARACTER_SIZE,
+                height: CHARACTER_SIZE,
+                velocityY: 0,
+                isJumping: false,
+                color: '#4FC3F7',
+                controls: {
+                    up: 38,    // 上箭头
+                    left: 37,  // 左箭头
+                    right: 39, // 右箭头
+                    down: 40   // 下箭头
+                }
+            }
+        };
+
+        // 创建游戏画布
+        const gameContainer = document.getElementById('game-container');
+        const canvas = document.createElement('canvas');
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+        gameContainer.appendChild(canvas);
+        const ctx = canvas.getContext('2d');
+
+        // 初始化关卡
+        function initLevel(level) {
+            gameState.platforms = [];
+            gameState.obstacles = [];
+            gameState.goals = [];
+            
+            // 基础地面
+            gameState.platforms.push({
+                x: 0,
+                y: GAME_HEIGHT - PLATFORM_THICKNESS,
+                width: GAME_WIDTH,
+                height: PLATFORM_THICKNESS,
+                color: '#607D8B'
+            });
+            
+            if (level === 1) {
+                // 平台
+                gameState.platforms.push(
+                    { x: 100, y: 350, width: 100, height: PLATFORM_THICKNESS, color: '#607D8B' },
+                    { x: 300, y: 300, width: 100, height: PLATFORM_THICKNESS, color: '#FF5252' },
+                    { x: 500, y: 250, width: 100, height: PLATFORM_THICKNESS, color: '#4FC3F7' },
+                    { x: 700, y: 200, width: 100, height: PLATFORM_THICKNESS, color: '#607D8B' }
+                );
+                
+                // 障碍物
+                gameState.obstacles.push(
+                    { x: 250, y: 380, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' },
+                    { x: 450, y: 330, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' },
+                    { x: 650, y: 280, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' }
+                );
+                
+                // 终点
+                gameState.goals.push({
+                    x: 750,
+                    y: 150,
+                    width: 40,
+                    height: 40,
+                    color: '#FFEB3B'
+                });
+            } else if (level === 2) {
+                // 更复杂的关卡设计
+                // 平台
+                gameState.platforms.push(
+                    { x: 150, y: 320, width: 120, height: PLATFORM_THICKNESS, color: '#FF5252' },
+                    { x: 350, y: 280, width: 80, height: PLATFORM_THICKNESS, color: '#4FC3F7' },
+                    { x: 480, y: 240, width: 120, height: PLATFORM_THICKNESS, color: '#607D8B' },
+                    { x: 650, y: 200, width: 80, height: PLATFORM_THICKNESS, color: '#FF5252' },
+                    { x: 200, y: 180, width: 80, height: PLATFORM_THICKNESS, color: '#4FC3F7' }
+                );
+                
+                // 障碍物
+                gameState.obstacles.push(
+                    { x: 250, y: 350, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' },
+                    { x: 400, y: 310, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' },
+                    { x: 550, y: 270, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' },
+                    { x: 700, y: 230, width: OBSTACLE_SIZE, height: OBSTACLE_SIZE, color: '#263238' }
+                );
+                
+                // 终点
+                gameState.goals.push({
+                    x: 250,
+                    y: 130,
+                    width: 40,
+                    height: 40,
+                    color: '#FFEB3B'
+                });
+            }
+            
+            // 重置角色位置
+            gameState.fireCharacter.x = 50;
+            gameState.fireCharacter.y = 350;
+            gameState.fireCharacter.velocityY = 0;
+            gameState.fireCharacter.isJumping = false;
+            
+            gameState.iceCharacter.x = 100;
+            gameState.iceCharacter.y = 350;
+            gameState.iceCharacter.velocityY = 0;
+            gameState.iceCharacter.isJumping = false;
+        }
+
+        // 绘制游戏元素
+        function drawGame() {
+            // 清空画布
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // 绘制背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, GAME_HEIGHT);
+            gradient.addColorStop(0, '#1A237E');
+            gradient.addColorStop(1, '#0D47A1');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // 绘制平台
+            gameState.platforms.forEach(platform => {
+                ctx.fillStyle = platform.color;
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // 平台边框
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            });
+            
+            // 绘制障碍物
+            gameState.obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // 障碍物边框
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+            
+            // 绘制终点
+            gameState.goals.forEach(goal => {
+                ctx.fillStyle = goal.color;
+                ctx.beginPath();
+                ctx.arc(goal.x + goal.width/2, goal.y + goal.height/2, goal.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 终点光晕
+                ctx.strokeStyle = 'rgba(255, 235, 59, 0.7)';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            });
+            
+            // 绘制火人
+            ctx.fillStyle = gameState.fireCharacter.color;
+            ctx.fillRect(
+                gameState.fireCharacter.x, 
+                gameState.fireCharacter.y, 
+                gameState.fireCharacter.width, 
+                gameState.fireCharacter.height
+            );
+            
+            // 火人眼睛
+            ctx.fillStyle = 'white';
+            ctx.fillRect(
+                gameState.fireCharacter.x + gameState.fireCharacter.width/4, 
+                gameState.fireCharacter.y + gameState.fireCharacter.height/4, 
+                gameState.fireCharacter.width/6, 
+                gameState.fireCharacter.height/6
+            );
+            ctx.fillRect(
+                gameState.fireCharacter.x + gameState.fireCharacter.width*2/3 - gameState.fireCharacter.width/6, 
+                gameState.fireCharacter.y + gameState.fireCharacter.height/4, 
+                gameState.fireCharacter.width/6, 
+                gameState.fireCharacter.height/6
+            );
+            
+            // 绘制冰人
+            ctx.fillStyle = gameState.iceCharacter.color;
+            ctx.fillRect(
+                gameState.iceCharacter.x, 
+                gameState.iceCharacter.y, 
+                gameState.iceCharacter.width, 
+                gameState.iceCharacter.height
+            );
+            
+            // 冰人眼睛
+            ctx.fillStyle = 'white';
+            ctx.fillRect(
+                gameState.iceCharacter.x + gameState.iceCharacter.width/4, 
+                gameState.iceCharacter.y + gameState.iceCharacter.height/4, 
+                gameState.iceCharacter.width/6, 
+                gameState.iceCharacter.height/6
+            );
+            ctx.fillRect(
+                gameState.iceCharacter.x + gameState.iceCharacter.width*2/3 - gameState.iceCharacter.width/6, 
+                gameState.iceCharacter.y + gameState.iceCharacter.height/4, 
+                gameState.iceCharacter.width/6, 
+                gameState.iceCharacter.height/6
+            );
+            
+            // 如果游戏未运行，显示开始提示
+            if (!gameState.isRunning) {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '24px "Press Start 2P", cursive';
+                ctx.textAlign = 'center';
+                ctx.fillText('按开始按钮开始游戏', GAME_WIDTH/2, GAME_HEIGHT/2 - 20);
+                
+                ctx.font = '14px "Press Start 2P", cursive';
+                ctx.fillText('两位玩家合作到达终点', GAME_WIDTH/2, GAME_HEIGHT/2 + 20);
+            }
+        }
+
+        // 检测碰撞
+        function checkCollision(character, object) {
+            return (
+                character.x < object.x + object.width &&
+                character.x + character.width > object.x &&
+                character.y < object.y + object.height &&
+                character.y + character.height > object.y
+            );
+        }
+
+        // 更新游戏状态
+        function updateGame(deltaTime) {
+            if (!gameState.isRunning) return;
+            
+            // 更新计时器
+            gameState.timer += deltaTime;
+            document.getElementById('timer').textContent = formatTime(gameState.timer);
+            
+            // 更新火人
+            updateCharacter(gameState.fireCharacter);
+            
+            // 更新冰人
+            updateCharacter(gameState.iceCharacter);
+            
+            // 检测胜利条件
+            let fireAtGoal = false;
+            let iceAtGoal = false;
+            
+            gameState.goals.forEach(goal => {
+                if (checkCollision(gameState.fireCharacter, goal)) {
+                    fireAtGoal = true;
+                }
+                if (checkCollision(gameState.iceCharacter, goal)) {
+                    iceAtGoal = true;
+                }
+            });
+            
+            // 如果两个角色都到达终点，进入下一关
+            if (fireAtGoal && iceAtGoal) {
+                gameState.level++;
+                document.getElementById('level').textContent = gameState.level;
+                
+                // 如果没有更多关卡，重置到第一关
+                if (gameState.level > 2) {
+                    gameState.level = 1;
+                    alert('恭喜！你通关了所有关卡！');
+                } else {
+                    alert(`恭喜！进入第 ${gameState.level} 关！`);
+                }
+                
+                initLevel(gameState.level);
+            }
+        }
+
+        // 更新角色状态
+        function updateCharacter(character) {
+            // 应用重力
+            character.velocityY += GRAVITY;
+            character.y += character.velocityY;
+            
+            // 检测与平台的碰撞
+            let isOnGround = false;
+            gameState.platforms.forEach(platform => {
+                // 检查角色是否在平台上方并下落
+                if (
+                    character.y + character.height <= platform.y &&
+                    character.y + character.height + character.velocityY >= platform.y &&
+                    character.x + character.width > platform.x &&
+                    character.x < platform.x + platform.width
+                ) {
+                    // 火人只能站在红色或灰色平台上
+                    // 冰人只能站在蓝色或灰色平台上
+                    if (
+                        (character === gameState.fireCharacter && (platform.color === '#FF5252' || platform.color === '#607D8B')) ||
+                        (character === gameState.iceCharacter && (platform.color === '#4FC3F7' || platform.color === '#607D8B'))
+                    ) {
+                        character.y = platform.y - character.height;
+                        character.velocityY = 0;
+                        character.isJumping = false;
+                        isOnGround = true;
+                    }
+                }
+            });
+            
+            // 如果不在地面上，标记为跳跃状态
+            if (!isOnGround) {
+                character.isJumping = true;
+            }
+            
+            // 检测与障碍物的碰撞
+            gameState.obstacles.forEach(obstacle => {
+                if (checkCollision(character, obstacle)) {
+                    // 重置角色位置
+                    character.x = character === gameState.fireCharacter ? 50 : 100;
+                    character.y = 350;
+                    character.velocityY = 0;
+                    character.isJumping = false;
+                }
+            });
+            
+            // 限制角色在画布内
+            if (character.x < 0) {
+                character.x = 0;
+            } else if (character.x + character.width > GAME_WIDTH) {
+                character.x = GAME_WIDTH - character.width;
+            }
+            
+            if (character.y < 0) {
+                character.y = 0;
+                character.velocityY = 0;
+            } else if (character.y + character.height > GAME_HEIGHT) {
+                // 如果掉出画布，重置位置
+                character.x = character === gameState.fireCharacter ? 50 : 100;
+                character.y = 350;
+                character.velocityY = 0;
+                character.isJumping = false;
+            }
+        }
+
+        // 格式化时间
+        function formatTime(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 游戏循环
+        function gameLoop(timestamp) {
+            if (!gameState.lastTime) {
+                gameState.lastTime = timestamp;
+            }
+            
+            const deltaTime = timestamp - gameState.lastTime;
+            gameState.lastTime = timestamp;
+            
+            updateGame(deltaTime);
+            drawGame();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 处理键盘输入
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            if (!gameState.isRunning) return;
+            
+            keys[e.keyCode] = true;
+            
+            // 处理跳跃
+            if (e.keyCode === gameState.fireCharacter.controls.up && !gameState.fireCharacter.isJumping) {
+                gameState.fireCharacter.velocityY = JUMP_FORCE;
+                gameState.fireCharacter.isJumping = true;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+            
+            if (e.keyCode === gameState.iceCharacter.controls.up && !gameState.iceCharacter.isJumping) {
+                gameState.iceCharacter.velocityY = JUMP_FORCE;
+                gameState.iceCharacter.isJumping = true;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+        });
+        
+        window.addEventListener('keyup', e => {
+            keys[e.keyCode] = false;
+        });
+
+        // 移动角色
+        function moveCharacters() {
+            if (!gameState.isRunning) return;
+            
+            // 火人移动
+            if (keys[gameState.fireCharacter.controls.left]) {
+                gameState.fireCharacter.x -= MOVEMENT_SPEED;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+            if (keys[gameState.fireCharacter.controls.right]) {
+                gameState.fireCharacter.x += MOVEMENT_SPEED;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+            
+            // 冰人移动
+            if (keys[gameState.iceCharacter.controls.left]) {
+                gameState.iceCharacter.x -= MOVEMENT_SPEED;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+            if (keys[gameState.iceCharacter.controls.right]) {
+                gameState.iceCharacter.x += MOVEMENT_SPEED;
+                gameState.moves++;
+                document.getElementById('moves').textContent = gameState.moves;
+            }
+            
+            requestAnimationFrame(moveCharacters);
+        }
+
+        // 初始化游戏
+        function initGame() {
+            initLevel(gameState.level);
+            drawGame();
+            moveCharacters();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 开始游戏
+        document.getElementById('start-btn').addEventListener('click', () => {
+            gameState.isRunning = true;
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('start-btn').classList.add('opacity-50', 'cursor-not-allowed');
+        });
+
+        // 重置游戏
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            gameState.isRunning = false;
+            gameState.level = 1;
+            gameState.timer = 0;
+            gameState.moves = 0;
+            
+            document.getElementById('level').textContent = gameState.level;
+            document.getElementById('timer').textContent = '00:00';
+            document.getElementById('moves').textContent = '0';
+            
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('start-btn').classList.remove('opacity-50', 'cursor-not-allowed');
+            
+            initLevel(gameState.level);
+        });
+
+        // 响应式调整
+        function resizeGame() {
+            const container = gameContainer.getBoundingClientRect();
+            const scale = Math.min(container.width / GAME_WIDTH, container.height / GAME_HEIGHT);
+            
+            canvas.style.width = `${GAME_WIDTH * scale}px`;
+            canvas.style.height = `${GAME_HEIGHT * scale}px`;
+        }
+
+        window.addEventListener('resize', resizeGame);
+        resizeGame();
+
+        // 启动游戏
+        initGame();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '马绮遥';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

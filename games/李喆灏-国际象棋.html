@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素国际象棋</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4A6FA5',
+                        secondary: '#E07A5F',
+                        dark: '#3D405B',
+                        light: '#F4F1DE',
+                        accent: '#81B29A',
+                    },
+                    fontFamily: {
+                        pixel: ['"Press Start 2P"', 'cursive', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixel-borders {
+                box-shadow: 0 -4px 0 4px rgba(0,0,0,0.2), 0 4px 0 4px rgba(0,0,0,0.2), -4px 0 0 4px rgba(0,0,0,0.2), 4px 0 0 4px rgba(0,0,0,0.2);
+            }
+            .piece-shadow {
+                filter: drop-shadow(2px 4px 3px rgba(0,0,0,0.3));
+            }
+            .pixel-button {
+                position: relative;
+                background: theme('colors.primary');
+                color: white;
+                border: none;
+                padding: 0.5rem 1rem;
+                font-family: theme('fontFamily.pixel');
+                font-size: 0.8rem;
+                cursor: pointer;
+                box-shadow: 0 4px 0 0 rgba(0,0,0,0.2);
+                transition: all 0.1s ease;
+            }
+            .pixel-button:hover {
+                transform: translateY(2px);
+                box-shadow: 0 2px 0 0 rgba(0,0,0,0.2);
+            }
+            .pixel-button:active {
+                transform: translateY(4px);
+                box-shadow: 0 0 0 0 rgba(0,0,0,0.2);
+            }
+            .chess-board {
+                display: grid;
+                grid-template-columns: repeat(8, 1fr);
+                grid-template-rows: repeat(8, 1fr);
+                aspect-ratio: 1/1;
+                max-width: 500px;
+                margin: 0 auto;
+            }
+            .chess-square {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+            .chess-piece {
+                width: 80%;
+                height: 80%;
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                position: relative;
+                z-index: 10;
+                transition: transform 0.2s ease, filter 0.2s ease;
+                will-change: transform;
+            }
+            .chess-piece:hover {
+                filter: brightness(1.1);
+            }
+            .chess-piece:active {
+                transform: scale(1.05);
+            }
+            .valid-move {
+                position: absolute;
+                width: 25%;
+                height: 25%;
+                border-radius: 50%;
+                background-color: rgba(129, 178, 154, 0.6);
+                z-index: 5;
+            }
+            .capturable {
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                border-radius: 50%;
+                background-color: rgba(224, 122, 95, 0.3);
+                z-index: 5;
+            }
+            .check {
+                background-color: rgba(224, 122, 95, 0.5) !important;
+            }
+            .selected {
+                background-color: rgba(129, 178, 154, 0.5) !important;
+            }
+            .move-animation {
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+            .promotion-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 100;
+            }
+            .promotion-options {
+                background-color: theme('colors.light');
+                padding: 2rem;
+                border-radius: 0.5rem;
+                display: flex;
+                gap: 1rem;
+                flex-direction: column;
+                text-align: center;
+                box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            }
+            .promotion-piece {
+                width: 60px;
+                height: 60px;
+                background-size: contain;
+                background-repeat: no-repeat;
+                background-position: center;
+                cursor: pointer;
+                transition: transform 0.2s ease;
+            }
+            .promotion-piece:hover {
+                transform: scale(1.1);
+            }
+            .promotion-row {
+                display: flex;
+                justify-content: center;
+                gap: 1rem;
+            }
+            .game-over-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 100;
+            }
+            .game-over-content {
+                background-color: theme('colors.light');
+                padding: 2rem;
+                border-radius: 0.5rem;
+                text-align: center;
+                box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            }
+            .timer-display {
+                font-family: theme('fontFamily.pixel');
+                font-size: 1.2rem;
+                padding: 0.5rem 1rem;
+                background-color: theme('colors.dark');
+                color: white;
+                border-radius: 0.3rem;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                margin: 0.5rem 0;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-dark to-primary min-h-screen font-sans text-dark flex flex-col items-center justify-center p-4">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="w-full max-w-4xl bg-light rounded-lg shadow-xl overflow-hidden pixel-borders">
+        <!-- 游戏标题 -->
+        <header class="bg-primary text-white text-center py-4">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-pixel tracking-wider">像素国际象棋</h1>
+        </header>
+        
+        <!-- 游戏状态 -->
+        <div class="flex flex-col md:flex-row justify-between items-center p-4 bg-dark text-white">
+            <div class="flex items-center gap-4">
+                <div class="flex flex-col items-center">
+                    <div class="w-10 h-10 rounded-full bg-light flex items-center justify-center mb-1">
+                        <div class="w-8 h-8 rounded-full bg-black"></div>
+                    </div>
+                    <span class="font-medium">黑方</span>
+                </div>
+                <div class="timer-display" id="black-timer">10:00</div>
+            </div>
+            
+            <div class="game-status font-medium py-2 px-4 rounded bg-accent text-dark" id="game-status">
+                游戏开始 - 白方回合
+            </div>
+            
+            <div class="flex items-center gap-4">
+                <div class="timer-display" id="white-timer">10:00</div>
+                <div class="flex flex-col items-center">
+                    <div class="w-10 h-10 rounded-full bg-light flex items-center justify-center mb-1">
+                        <div class="w-8 h-8 rounded-full bg-white border border-gray-300"></div>
+                    </div>
+                    <span class="font-medium">白方</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏控制区 -->
+        <div class="flex flex-wrap justify-center gap-3 p-4 bg-primary/20">
+            <button class="pixel-button" id="new-game">
+                <i class="fa fa-refresh mr-2"></i>新游戏
+            </button>
+            <button class="pixel-button" id="undo-move">
+                <i class="fa fa-undo mr-2"></i>悔棋
+            </button>
+            <button class="pixel-button" id="toggle-sound">
+                <i class="fa fa-volume-up mr-2"></i>声音 <span id="sound-status">开</span>
+            </button>
+            <button class="pixel-button" id="toggle-hints">
+                <i class="fa fa-lightbulb-o mr-2"></i>提示 <span id="hints-status">开</span>
+            </button>
+        </div>
+        
+        <!-- 棋盘 -->
+        <div class="p-4 bg-light">
+            <div class="chess-board shadow-lg" id="chess-board"></div>
+        </div>
+        
+        <!-- 游戏信息 -->
+        <div class="p-4 bg-dark text-light">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <i class="fa fa-info-circle mr-2"></i>
+                    <span class="text-sm">移动历史</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="text-xs bg-primary/50 hover:bg-primary/70 px-2 py-1 rounded" id="scroll-history-up">
+                        <i class="fa fa-chevron-up"></i>
+                    </button>
+                    <button class="text-xs bg-primary/50 hover:bg-primary/70 px-2 py-1 rounded" id="scroll-history-down">
+                        <i class="fa fa-chevron-down"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2 bg-dark/50 rounded h-24 overflow-y-auto p-2 text-xs" id="move-history">
+                <!-- 移动历史将在这里显示 -->
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="bg-primary text-white text-center py-2 text-xs">
+            <p>像素国际象棋 © 2025 | 使用键盘方向键移动，空格键选择</p>
+        </footer>
+    </div>
+    
+    <!-- 升级对话框 -->
+    <div class="promotion-modal hidden" id="promotion-modal">
+        <div class="promotion-options">
+            <h3 class="font-pixel mb-3 text-lg">选择升级棋子</h3>
+            <div class="promotion-row" id="promotion-options"></div>
+        </div>
+    </div>
+    
+    <!-- 游戏结束对话框 -->
+    <div class="game-over-modal hidden" id="game-over-modal">
+        <div class="game-over-content">
+            <h2 class="font-pixel text-xl mb-3" id="game-over-message"></h2>
+            <button class="pixel-button mt-3" id="play-again">
+                <i class="fa fa-play mr-2"></i>再来一局
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 游戏配置
+            const config = {
+                sounds: {
+                    move: new Audio('data:audio/wav;base64,UklGRqQFAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAACAP///wCAAAC\n
+\n<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李喆灏';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>

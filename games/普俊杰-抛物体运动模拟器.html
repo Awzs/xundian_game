@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>抛物体运动模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#F97316',
+                        accent: '#10B981',
+                        dark: '#1E293B',
+                        light: '#F8FAFC'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .glass {
+                backdrop-filter: blur(10px);
+                background-color: rgba(255, 255, 255, 0.1);
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            }
+            .animate-float {
+                animation: float 3s ease-in-out infinite;
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+                100% { transform: translateY(0px); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-900 to-slate-800 text-light min-h-screen flex flex-col">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 导航栏 -->
+    <nav class="glass border-b border-slate-700 sticky top-0 z-50 transition-all duration-300">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-rocket text-primary text-2xl animate-float"></i>
+                <h1 class="text-xl md:text-2xl font-bold text-shadow">抛物体运动模拟器</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-slate-700 transition-colors">
+                    <i class="fa fa-moon-o text-xl"></i>
+                </button>
+                <button id="info-button" class="p-2 rounded-full hover:bg-slate-700 transition-colors">
+                    <i class="fa fa-info-circle text-xl"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容区 -->
+    <main class="flex-grow container mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+        <!-- 控制面板 -->
+        <div class="lg:w-1/4 bg-slate-800/50 rounded-xl p-6 shadow-xl border border-slate-700 transform transition-all duration-300 hover:shadow-2xl">
+            <h2 class="text-xl font-bold mb-4 border-b border-slate-700 pb-2 flex items-center">
+                <i class="fa fa-sliders text-primary mr-2"></i>控制面板
+            </h2>
+            
+            <div class="space-y-6">
+                <!-- 初速度控制 -->
+                <div>
+                    <label for="velocity" class="block text-sm font-medium text-slate-300 mb-1">初速度 (m/s)</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="velocity" min="5" max="100" value="30" step="1" 
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary">
+                        <span id="velocity-value" class="text-sm font-semibold text-primary min-w-[40px] text-center">30</span>
+                    </div>
+                </div>
+                
+                <!-- 角度控制 -->
+                <div>
+                    <label for="angle" class="block text-sm font-medium text-slate-300 mb-1">发射角度 (度)</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="angle" min="10" max="80" value="45" step="1" 
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary">
+                        <span id="angle-value" class="text-sm font-semibold text-primary min-w-[40px] text-center">45</span>
+                    </div>
+                </div>
+                
+                <!-- 重力加速度控制 -->
+                <div>
+                    <label for="gravity" class="block text-sm font-medium text-slate-300 mb-1">重力加速度 (m/s²)</label>
+                    <div class="flex items-center space-x-3">
+                        <input type="range" id="gravity" min="1" max="20" value="9.8" step="0.1" 
+                            class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-primary">
+                        <span id="gravity-value" class="text-sm font-semibold text-primary min-w-[40px] text-center">9.8</span>
+                    </div>
+                </div>
+                
+                <!-- 模拟控制按钮 -->
+                <div class="flex space-x-3 pt-2">
+                    <button id="start-btn" class="flex-1 bg-primary hover:bg-primary/80 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center">
+                        <i class="fa fa-play mr-2"></i>开始
+                    </button>
+                    <button id="reset-btn" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-300 flex items-center justify-center">
+                        <i class="fa fa-refresh mr-2"></i>重置
+                    </button>
+                </div>
+                
+                <!-- 物理量显示 -->
+                <div class="bg-slate-900/50 rounded-lg p-4 border border-slate-700">
+                    <h3 class="text-md font-semibold mb-3 text-slate-300 border-b border-slate-700 pb-1">物理量</h3>
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                            <span class="text-slate-400">飞行时间:</span>
+                            <span id="time" class="text-accent font-medium block">0.00 s</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">最大高度:</span>
+                            <span id="max-height" class="text-accent font-medium block">0.00 m</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">水平射程:</span>
+                            <span id="range" class="text-accent font-medium block">0.00 m</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400">最高点时间:</span>
+                            <span id="time-to-max" class="text-accent font-medium block">0.00 s</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 模拟区域 -->
+        <div class="lg:w-3/4 flex flex-col gap-6">
+            <!-- 轨迹方程显示 -->
+            <div class="bg-slate-800/50 rounded-xl p-4 shadow-lg border border-slate-700">
+                <h2 class="text-lg font-bold mb-2 flex items-center">
+                    <i class="fa fa-area-chart text-primary mr-2"></i>轨迹方程
+                </h2>
+                <div id="equation" class="text-accent font-medium text-lg">
+                    y = 0
+                </div>
+            </div>
+            
+            <!-- 模拟画布 -->
+            <div class="relative bg-slate-900/50 rounded-xl shadow-xl border border-slate-700 overflow-hidden flex-grow min-h-[500px]">
+                <canvas id="simulation-canvas" class="w-full h-full"></canvas>
+                
+                <!-- 坐标系网格 -->
+                <div class="absolute inset-0 pointer-events-none grid grid-cols-10 grid-rows-10">
+                    <div class="col-span-full row-span-full border-t border-l border-slate-700/30"></div>
+                    <div class="col-span-full row-span-full grid grid-cols-10 grid-rows-10">
+                        <div class="col-span-full row-span-full border border-slate-700/10"></div>
+                    </div>
+                </div>
+                
+                <!-- 坐标原点标记 -->
+                <div class="absolute bottom-0 left-0 w-8 h-8 flex items-center justify-center">
+                    <div class="w-2 h-2 bg-primary rounded-full"></div>
+                    <div class="text-xs text-slate-400 -translate-y-4 translate-x-4">O</div>
+                </div>
+                
+                <!-- 坐标轴标记 -->
+                <div class="absolute bottom-0 left-0 w-full h-full pointer-events-none">
+                    <!-- X轴 -->
+                    <div class="absolute bottom-0 left-0 w-full h-px bg-slate-500/50"></div>
+                    <div class="absolute bottom-0 right-0 text-xs text-slate-400 translate-y-4">x (m)</div>
+                    
+                    <!-- Y轴 -->
+                    <div class="absolute bottom-0 left-0 w-px h-full bg-slate-500/50"></div>
+                    <div class="absolute top-0 left-0 text-xs text-slate-400 -translate-x-4 -rotate-90 origin-bottom-left">y (m)</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-slate-900/80 border-t border-slate-800 py-4">
+        <div class="container mx-auto px-4 text-center text-slate-400 text-sm">
+            <p>© 2025 抛物体运动模拟器 | 由 <i class="fa fa-code text-primary"></i> 精心打造</p>
+        </div>
+    </footer>
+
+    <!-- 信息模态框 -->
+    <div id="info-modal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-slate-800 rounded-xl p-6 max-w-md w-full mx-4 border border-slate-700 shadow-2xl transform transition-all duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-light">关于模拟器</h3>
+                <button id="close-modal" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fa fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="text-slate-300 space-y-3">
+                <p>这是一个基于物理原理的抛物体运动模拟器，可以模拟斜抛运动的轨迹。</p>
+                <p>你可以通过控制面板调整初速度、发射角度和重力加速度，观察不同参数下的运动轨迹变化。</p>
+                <h4 class="font-semibold text-primary mt-4">物理公式</h4>
+                <p>轨迹方程: y = x·tan(θ) - (g·x²)/(2·v₀²·cos²(θ))</p>
+                <p>飞行时间: t = 2·v₀·sin(θ)/g</p>
+                <p>最大高度: h = (v₀·sin(θ))²/(2·g)</p>
+                <p>水平射程: R = v₀²·sin(2θ)/g</p>
+            </div>
+            <div class="mt-6 text-center">
+                <button id="got-it" class="bg-primary hover:bg-primary/80 text-white font-medium py-2 px-6 rounded-lg transition-all duration-300">
+                    了解了
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM 元素
+        const canvas = document.getElementById('simulation-canvas');
+        const ctx = canvas.getContext('2d');
+        const velocitySlider = document.getElementById('velocity');
+        const velocityValue = document.getElementById('velocity-value');
+        const angleSlider = document.getElementById('angle');
+        const angleValue = document.getElementById('angle-value');
+        const gravitySlider = document.getElementById('gravity');
+        const gravityValue = document.getElementById('gravity-value');
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const equationDisplay = document.getElementById('equation');
+        const timeDisplay = document.getElementById('time');
+        const maxHeightDisplay = document.getElementById('max-height');
+        const rangeDisplay = document.getElementById('range');
+        const timeToMaxDisplay = document.getElementById('time-to-max');
+        const infoButton = document.getElementById('info-button');
+        const infoModal = document.getElementById('info-modal');
+        const closeModal = document.getElementById('close-modal');
+        const gotIt = document.getElementById('got-it');
+        const themeToggle = document.getElementById('theme-toggle');
+        
+        // 模拟参数
+        let simulationRunning = false;
+        let animationId = null;
+        let startTime = null;
+        let currentTime = 0;
+        let scale = 1;
+        let offsetX = 0;
+        let offsetY = 0;
+        let particles = [];
+        
+        // 物理参数
+        let velocity = parseFloat(velocitySlider.value);
+        let angle = parseFloat(angleSlider.value);
+        let gravity = parseFloat(gravitySlider.value);
+        
+        // 物体状态
+        let object = {
+            x: 0,
+            y: 0,
+            radius: 10,
+            color: '#3B82F6',
+            trail: []
+        };
+        
+        // 计算物理量
+        function calculatePhysics() {
+            const radianAngle = angle * Math.PI / 180;
+            const timeOfFlight = (2 * velocity * Math.sin(radianAngle)) / gravity;
+            const maxHeight = (velocity * Math.sin(radianAngle)) ** 2 / (2 * gravity);
+            const horizontalRange = (velocity ** 2 * Math.sin(2 * radianAngle)) / gravity;
+            const timeToMaxHeight = (velocity * Math.sin(radianAngle)) / gravity;
+            
+            return {
+                timeOfFlight,
+                maxHeight,
+                horizontalRange,
+                timeToMaxHeight
+            };
+        }
+        
+        // 更新轨迹方程显示
+        function updateEquationDisplay() {
+            const radianAngle = angle * Math.PI / 180;
+            const tanTheta = Math.tan(radianAngle).toFixed(4);
+            const cosTheta = Math.cos(radianAngle);
+            const denominator = 2 * velocity ** 2 * cosTheta ** 2;
+            const gOverDenominator = (gravity / denominator).toFixed(6);
+            
+            equationDisplay.textContent = `y = ${tanTheta}x - ${gOverDenominator}x²`;
+        }
+        
+        // 更新物理量显示
+        function updatePhysicsDisplay() {
+            const { timeOfFlight, maxHeight, horizontalRange, timeToMaxHeight } = calculatePhysics();
+            
+            timeDisplay.textContent = timeOfFlight.toFixed(2) + ' s';
+            maxHeightDisplay.textContent = maxHeight.toFixed(2) + ' m';
+            rangeDisplay.textContent = horizontalRange.toFixed(2) + ' m';
+            timeToMaxDisplay.textContent = timeToMaxHeight.toFixed(2) + ' s';
+        }
+        
+        // 调整画布大小
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            
+            // 设置坐标系缩放和偏移
+            const { horizontalRange, maxHeight } = calculatePhysics();
+            const maxDimension = Math.max(horizontalRange * 1.1, maxHeight * 1.1);
+            scale = Math.min(canvas.width / maxDimension, canvas.height / maxDimension);
+            offsetX = 50; // 原点偏移
+            offsetY = canvas.height - 50; // 原点偏移
+            
+            // 如果正在运行，重新绘制
+            if (simulationRunning) {
+                draw();
+            }
+        }
+        
+        // 将物理坐标转换为画布坐标
+        function toCanvasCoordinates(x, y) {
+            return {
+                x: x * scale + offsetX,
+                y: offsetY - y * scale
+            };
+        }
+        
+        // 绘制轨迹
+        function drawTrail() {
+            if (object.trail.length < 2) return;
+            
+            ctx.beginPath();
+            const startPoint = toCanvasCoordinates(object.trail[0].x, object.trail[0].y);
+            ctx.moveTo(startPoint.x, startPoint.y);
+            
+            for (let i = 1; i < object.trail.length; i++) {
+                const point = toCanvasCoordinates(object.trail[i].x, object.trail[i].y);
+                ctx.lineTo(point.x, point.y);
+            }
+            
+            ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
+        // 绘制物体
+        function drawObject() {
+            const { x, y } = toCanvasCoordinates(object.x, object.y);
+            
+            ctx.beginPath();
+            ctx.arc(x, y, object.radius, 0, Math.PI * 2);
+            ctx.fillStyle = object.color;
+            ctx.fill();
+            
+            // 绘制速度向量
+            if (simulationRunning) {
+                const radianAngle = angle * Math.PI / 180;
+                const vx = velocity * Math.cos(radianAngle);
+                const vy = -velocity * Math.sin(radianAngle) + gravity * currentTime;
+                
+                // 缩放向量以便在画布上可见
+                const vectorScale = 0.5;
+                const vectorEndX = x + vx * vectorScale;
+                const vectorEndY = y + vy * vectorScale;
+                
+                // 绘制速度向量
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(vectorEndX, vectorEndY);
+                ctx.strokeStyle = '#F97316';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // 绘制箭头
+                drawArrowhead(vectorEndX, vectorEndY, vx, vy);
+            }
+        }
+        
+        // 绘制箭头
+        function drawArrowhead(x, y, dx, dy) {
+            const angle = Math.atan2(dy, dx);
+            const arrowSize = 8;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(angle - Math.PI / 6),
+                y - arrowSize * Math.sin(angle - Math.PI / 6)
+            );
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(angle + Math.PI / 6),
+                y - arrowSize * Math.sin(angle + Math.PI / 6)
+            );
+            ctx.strokeStyle = '#F97316';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
+        // 绘制爆炸特效
+        function drawExplosion(x, y) {
+            const canvasCoords = toCanvasCoordinates(x, y);
+            
+            // 创建爆炸粒子
+            if (particles.length === 0) {
+                for (let i = 0; i < 50; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 3 + Math.random() * 5;
+                    particles.push({
+                        x: canvasCoords.x,
+                        y: canvasCoords.y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        radius: 2 + Math.random() * 3,
+                        color: `hsl(${Math.random() * 60}, 100%, 50%)`,
+                        alpha: 1,
+                        lifetime: 60 + Math.random() * 60
+                    });
+                }
+            }
+            
+            // 绘制粒子
+            for (let i = 0; i < particles.length; i++) {
+                const p = particles[i];
+                
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                
+                // 创建渐变
+                const gradient = ctx.createRadialGradient(
+                    p.x, p.y, 0,
+                    p.x, p.y, p.radius
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${p.alpha})`);
+                gradient.addColorStop(0.5, `rgba(${parseInt(p.color.substr(4, 2), 16)}, ${parseInt(p.color.substr(7, 2), 16)}, ${parseInt(p.color.substr(10, 2), 16)}, ${p.alpha})`);
+                gradient.addColorStop(1, `rgba(${parseInt(p.color.substr(4, 2), 16)}, ${parseInt(p.color.substr(7, 2), 16)}, ${parseInt(p.color.substr(10, 2), 16)}, 0)`);
+                
+                ctx.fillStyle = gradient;
+                ctx.fill();
+                
+                // 更新粒子位置和属性
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1; // 重力
+                p.lifetime--;
+                p.alpha = p.lifetime / 120;
+                
+                // 移除已消失的粒子
+                if (p.lifetime <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+        
+        // 绘制坐标系刻度
+        function drawGrid() {
+            const { horizontalRange, maxHeight } = calculatePhysics();
+            
+            // 计算合适的刻度间隔
+            const xStep = Math.max(10, Math.ceil(horizontalRange / 10));
+            const yStep = Math.max(10, Math.ceil(maxHeight / 10));
+            
+            // 绘制X轴刻度
+            for (let x = 0; x <= horizontalRange; x += xStep) {
+                const canvasX = x * scale + offsetX;
+                ctx.beginPath();
+                ctx.moveTo(canvasX, offsetY - 5);
+                ctx.lineTo(canvasX, offsetY + 5);
+                ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // 绘制刻度值
+                ctx.fillStyle = 'rgba(156, 163, 175, 0.7)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(x.toFixed(0), canvasX, offsetY + 15);
+            }
+            
+            // 绘制Y轴刻度
+            for (let y = 0; y <= maxHeight; y += yStep) {
+                const canvasY = offsetY - y * scale;
+                ctx.beginPath();
+                ctx.moveTo(offsetX - 5, canvasY);
+                ctx.lineTo(offsetX + 5, canvasY);
+                ctx.strokeStyle = 'rgba(156, 163, 175, 0.5)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // 绘制刻度值
+                ctx.fillStyle = 'rgba(156, 163, 175, 0.7)';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText(y.toFixed(0), offsetX - 10, canvasY + 4);
+            }
+        }
+        
+        // 绘制函数
+        function draw(timestamp) {
+            // 清除画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制网格和刻度
+            drawGrid();
+            
+            // 如果模拟正在运行
+            if (simulationRunning) {
+                if (!startTime) startTime = timestamp;
+                currentTime = (timestamp - startTime) / 1000;
+                
+                // 计算物体位置
+                const radianAngle = angle * Math.PI / 180;
+                object.x = velocity * Math.cos(radianAngle) * currentTime;
+                object.y = velocity * Math.sin(radianAngle) * currentTime - 0.5 * gravity * currentTime ** 2;
+                
+                // 记录轨迹
+                object.trail.push({ x: object.x, y: object.y });
+                
+                // 限制轨迹点数量
+                if (object.trail.length > 500) {
+                    object.trail.shift();
+                }
+                
+                // 绘制轨迹和物体
+                drawTrail();
+                drawObject();
+                
+                // 检查是否落地
+                const { timeOfFlight } = calculatePhysics();
+                if (currentTime >= timeOfFlight) {
+                    simulationRunning = false;
+                    drawExplosion(object.x, object.y);
+                } else {
+                    animationId = requestAnimationFrame(draw);
+                }
+            } else {
+                // 绘制静止状态
+                drawTrail();
+                drawObject();
+                
+                // 绘制爆炸特效（如果有）
+                if (particles.length > 0) {
+                    drawExplosion(object.x, object.y);
+                    animationId = requestAnimationFrame(draw);
+                }
+            }
+        }
+        
+        // 开始模拟
+        function startSimulation() {
+            if (simulationRunning) return;
+            
+            // 重置状态
+            resetSimulation(false);
+            
+            // 更新方程和物理量显示
+            updateEquationDisplay();
+            updatePhysicsDisplay();
+            
+            // 开始模拟
+            simulationRunning = true;
+            startTime = null;
+            currentTime = 0;
+            startBtn.innerHTML = '<i class="fa fa-pause mr-2"></i>暂停';
+            startBtn.classList.remove('bg-primary');
+            startBtn.classList.add('bg-secondary');
+            
+            // 开始动画循环
+            animationId = requestAnimationFrame(draw);
+        }
+        
+        // 重置模拟
+        function resetSimulation(clearTrail = true) {
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+                animationId = null;
+            }
+            
+            simulationRunning = false;
+            particles = [];
+            startBtn.innerHTML = '<i class="fa fa-play mr-2"></i>开始';
+            startBtn.classList.remove('bg-secondary');
+            startBtn.classList.add('bg-primary');
+            
+            if (clearTrail) {
+                object.x = 0;
+                object.y = 0;
+                object.trail = [];
+            }
+            
+            // 重新绘制
+            draw();
+        }
+        
+        // 事件监听器
+        velocitySlider.addEventListener('input', () => {
+            velocity = parseFloat(velocitySlider.value);
+            velocityValue.textContent = velocity.toFixed(1);
+            updateEquationDisplay();
+            updatePhysicsDisplay();
+            resetSimulation();
+        });
+        
+        angleSlider.addEventListener('input', () => {
+            angle = parseFloat(angleSlider.value);
+            angleValue.textContent = angle.toFixed(1);
+            updateEquationDisplay();
+            updatePhysicsDisplay();
+            resetSimulation();
+        });
+        
+        gravitySlider.addEventListener('input', () => {
+            gravity = parseFloat(gravitySlider.value);
+            gravityValue.textContent = gravity.toFixed(1);
+            updateEquationDisplay();
+            updatePhysicsDisplay();
+            resetSimulation();
+        });
+        
+        startBtn.addEventListener('click', () => {
+            if (simulationRunning) {
+                resetSimulation(false);
+            } else {
+                startSimulation();
+            }
+        });
+        
+        resetBtn.addEventListener('click', () => {
+            resetSimulation();
+        });
+        
+        infoButton.addEventListener('click', () => {
+            infoModal.classList.remove('hidden');
+        });
+        
+        closeModal.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+        });
+        
+        gotIt.addEventListener('click', () => {
+            infoModal.classList.add('hidden');
+        });
+        
+        // 点击模态框外部关闭
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                infoModal.classList.add('hidden');
+            }
+        });
+        
+        // 窗口大小改变时调整画布
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 初始化
+        function init() {
+            resizeCanvas();
+            updateEquationDisplay();
+            updatePhysicsDisplay();
+            draw();
+            
+            // 为导航栏添加滚动效果
+            window.addEventListener('scroll', () => {
+                const nav = document.querySelector('nav');
+                if (window.scrollY > 10) {
+                    nav.classList.add('py-2');
+                    nav.classList.remove('py-3');
+                    nav.classList.add('shadow-lg');
+                } else {
+                    nav.classList.add('py-3');
+                    nav.classList.remove('py-2');
+                    nav.classList.remove('shadow-lg');
+                }
+            });
+            
+            // 主题切换功能
+            themeToggle.addEventListener('click', () => {
+                const icon = themeToggle.querySelector('i');
+                if (icon.classList.contains('fa-moon-o')) {
+                    icon.classList.remove('fa-moon-o');
+                    icon.classList.add('fa-sun-o');
+                    document.body.classList.add('bg-gradient-to-br', 'from-slate-100', 'to-slate-200');
+                    document.body.classList.remove('bg-gradient-to-br', 'from-slate-900', 'to-slate-800');
+                    document.body.classList.add('text-slate-900');
+                    document.body.classList.remove('text-light');
+                } else {
+                    icon.classList.remove('fa-sun-o');
+                    icon.classList.add('fa-moon-o');
+                    document.body.classList.remove('bg-gradient-to-br', 'from-slate-100', 'to-slate-200');
+                    document.body.classList.add('bg-gradient-to-br', 'from-slate-900', 'to-slate-800');
+                    document.body.classList.remove('text-slate-900');
+                    document.body.classList.add('text-light');
+                }
+            });
+        }
+        
+        // 启动应用
+        init();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '普俊杰';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

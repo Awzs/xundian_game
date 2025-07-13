@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>猫捉老鼠 - 双人游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- Tailwind 配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4F46E5',
+                        secondary: '#EC4899',
+                        accent: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        info: '#3B82F6',
+                        light: '#F3F4F6',
+                        dark: '#1F2937'
+                    },
+                    fontFamily: {
+                        game: ['Fredoka One', 'Comic Sans MS', 'cursive']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            .text-shadow-lg {
+                text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .bg-blur {
+                backdrop-filter: blur(8px);
+            }
+        }
+    </style>
+    
+    <!-- 引入Google字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-br from-indigo-50 to-purple-50 min-h-screen font-game text-dark overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 游戏容器 -->
+    <div class="relative flex flex-col items-center justify-center min-h-screen">
+        <!-- 游戏标题 -->
+        <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-primary text-shadow-lg mb-4 mt-6">
+            猫捉老鼠 <span class="text-secondary">双人版</span>
+        </h1>
+        
+        <!-- 游戏状态显示 -->
+        <div class="flex justify-between items-center w-full max-w-3xl mb-4 px-4">
+            <div class="flex items-center space-x-4">
+                <div class="bg-white/80 rounded-xl p-3 shadow-lg flex items-center">
+                    <i class="fa fa-clock-o text-info text-2xl mr-2"></i>
+                    <span class="text-xl font-bold" id="timer">00:00</span>
+                </div>
+                <div class="bg-white/80 rounded-xl p-3 shadow-lg flex items-center">
+                    <i class="fa fa-trophy text-warning text-2xl mr-2"></i>
+                    <span class="text-xl font-bold" id="score">0</span>
+                </div>
+            </div>
+            <div class="bg-white/80 rounded-xl p-3 shadow-lg flex items-center">
+                <span class="text-lg mr-2">状态:</span>
+                <span class="text-xl font-bold text-primary" id="game-status">准备开始</span>
+            </div>
+        </div>
+        
+        <!-- 游戏画布容器 -->
+        <div class="relative w-full max-w-3xl aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl border-4 border-primary/30">
+            <canvas id="gameCanvas" class="w-full h-full bg-gradient-to-br from-blue-50 to-green-50"></canvas>
+            
+            <!-- 游戏开始覆盖层 -->
+            <div id="startScreen" class="absolute inset-0 bg-dark/60 flex flex-col items-center justify-center bg-blur">
+                <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-white text-shadow-lg mb-8">准备好了吗？</h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 w-full max-w-md px-4">
+                    <div class="bg-white/90 rounded-xl p-4 shadow-lg transform transition-all hover:scale-105">
+                        <h3 class="text-xl font-bold text-primary mb-2 flex items-center">
+                            <i class="fa fa-paw text-primary mr-2"></i>玩家1 (猫)
+                        </h3>
+                        <div class="grid grid-cols-3 gap-2 mt-2">
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">W</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">A</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">S</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">D</div>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-white/90 rounded-xl p-4 shadow-lg transform transition-all hover:scale-105">
+                        <h3 class="text-xl font-bold text-secondary mb-2 flex items-center">
+                            <i class="fa fa-mouse-pointer text-secondary mr-2"></i>玩家2 (老鼠)
+                        </h3>
+                        <div class="grid grid-cols-3 gap-2 mt-2">
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">↑</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">←</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">↓</div>
+                            <div class="bg-gray-100 rounded-lg p-2 text-center">→</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="startButton" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transform transition-all hover:scale-110 hover:shadow-xl">
+                    <i class="fa fa-play mr-2"></i>开始游戏
+                </button>
+            </div>
+            
+            <!-- 游戏结束覆盖层 -->
+            <div id="endScreen" class="absolute inset-0 bg-dark/60 flex-col items-center justify-center bg-blur hidden">
+                <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-white text-shadow-lg mb-4">游戏结束!</h2>
+                <p class="text-[clamp(1.2rem,2vw,1.8rem)] font-bold text-white text-shadow mb-8">
+                    最终得分: <span id="finalScore" class="text-warning">0</span>
+                </p>
+                <button id="restartButton" class="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-full text-xl shadow-lg transform transition-all hover:scale-110 hover:shadow-xl">
+                    <i class="fa fa-refresh mr-2"></i>再来一局
+                </button>
+            </div>
+        </div>
+        
+        <!-- 游戏说明 -->
+        <div class="mt-6 max-w-3xl w-full px-4">
+            <div class="bg-white/80 rounded-xl p-4 shadow-lg">
+                <h3 class="text-xl font-bold text-primary mb-2 flex items-center">
+                    <i class="fa fa-info-circle mr-2"></i>游戏说明
+                </h3>
+                <p class="text-gray-700">猫的目标是抓住老鼠，每次抓住老鼠得10分。老鼠的目标是尽可能长时间躲避猫。游戏时间为60秒，时间结束后游戏结束。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏常量
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 600;
+        const CAT_SIZE = 40;
+        const MOUSE_SIZE = 30;
+        const CAT_SPEED = 5;
+        const MOUSE_SPEED = 6;
+        const GAME_DURATION = 60; // 游戏时长（秒）
+        
+        // 游戏状态
+        let gameState = 'ready'; // ready, playing, gameOver
+        let score = 0;
+        let timeRemaining = GAME_DURATION;
+        let gameTimer = null;
+        let lastTime = 0;
+        
+        // 键盘控制
+        const keys = {
+            // 猫控制 (WASD)
+            catUp: false,
+            catDown: false,
+            catLeft: false,
+            catRight: false,
+            
+            // 老鼠控制 (方向键)
+            mouseUp: false,
+            mouseDown: false,
+            mouseLeft: false,
+            mouseRight: false
+        };
+        
+        // 获取DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('startScreen');
+        const endScreen = document.getElementById('endScreen');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const gameStatusElement = document.getElementById('gameStatus');
+        const finalScoreElement = document.getElementById('finalScore');
+        
+        // 设置画布尺寸
+        canvas.width = GAME_WIDTH;
+        canvas.height = GAME_HEIGHT;
+        
+        // 游戏对象
+        const cat = {
+            x: GAME_WIDTH / 4,
+            y: GAME_HEIGHT / 2,
+            width: CAT_SIZE,
+            height: CAT_SIZE,
+            speed: CAT_SPEED,
+            color: '#4F46E5' // 主色
+        };
+        
+        const mouse = {
+            x: GAME_WIDTH * 3 / 4,
+            y: GAME_HEIGHT / 2,
+            width: MOUSE_SIZE,
+            height: MOUSE_SIZE,
+            speed: MOUSE_SPEED,
+            color: '#EC4899' // 辅助色
+        };
+        
+        // 食物对象
+        const food = {
+            x: 0,
+            y: 0,
+            width: 20,
+            height: 20,
+            color: '#10B981', // 强调色
+            active: false,
+            spawnTime: 0,
+            despawnTime: 5 // 食物出现时长（秒）
+        };
+        
+        // 障碍物数组
+        const obstacles = [];
+        
+        // 初始化障碍物
+        function initObstacles() {
+            obstacles.length = 0;
+            
+            // 随机生成障碍物
+            const numObstacles = 5;
+            for (let i = 0; i < numObstacles; i++) {
+                const width = 60 + Math.random() * 80;
+                const height = 60 + Math.random() * 80;
+                const x = 100 + Math.random() * (GAME_WIDTH - 200 - width);
+                const y = 100 + Math.random() * (GAME_HEIGHT - 200 - height);
+                
+                obstacles.push({
+                    x,
+                    y,
+                    width,
+                    height,
+                    color: '#6B7280'
+                });
+            }
+        }
+        
+        // 随机生成食物位置
+        function spawnFood() {
+            let x, y;
+            let validPosition = false;
+            
+            // 确保食物不会生成在障碍物上
+            while (!validPosition) {
+                x = 50 + Math.random() * (GAME_WIDTH - 100 - food.width);
+                y = 50 + Math.random() * (GAME_HEIGHT - 100 - food.height);
+                
+                validPosition = true;
+                
+                // 检查是否与障碍物重叠
+                for (const obstacle of obstacles) {
+                    if (
+                        x < obstacle.x + obstacle.width &&
+                        x + food.width > obstacle.x &&
+                        y < obstacle.y + obstacle.height &&
+                        y + food.height > obstacle.y
+                    ) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+                
+                // 检查是否与玩家重叠
+                if (
+                    (x < cat.x + cat.width && x + food.width > cat.x && y < cat.y + cat.height && y + food.height > cat.y) ||
+                    (x < mouse.x + mouse.width && x + food.width > mouse.x && y < mouse.y + mouse.height && y + food.height > mouse.y)
+                ) {
+                    validPosition = false;
+                }
+            }
+            
+            food.x = x;
+            food.y = y;
+            food.active = true;
+            food.spawnTime = timeRemaining;
+        }
+        
+        // 检测碰撞
+        function checkCollision(obj1, obj2) {
+            return (
+                obj1.x < obj2.x + obj2.width &&
+                obj1.x + obj1.width > obj2.x &&
+                obj1.y < obj2.y + obj2.height &&
+                obj1.y + obj1.height > obj2.y
+            );
+        }
+        
+        // 检测与障碍物的碰撞
+        function checkObstacleCollision(obj) {
+            for (const obstacle of obstacles) {
+                if (checkCollision(obj, obstacle)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // 更新游戏状态
+        function update(deltaTime) {
+            if (gameState !== 'playing') return;
+            
+            // 更新猫的位置
+            let catDX = 0;
+            let catDY = 0;
+            
+            if (keys.catUp) catDY -= cat.speed;
+            if (keys.catDown) catDY += cat.speed;
+            if (keys.catLeft) catDX -= cat.speed;
+            if (keys.catRight) catDX += cat.speed;
+            
+            // 尝试移动猫
+            cat.x += catDX;
+            if (cat.x < 0) cat.x = 0;
+            if (cat.x + cat.width > GAME_WIDTH) cat.x = GAME_WIDTH - cat.width;
+            
+            cat.y += catDY;
+            if (cat.y < 0) cat.y = 0;
+            if (cat.y + cat.height > GAME_HEIGHT) cat.y = GAME_HEIGHT - cat.height;
+            
+            // 检查与障碍物的碰撞
+            if (checkObstacleCollision(cat)) {
+                cat.x -= catDX;
+                cat.y -= catDY;
+            }
+            
+            // 更新老鼠的位置
+            let mouseDX = 0;
+            let mouseDY = 0;
+            
+            if (keys.mouseUp) mouseDY -= mouse.speed;
+            if (keys.mouseDown) mouseDY += mouse.speed;
+            if (keys.mouseLeft) mouseDX -= mouse.speed;
+            if (keys.mouseRight) mouseDX += mouse.speed;
+            
+            // 尝试移动老鼠
+            mouse.x += mouseDX;
+            if (mouse.x < 0) mouse.x = 0;
+            if (mouse.x + mouse.width > GAME_WIDTH) mouse.x = GAME_WIDTH - mouse.width;
+            
+            mouse.y += mouseDY;
+            if (mouse.y < 0) mouse.y = 0;
+            if (mouse.y + mouse.height > GAME_HEIGHT) mouse.y = GAME_HEIGHT - mouse.height;
+            
+            // 检查与障碍物的碰撞
+            if (checkObstacleCollision(mouse)) {
+                mouse.x -= mouseDX;
+                mouse.y -= mouseDY;
+            }
+            
+            // 检查猫是否抓住了老鼠
+            if (checkCollision(cat, mouse)) {
+                score += 10;
+                scoreElement.textContent = score;
+                
+                // 重置玩家位置
+                cat.x = GAME_WIDTH / 4;
+                cat.y = GAME_HEIGHT / 2;
+                mouse.x = GAME_WIDTH * 3 / 4;
+                mouse.y = GAME_HEIGHT / 2;
+                
+                // 播放音效（如果有）
+                console.log("猫抓住了老鼠！");
+            }
+            
+            // 处理食物
+            if (!food.active && Math.random() < 0.01) { // 1% 的概率生成食物
+                spawnFood();
+            }
+            
+            if (food.active) {
+                // 检查老鼠是否吃到了食物
+                if (checkCollision(mouse, food)) {
+                    score += 5;
+                    scoreElement.textContent = score;
+                    food.active = false;
+                    
+                    // 增加老鼠的速度（持续一段时间）
+                    const originalSpeed = mouse.speed;
+                    mouse.speed *= 1.5;
+                    
+                    // 一段时间后恢复正常速度
+                    setTimeout(() => {
+                        if (gameState === 'playing') {
+                            mouse.speed = originalSpeed;
+                        }
+                    }, 3000);
+                }
+                
+                // 检查食物是否过期
+                if (timeRemaining <= food.spawnTime - food.despawnTime) {
+                    food.active = false;
+                }
+            }
+            
+            // 检查游戏是否结束
+            if (timeRemaining <= 0) {
+                endGame();
+            }
+        }
+        
+        // 渲染游戏
+        function render() {
+            // 清空画布
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // 绘制背景
+            const gradient = ctx.createLinearGradient(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            gradient.addColorStop(0, '#DBEAFE');
+            gradient.addColorStop(1, '#D1FAE5');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // 绘制网格背景
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 1;
+            
+            const gridSize = 40;
+            for (let x = 0; x < GAME_WIDTH; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, GAME_HEIGHT);
+                ctx.stroke();
+            }
+            
+            for (let y = 0; y < GAME_HEIGHT; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(GAME_WIDTH, y);
+                ctx.stroke();
+            }
+            
+            // 绘制障碍物
+            for (const obstacle of obstacles) {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // 障碍物边框
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            }
+            
+            // 绘制食物
+            if (food.active) {
+                // 绘制食物光晕
+                ctx.beginPath();
+                ctx.arc(food.x + food.width/2, food.y + food.height/2, food.width/2 + 5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.3)';
+                ctx.fill();
+                
+                // 绘制食物
+                ctx.fillStyle = food.color;
+                ctx.beginPath();
+                ctx.arc(food.x + food.width/2, food.y + food.height/2, food.width/2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 食物高光
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.beginPath();
+                ctx.arc(
+                    food.x + food.width/2 - 3, 
+                    food.y + food.height/2 - 3, 
+                    food.width/6, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            }
+            
+            // 绘制猫
+            ctx.fillStyle = cat.color;
+            
+            // 猫的身体
+            ctx.beginPath();
+            ctx.ellipse(
+                cat.x + cat.width/2, 
+                cat.y + cat.height/2, 
+                cat.width/2, 
+                cat.height/2, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 猫的头部
+            ctx.beginPath();
+            ctx.ellipse(
+                keys.catLeft ? cat.x + cat.width/4 : cat.x + cat.width*3/4, 
+                cat.y + cat.height/2, 
+                cat.width/3, 
+                cat.height/3, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 猫的眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                keys.catLeft ? cat.x + cat.width/4 - 5 : cat.x + cat.width*3/4 - 5, 
+                cat.y + cat.height/2 - 5, 
+                3, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(
+                keys.catLeft ? cat.x + cat.width/4 - 5 : cat.x + cat.width*3/4 - 5, 
+                cat.y + cat.height/2 + 5, 
+                3, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 猫的瞳孔
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                keys.catLeft ? cat.x + cat.width/4 - 7 : cat.x + cat.width*3/4 - 3, 
+                cat.y + cat.height/2 - 5, 
+                1.5, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            ctx.beginPath();
+            ctx.arc(
+                keys.catLeft ? cat.x + cat.width/4 - 7 : cat.x + cat.width*3/4 - 3, 
+                cat.y + cat.height/2 + 5, 
+                1.5, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 猫的耳朵
+            ctx.fillStyle = cat.color;
+            ctx.beginPath();
+            ctx.moveTo(
+                keys.catLeft ? cat.x + cat.width/4 - 10 : cat.x + cat.width*3/4 + 10, 
+                cat.y + cat.height/2 - 15
+            );
+            ctx.lineTo(
+                keys.catLeft ? cat.x + cat.width/4 : cat.x + cat.width*3/4, 
+                cat.y + cat.height/2 - 25
+            );
+            ctx.lineTo(
+                keys.catLeft ? cat.x + cat.width/4 + 10 : cat.x + cat.width*3/4 - 10, 
+                cat.y + cat.height/2 - 15
+            );
+            ctx.closePath();
+            ctx.fill();
+            
+            // 猫的尾巴
+            ctx.strokeStyle = cat.color;
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(
+                keys.catLeft ? cat.x + cat.width - 5 : cat.x + 5, 
+                cat.y + cat.height/2
+            );
+            ctx.bezierCurveTo(
+                keys.catLeft ? cat.x + cat.width + 10 : cat.x - 10, 
+                cat.y + cat.height/2 - 10,
+                keys.catLeft ? cat.x + cat.width + 20 : cat.x - 20, 
+                cat.y + cat.height/2 + 10,
+                keys.catLeft ? cat.x + cat.width + 30 : cat.x - 30, 
+                cat.y + cat.height/2 - 5
+            );
+            ctx.stroke();
+            
+            // 猫的胡须
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            
+            const whiskerStartX = keys.catLeft ? cat.x + cat.width/4 - 10 : cat.x + cat.width*3/4 + 10;
+            const whiskerStartY = cat.y + cat.height/2;
+            
+            // 上胡须
+            ctx.beginPath();
+            ctx.moveTo(whiskerStartX, whiskerStartY - 5);
+            ctx.lineTo(whiskerStartX + (keys.catLeft ? -15 : 15), whiskerStartY - 10);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(whiskerStartX, whiskerStartY - 3);
+            ctx.lineTo(whiskerStartX + (keys.catLeft ? -15 : 15), whiskerStartY - 5);
+            ctx.stroke();
+            
+            // 下胡须
+            ctx.beginPath();
+            ctx.moveTo(whiskerStartX, whiskerStartY + 3);
+            ctx.lineTo(whiskerStartX + (keys.catLeft ? -15 : 15), whiskerStartY + 5);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(whiskerStartX, whiskerStartY + 5);
+            ctx.lineTo(whiskerStartX + (keys.catLeft ? -15 : 15), whiskerStartY + 10);
+            ctx.stroke();
+            
+            // 绘制老鼠
+            ctx.fillStyle = mouse.color;
+            
+            // 老鼠的身体
+            ctx.beginPath();
+            ctx.ellipse(
+                mouse.x + mouse.width/2, 
+                mouse.y + mouse.height/2, 
+                mouse.width/2, 
+                mouse.height/2, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的头部
+            ctx.beginPath();
+            ctx.ellipse(
+                keys.mouseLeft ? mouse.x + mouse.width/4 : mouse.x + mouse.width*3/4, 
+                mouse.y + mouse.height/2, 
+                mouse.width/3, 
+                mouse.height/3, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                keys.mouseLeft ? mouse.x + mouse.width/4 - 4 : mouse.x + mouse.width*3/4 - 4, 
+                mouse.y + mouse.height/2 - 3, 
+                2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的瞳孔
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                keys.mouseLeft ? mouse.x + mouse.width/4 - 5 : mouse.x + mouse.width*3/4 - 3, 
+                mouse.y + mouse.height/2 - 3, 
+                1, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的耳朵
+            ctx.fillStyle = mouse.color;
+            ctx.beginPath();
+            ctx.arc(
+                keys.mouseLeft ? mouse.x + mouse.width/4 - 5 : mouse.x + mouse.width*3/4 + 5, 
+                mouse.y + mouse.height/2 - 10, 
+                5, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的尾巴
+            ctx.strokeStyle = mouse.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(
+                keys.mouseLeft ? mouse.x + mouse.width - 3 : mouse.x + 3, 
+                mouse.y + mouse.height/2
+            );
+            ctx.bezierCurveTo(
+                keys.mouseLeft ? mouse.x + mouse.width + 8 : mouse.x - 8, 
+                mouse.y + mouse.height/2 - 8,
+                keys.mouseLeft ? mouse.x + mouse.width + 16 : mouse.x - 16, 
+                mouse.y + mouse.height/2 + 8,
+                keys.mouseLeft ? mouse.x + mouse.width + 24 : mouse.x - 24, 
+                mouse.y + mouse.height/2 - 4
+            );
+            ctx.stroke();
+            
+            // 老鼠的鼻子
+            ctx.fillStyle = '#F97316';
+            ctx.beginPath();
+            ctx.arc(
+                keys.mouseLeft ? mouse.x + mouse.width/4 - 8 : mouse.x + mouse.width*3/4 + 8, 
+                mouse.y + mouse.height/2, 
+                2, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 老鼠的胡须
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1.5;
+            
+            const mouseWhiskerStartX = keys.mouseLeft ? mouse.x + mouse.width/4 - 8 : mouse.x + mouse.width*3/4 + 8;
+            const mouseWhiskerStartY = mouse.y + mouse.height/2;
+            
+            // 上胡须
+            ctx.beginPath();
+            ctx.moveTo(mouseWhiskerStartX, mouseWhiskerStartY - 2);
+            ctx.lineTo(mouseWhiskerStartX + (keys.mouseLeft ? -10 : 10), mouseWhiskerStartY - 5);
+            ctx.stroke();
+            
+            // 下胡须
+            ctx.beginPath();
+            ctx.moveTo(mouseWhiskerStartX, mouseWhiskerStartY + 2);
+            ctx.lineTo(mouseWhiskerStartX + (keys.mouseLeft ? -10 : 10), mouseWhiskerStartY + 5);
+            ctx.stroke();
+            
+            // 绘制游戏状态
+            if (gameState === 'playing') {
+                // 绘制时间条
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(10, 10, 150, 20);
+                
+                ctx.fillStyle = timeRemaining > 10 ? '#3B82F6' : '#EF4444';
+                const timeBarWidth = (timeRemaining / GAME_DURATION) * 150;
+                ctx.fillRect(10, 10, timeBarWidth, 20);
+                
+                // 绘制时间文本
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`剩余时间: ${timeRemaining}s`, 85, 25);
+                
+                // 绘制分数
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(GAME_WIDTH - 110, 10, 100, 20);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(`分数: ${score}`, GAME_WIDTH - 60, 25);
+            }
+        }
+        
+        // 游戏循环
+        function gameLoop(timestamp) {
+            const deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            update(deltaTime);
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // 开始游戏
+        function startGame() {
+            gameState = 'playing';
+            score = 0;
+            timeRemaining = GAME_DURATION;
+            scoreElement.textContent = score;
+            updateTimerDisplay();
+            
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            gameStatusElement.textContent = '游戏进行中';
+            
+            // 初始化障碍物
+            initObstacles();
+            
+            // 开始游戏计时器
+            if (gameTimer) clearInterval(gameTimer);
+            gameTimer = setInterval(() => {
+                timeRemaining--;
+                updateTimerDisplay();
+                
+                if (timeRemaining <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+        
+        // 结束游戏
+        function endGame() {
+            gameState = 'gameOver';
+            clearInterval(gameTimer);
+            
+            finalScoreElement.textContent = score;
+            endScreen.classList.remove('hidden');
+            endScreen.classList.add('flex');
+            gameStatusElement.textContent = '游戏结束';
+        }
+        
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const seconds = (timeRemaining % 60).toString().padStart(2, '0');
+            timerElement.textContent = `${minutes}:${seconds}`;
+        }
+        
+        // 键盘事件监听
+        window.addEventListener('keydown', (e) => {
+            // 猫控制 (WASD)
+            if (e.key === 'w' || e.key === 'W') keys.catUp = true;
+            if (e.key === 's' || e.key === 'S') keys.catDown = true;
+            if (e.key === 'a' || e.key === 'A') keys.catLeft = true;
+            if (e.key === 'd' || e.key === 'D') keys.catRight = true;
+            
+            // 老鼠控制 (方向键)
+            if (e.key === 'ArrowUp') keys.mouseUp = true;
+            if (e.key === 'ArrowDown') keys.mouseDown = true;
+            if (e.key === 'ArrowLeft') keys.mouseLeft = true;
+            if (e.key === 'ArrowRight') keys.mouseRight = true;
+            
+            // 防止方向键滚动页面
+            if (
+                e.key === 'ArrowUp' || 
+                e.key === 'ArrowDown' || 
+                e.key === 'ArrowLeft' || 
+                e.key === 'ArrowRight'
+            ) {
+                e.preventDefault();
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            // 猫控制 (WASD)
+            if (e.key === 'w' || e.key === 'W') keys.catUp = false;
+            if (e.key === 's' || e.key === 'S') keys.catDown = false;
+            if (e.key === 'a' || e.key === 'A') keys.catLeft = false;
+            if (e.key === 'd' || e.key === 'D') keys.catRight = false;
+            
+            // 老鼠控制 (方向键)
+            if (e.key === 'ArrowUp') keys.mouseUp = false;
+            if (e.key === 'ArrowDown') keys.mouseDown = false;
+            if (e.key === 'ArrowLeft') keys.mouseLeft = false;
+            if (e.key === 'ArrowRight') keys.mouseRight = false;
+        });
+        
+        // 按钮事件监听
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+        
+        // 启动游戏循环
+        requestAnimationFrame(gameLoop);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李昊哲';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

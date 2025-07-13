@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D大鱼吃小鱼</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1E88E5', // 蓝色主色调，代表海洋
+                        secondary: '#43A047', // 绿色辅助色
+                        accent: '#FF9800', // 橙色强调色
+                        dark: '#0D47A1', // 深蓝色
+                        light: '#E3F2FD', // 浅蓝色
+                    },
+                    fontFamily: {
+                        inter: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .text-shadow-lg {
+                text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+            .animate-pulse-slow {
+                animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            .glow {
+                box-shadow: 0 0 15px rgba(30, 136, 229, 0.6);
+            }
+            .fish-card {
+                @apply bg-white rounded-xl shadow-lg overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-md hover:shadow-lg;
+            }
+            .btn-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50 shadow-md hover:shadow-lg;
+            }
+            .control-btn {
+                @apply bg-dark/80 hover:bg-dark text-white w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 transform hover:scale-110;
+            }
+            .water-effect {
+                background: linear-gradient(180deg, rgba(30,136,229,0.2) 0%, rgba(30,136,229,0.8) 100%);
+            }
+        }
+    </style>
+</head>
+<body class="font-inter bg-gradient-to-br from-dark to-primary/90 text-light min-h-screen overflow-x-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 顶部导航 -->
+    <header class="fixed top-0 left-0 right-0 z-50 transition-all duration-300" id="header">
+        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <div class="text-primary text-3xl mr-2">
+                    <i class="fa fa-gamepad"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white text-shadow-lg">3D大鱼吃小鱼</h1>
+            </div>
+            <nav class="hidden md:flex space-x-8">
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium">首页</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium">游戏模式</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium">排行榜</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium">关于</a>
+            </nav>
+            <div class="md:hidden">
+                <button id="menu-toggle" class="text-white text-2xl">
+                    <i class="fa fa-bars"></i>
+                </button>
+            </div>
+        </div>
+        <!-- 移动端菜单 -->
+        <div id="mobile-menu" class="hidden bg-dark/95 backdrop-blur-md md:hidden absolute w-full">
+            <div class="container mx-auto px-4 py-4 flex flex-col space-y-4">
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium py-2">首页</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium py-2">游戏模式</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium py-2">排行榜</a>
+                <a href="#" class="text-white/80 hover:text-primary transition-colors duration-300 font-medium py-2">关于</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- 游戏区域 -->
+    <main class="container mx-auto px-4 pt-24 pb-16">
+        <!-- 游戏介绍 -->
+        <section class="text-center mb-12">
+            <h2 class="text-[clamp(2rem,5vw,3.5rem)] font-bold mb-4 text-shadow-lg">3D大鱼吃小鱼</h2>
+            <p class="text-white/70 max-w-3xl mx-auto text-lg mb-8">体验刺激的3D海底冒险，控制你的鱼不断吞噬比自己小的鱼来成长，小心避开比你大的鱼！</p>
+            <div class="flex flex-wrap justify-center gap-4 mb-12">
+                <button class="btn-primary">
+                    <i class="fa fa-play mr-2"></i>开始游戏
+                </button>
+                <button class="btn-secondary">
+                    <i class="fa fa-trophy mr-2"></i>查看排行
+                </button>
+                <button class="bg-white/10 hover:bg-white/20 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300">
+                    <i class="fa fa-cog mr-2"></i>游戏设置
+                </button>
+            </div>
+        </section>
+
+        <!-- 游戏选择 -->
+        <section class="mb-16">
+            <h3 class="text-2xl font-bold mb-6 text-center">选择游戏模式</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="fish-card bg-gradient-to-br from-primary/90 to-primary/70 p-6">
+                    <div class="text-4xl mb-4 text-white">
+                        <i class="fa fa-clock-o"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-2 text-white">限时挑战</h4>
+                    <p class="text-white/80 mb-4">在限定时间内尽可能吃更多的鱼，获取高分。</p>
+                    <button class="bg-white text-primary hover:bg-white/90 font-semibold py-2 px-4 rounded-lg transition-all duration-300">
+                        开始
+                    </button>
+                </div>
+                <div class="fish-card bg-gradient-to-br from-secondary/90 to-secondary/70 p-6">
+                    <div class="text-4xl mb-4 text-white">
+                        <i class="fa fa-infinity"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-2 text-white">无尽模式</h4>
+                    <p class="text-white/80 mb-4">尽可能生存更长时间，看看你能长到多大。</p>
+                    <button class="bg-white text-secondary hover:bg-white/90 font-semibold py-2 px-4 rounded-lg transition-all duration-300">
+                        开始
+                    </button>
+                </div>
+                <div class="fish-card bg-gradient-to-br from-accent/90 to-accent/70 p-6">
+                    <div class="text-4xl mb-4 text-white">
+                        <i class="fa fa-users"></i>
+                    </div>
+                    <h4 class="text-xl font-bold mb-2 text-white">多人对战</h4>
+                    <p class="text-white/80 mb-4">与其他玩家同时在线竞技，成为最大的鱼。</p>
+                    <button class="bg-white text-accent hover:bg-white/90 font-semibold py-2 px-4 rounded-lg transition-all duration-300">
+                        开始
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 游戏画布 -->
+        <section class="relative bg-dark/50 rounded-2xl overflow-hidden mb-16">
+            <div class="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+                <div class="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
+                    <div class="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center mr-2">
+                        <i class="fa fa-user text-primary"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-white/70">当前大小</p>
+                        <div class="w-40 h-2 bg-white/20 rounded-full mt-1">
+                            <div id="size-bar" class="h-full bg-primary rounded-full" style="width: 30%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-white font-bold text-2xl">分数: <span id="score">0</span></div>
+                <div class="bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 flex items-center">
+                    <div class="w-8 h-8 rounded-full bg-secondary/30 flex items-center justify-center mr-2">
+                        <i class="fa fa-clock-o text-secondary"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs text-white/70">剩余时间</p>
+                        <div class="w-40 h-2 bg-white/20 rounded-full mt-1">
+                            <div id="time-bar" class="h-full bg-secondary rounded-full" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="game-canvas" class="w-full h-[500px] water-effect relative">
+                <!-- 3D游戏将在这里渲染 -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="text-center">
+                        <div class="text-6xl font-bold text-white text-shadow-lg mb-4 animate-pulse-slow">3D</div>
+                        <p class="text-white/70">游戏将使用Three.js在此处渲染</p>
+                    </div>
+                </div>
+            </div>
+            <!-- 游戏控制 -->
+            <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center z-10">
+                <div class="grid grid-cols-3 gap-2">
+                    <button id="move-left" class="control-btn">
+                        <i class="fa fa-arrow-left"></i>
+                    </button>
+                    <button id="move-up" class="control-btn">
+                        <i class="fa fa-arrow-up"></i>
+                    </button>
+                    <button id="move-right" class="control-btn">
+                        <i class="fa fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="move-down" class="control-btn">
+                        <i class="fa fa-arrow-down"></i>
+                    </button>
+                    <button id="speed-up" class="control-btn bg-accent/80 hover:bg-accent">
+                        <i class="fa fa-bolt"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 游戏说明 -->
+        <section class="mb-16">
+            <h3 class="text-2xl font-bold mb-6 text-center">游戏说明</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-dark/30 backdrop-blur-sm rounded-xl p-6 transition-all duration-300 hover:bg-dark/50">
+                    <h4 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="w-8 h-8 rounded-full bg-primary/30 flex items-center justify-center mr-2">
+                            <i class="fa fa-info text-primary"></i>
+                        </span>
+                        游戏规则
+                    </h4>
+                    <ul class="space-y-3 text-white/80">
+                        <li class="flex items-start">
+                            <i class="fa fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>控制你的鱼在海洋中移动，吃掉比你小的鱼</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>避免被比你大的鱼吃掉</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>每吃掉一条鱼，你的鱼就会变大一点</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-check-circle text-primary mt-1 mr-2"></i>
+                            <span>随着游戏进行，会出现更大的鱼</span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="bg-dark/30 backdrop-blur-sm rounded-xl p-6 transition-all duration-300 hover:bg-dark/50">
+                    <h4 class="text-xl font-bold mb-4 flex items-center">
+                        <span class="w-8 h-8 rounded-full bg-secondary/30 flex items-center justify-center mr-2">
+                            <i class="fa fa-gamepad text-secondary"></i>
+                        </span>
+                        操作指南
+                    </h4>
+                    <ul class="space-y-3 text-white/80">
+                        <li class="flex items-start">
+                            <i class="fa fa-arrow-left text-secondary mt-1 mr-2"></i>
+                            <span>向左移动</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-arrow-right text-secondary mt-1 mr-2"></i>
+                            <span>向右移动</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-arrow-up text-secondary mt-1 mr-2"></i>
+                            <span>向上移动</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-arrow-down text-secondary mt-1 mr-2"></i>
+                            <span>向下移动</span>
+                        </li>
+                        <li class="flex items-start">
+                            <i class="fa fa-bolt text-accent mt-1 mr-2"></i>
+                            <span>加速（消耗能量）</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- 页脚 -->
+    <footer class="bg-dark/80 backdrop-blur-md py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-6 md:mb-0">
+                    <div class="flex items-center">
+                        <div class="text-primary text-2xl mr-2">
+                            <i class="fa fa-gamepad"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-white">3D大鱼吃小鱼</h2>
+                    </div>
+                    <p class="text-white/60 mt-2">终极3D海底冒险游戏</p>
+                </div>
+                <div class="flex space-x-6 mb-6 md:mb-0">
+                    <a href="#" class="text-white/60 hover:text-primary transition-colors duration-300 text-xl">
+                        <i class="fa fa-facebook"></i>
+                    </a>
+                    <a href="#" class="text-white/60 hover:text-primary transition-colors duration-300 text-xl">
+                        <i class="fa fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-white/60 hover:text-primary transition-colors duration-300 text-xl">
+                        <i class="fa fa-instagram"></i>
+                    </a>
+                    <a href="#" class="text-white/60 hover:text-primary transition-colors duration-300 text-xl">
+                        <i class="fa fa-youtube-play"></i>
+                    </a>
+                </div>
+                <div>
+                    <p class="text-white/60 text-sm">&copy; 2025 3D大鱼吃小鱼. 保留所有权利.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 处理菜单切换
+        const menuToggle = document.getElementById('menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+        
+        menuToggle.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
+        
+        // 处理滚动时导航栏样式变化
+        const header = document.getElementById('header');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 10) {
+                header.classList.add('bg-dark/90', 'backdrop-blur-md', 'shadow-lg');
+            } else {
+                header.classList.remove('bg-dark/90', 'backdrop-blur-md', 'shadow-lg');
+            }
+        });
+        
+        // 游戏初始化 - 使用Three.js
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('game-canvas');
+            const scoreElement = document.getElementById('score');
+            const sizeBar = document.getElementById('size-bar');
+            const timeBar = document.getElementById('time-bar');
+            
+            // 创建场景
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a53ff);
+            
+            // 创建相机
+            const camera = new THREE.PerspectiveCamera(75, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            camera.position.z = 15;
+            camera.position.y = 5;
+            
+            // 创建渲染器
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.shadowMap.enabled = true;
+            
+            // 将渲染器添加到DOM
+            canvas.removeChild(canvas.firstElementChild);
+            canvas.appendChild(renderer.domElement);
+            
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0x404040, 2);
+            scene.add(ambientLight);
+            
+            // 添加方向光
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 7);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // 添加海底地面
+            const seaFloorGeometry = new THREE.PlaneGeometry(100, 100);
+            const seaFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x0a3d62 });
+            const seaFloor = new THREE.Mesh(seaFloorGeometry, seaFloorMaterial);
+            seaFloor.rotation.x = -Math.PI / 2;
+            seaFloor.position.y = -5;
+            seaFloor.receiveShadow = true;
+            scene.add(seaFloor);
+            
+            // 添加海水效果
+            const waterGeometry = new THREE.PlaneGeometry(100, 100);
+            const waterMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x1a53ff,
+                transparent: true,
+                opacity: 0.4
+            });
+            const water = new THREE.Mesh(waterGeometry, waterMaterial);
+            water.rotation.x = -Math.PI / 2;
+            water.position.y = 5;
+            scene.add(water);
+            
+            // 玩家鱼
+            let playerFish;
+            let playerSize = 1;
+            let score = 0;
+            let gameTime = 60; // 60秒游戏时间
+            let isGameOver = false;
+            let isSpeeding = false;
+            let energy = 100;
+            
+            // 创建鱼的函数
+            const createFish = (size, color, position, isPlayer = false) => {
+                // 创建鱼头
+                const headGeometry = new THREE.ConeGeometry(size, size * 2, 32);
+                const headMaterial = new THREE.MeshStandardMaterial({ color });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.x = size;
+                head.castShadow = true;
+                
+                // 创建鱼身
+                const bodyGeometry = new THREE.CylinderGeometry(size, size * 0.8, size * 3, 32);
+                const bodyMaterial = new THREE.MeshStandardMaterial({ color });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.rotation.z = Math.PI / 2;
+                body.position.x = -size * 1.5;
+                body.castShadow = true;
+                
+                // 创建鱼尾
+                const tailGeometry = new THREE.Triangle(
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(-size, size * 0.7, 0),
+                    new THREE.Vector3(-size, -size * 0.7, 0)
+                );
+                const tailGeometry2 = new THREE.BufferGeometry();
+                const vertices = new Float32Array([
+                    ...tailGeometry.a.toArray(),
+                    ...tailGeometry.b.toArray(),
+                    ...tailGeometry.c.toArray()
+                ]);
+                tailGeometry2.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+                const tailMaterial = new THREE.MeshStandardMaterial({ color });
+                const tail = new THREE.Mesh(tailGeometry2, tailMaterial);
+                tail.position.x = -size * 3;
+                tail.castShadow = true;
+                
+                // 创建鱼鳍
+                const finGeometry = new THREE.Triangle(
+                    new THREE.Vector3(0, 0, 0),
+                    new THREE.Vector3(size * 0.5, size * 0.3, 0),
+                    new THREE.Vector3(size * 0.2, size * 0.8, 0)
+                );
+                const finGeometry2 = new THREE.BufferGeometry();
+                const finVertices = new Float32Array([
+                    ...finGeometry.a.toArray(),
+                    ...finGeometry.b.toArray(),
+                    ...finGeometry.c.toArray()
+                ]);
+                finGeometry2.setAttribute('position', new THREE.BufferAttribute(finVertices, 3));
+                const finMaterial = new THREE.MeshStandardMaterial({ color });
+                const topFin = new THREE.Mesh(finGeometry2, finMaterial);
+                topFin.position.set(-size, size * 0.8, 0);
+                topFin.rotation.x = Math.PI / 2;
+                topFin.castShadow = true;
+                
+                const bottomFin = topFin.clone();
+                bottomFin.position.set(-size, -size * 0.8, 0);
+                bottomFin.rotation.x = -Math.PI / 2;
+                
+                // 创建鱼的组
+                const fish = new THREE.Group();
+                fish.add(head);
+                fish.add(body);
+                fish.add(tail);
+                fish.add(topFin);
+                fish.add(bottomFin);
+                
+                // 设置位置
+                fish.position.copy(position);
+                
+                // 保存鱼的属性
+                fish.userData = {
+                    size: size,
+                    isPlayer: isPlayer,
+                    speed: isPlayer ? 0.2 : (Math.random() * 0.05 + 0.03) * (size < 0.8 ? 1.5 : (size > 1.5 ? 0.7 : 1))
+                };
+                
+                return fish;
+            };
+            
+            // 创建玩家鱼
+            const createPlayerFish = () => {
+                const position = new THREE.Vector3(0, 0, 0);
+                playerFish = createFish(playerSize, 0x1E88E5, position, true);
+                scene.add(playerFish);
+                
+                // 添加鱼的眼睛
+                const eyeGeometry = new THREE.SphereGeometry(playerSize * 0.15, 16, 16);
+                const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                leftEye.position.set(playerSize * 1.5, playerSize * 0.3, playerSize * 0.5);
+                
+                const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+                rightEye.position.set(playerSize * 1.5, playerSize * 0.3, -playerSize * 0.5);
+                
+                const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                const leftPupil = new THREE.Mesh(eyeGeometry.clone(), pupilMaterial);
+                leftPupil.scale.set(0.6, 0.6, 0.6);
+                leftPupil.position.set(playerSize * 1.6, playerSize * 0.35, playerSize * 0.5);
+                
+                const rightPupil = new THREE.Mesh(eyeGeometry.clone(), pupilMaterial);
+                rightPupil.scale.set(0.6, 0.6, 0.6);
+                rightPupil.position.set(playerSize * 1.6, playerSize * 0.35, -playerSize * 0.5);
+                
+                playerFish.add(leftEye);
+                playerFish.add(rightEye);
+                playerFish.add(leftPupil);
+                playerFish.add(rightPupil);
+                
+                // 添加玩家鱼的发光效果
+                const glowGeometry = new THREE.SphereGeometry(playerSize * 1.2, 32, 32);
+                const glowMaterial = new THREE.MeshBasicMaterial({ 
+                    color: 0x1E88E5,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                playerFish.add(glow);
+            };
+            
+            // 创建玩家鱼
+            createPlayerFish();
+            
+            // 鱼群
+            const fishes = [];
+            const fishColors = [0xE53935, 0xFDD835, 0x43A047, 0x8E24AA, 0xFB8C00];
+            
+            // 生成鱼群
+            const generateFishes = (count) => {
+                for (let i = 0; i < count; i++) {
+                    const size = Math.random() * 1.2 + 0.3;
+                    const color = fishColors[Math.floor(Math.random() * fishColors.length)];
+                    const position = new THREE.Vector3(
+                        Math.random() * 40 - 20,
+                        Math.random() * 8 - 4,
+                        Math.random() * 40 - 20
+                    );
+                    
+                    const fish = createFish(size, color, position);
+                    scene.add(fish);
+                    fishes.push(fish);
+                }
+            };
+            
+            // 初始生成鱼群
+            generateFishes(15);
+            
+            // 添加控制器
+            const controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target = playerFish.position;
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.25;
+            controls.enableZoom = false;
+            controls.enablePan = false;
+            controls.maxPolarAngle = Math.PI / 2.2;
+            controls.minPolarAngle = Math.PI / 3;
+            
+            // 动画循环
+            let clock = new THREE.Clock();
+            
+            // 鱼的移动函数
+            const moveFishes = () => {
+                if (isGameOver) return;
+                
+                // 玩家鱼移动
+                const playerSpeed = isSpeeding ? playerFish.userData.speed * 1.5 : playerFish.userData.speed;
+                
+                // 处理键盘控制
+                if (keys['ArrowUp'] || keys['w']) {
+                    playerFish.position.y = Math.min(4, playerFish.position.y + playerSpeed);
+                    playerFish.rotation.x = -0.3;
+                } else if (keys['ArrowDown'] || keys['s']) {
+                    playerFish.position.y = Math.max(-4, playerFish.position.y - playerSpeed);
+                    playerFish.rotation.x = 0.3;
+                } else {
+                    playerFish.rotation.x = 0;
+                }
+                
+                if (keys['ArrowLeft'] || keys['a']) {
+                    playerFish.position.x = Math.max(-45, playerFish.position.x - playerSpeed);
+                    playerFish.rotation.y = Math.PI / 2;
+                } else if (keys['ArrowRight'] || keys['d']) {
+                    playerFish.position.x = Math.min(45, playerFish.position.x + playerSpeed);
+                    playerFish.rotation.y = -Math.PI / 2;
+                }
+                
+                // 限制玩家鱼的范围
+                playerFish.position.z = Math.max(-45, Math.min(45, playerFish.position.z));
+                
+                // 相机跟随玩家鱼
+                camera.position.lerp(new THREE.Vector3(
+                    playerFish.position.x,
+                    playerFish.position.y + 5,
+                    playerFish.position.z + 15
+                ), 0.05);
+                controls.target.lerp(playerFish.position, 0.1);
+                
+                // 非玩家鱼移动
+                fishes.forEach(fish => {
+                    // 随机改变方向
+                    if (Math.random() < 0.01) {
+                        fish.userData.direction = new THREE.Vector3(
+                            Math.random() * 2 - 1,
+                            Math.random() * 2 - 1,
+                            Math.random() * 2 - 1
+                        ).normalize();
+                    }
+                    
+                    // 移动鱼
+                    fish.position.add(fish.userData.direction.clone().multiplyScalar(fish.userData.speed));
+                    
+                    // 限制鱼的范围
+                    if (fish.position.x < -45 || fish.position.x > 45) {
+                        fish.userData.direction.x *= -1;
+                    }
+                    if (fish.position.y < -4 || fish.position.y > 4) {
+                        fish.userData.direction.y *= -1;
+                    }
+                    if (fish.position.z < -45 || fish.position.z > 45) {
+                        fish.userData.direction.z *= -1;
+                    }
+                    
+                    // 鱼朝向移动方向
+                    const lookAtPos = fish.position.clone().add(fish.userData.direction);
+                    fish.lookAt(lookAtPos);
+                    fish.rotation.y += Math.PI / 2;
+                });
+                
+                // 检测碰撞
+                checkCollisions();
+                
+                // 更新加速能量
+                if (isSpeeding) {
+                    energy -= 0.5;
+                    if (energy <= 0) {
+                        isSpeeding = false;
+                        energy = 0;
+                    }
+                } else if (energy < 100) {
+                    energy += 0.2;
+                }
+                
+                // 更新时间条
+                gameTime -= clock.getDelta();
+                if (gameTime <= 0) {
+                    gameTime = 0;
+                    gameOver();
+                }
+                timeBar.style.width = `${(gameTime / 60) * 100}%`;
+            };
+            
+            // 键盘控制
+            const keys = {};
+            window.addEventListener('keydown', (e) => {
+                keys[e.key] = true;
+                
+                // 空格键加速
+                if (e.key === ' ' && energy > 0) {
+                    isSpeeding = true;
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                keys[e.key] = false;
+                
+                // 释放空格键停止加速
+                if (e.key === ' ') {
+                    isSpeeding = false;
+                }
+            });
+            
+            // 触摸控制
+            document.getElementById('move-left').addEventListener('touchstart', () => {
+                keys['ArrowLeft'] = true;
+            });
+            document.getElementById('move-left').addEventListener('touchend', () => {
+                keys['ArrowLeft'] = false;
+            });
+            
+            document.getElementById('move-right').addEventListener('touchstart', () => {
+                keys['ArrowRight'] = true;
+            });
+            document.getElementById('move-right').addEventListener('touchend', () => {
+                keys['ArrowRight'] = false;
+            });
+            
+            document.getElementById('move-up').addEventListener('touchstart', () => {
+                keys['ArrowUp'] = true;
+            });
+            document.getElementById('move-up').addEventListener('touchend', () => {
+                keys['ArrowUp'] = false;
+            });
+            
+            document.getElementById('move-down').addEventListener('touchstart', () => {
+                keys['ArrowDown'] = true;
+            });
+            document.getElementById('move-down').addEventListener('touchend', () => {
+                keys['ArrowDown'] = false;
+            });
+            
+            document.getElementById('speed-up').addEventListener('touchstart', () => {
+                if (energy > 0) {
+                    isSpeeding = true;
+                }
+            });
+            document.getElementById('speed-up').addEventListener('touchend', () => {
+                isSpeeding = false;
+            });
+            
+            // 鼠标点击控制
+            document.getElementById('move-left').addEventListener('mousedown', () => {
+                keys['ArrowLeft'] = true;
+            });
+            document.getElementById('move-left').addEventListener('mouseup', () => {
+                keys['ArrowLeft'] = false;
+            });
+            
+            document.getElementById('move-right').addEventListener('mousedown', () => {
+                keys['ArrowRight'] = true;
+            });
+            document.getElementById('move-right').addEventListener('mouseup', () => {
+                keys['ArrowRight'] = false;
+            });
+            
+            document.getElementById('move-up').addEventListener('mousedown', () => {
+                keys['ArrowUp'] = true;
+            });
+            document.getElementById('move-up').addEventListener('mouseup', () => {
+                keys['ArrowUp'] = false;
+            });
+            
+            document.getElementById('move-down').addEventListener('mousedown', () => {
+                keys['ArrowDown'] = true;
+            });
+            document.getElementById('move-down').addEventListener('mouseup', () => {
+                keys['ArrowDown'] = false;
+            });
+            
+            document.getElementById('speed-up').addEventListener('mousedown', () => {
+                if (energy > 0) {
+                    isSpeeding = true;
+                }
+            });
+            document.getElementById('speed-up').addEventListener('mouseup', () => {
+                isSpeeding = false;
+            });
+            
+            // 碰撞检测
+            const checkCollisions = () => {
+                const playerRadius = playerSize * 1.5;
+                
+                for (let i = fishes.length - 1; i >= 0; i--) {
+                    const fish = fishes[i];
+                    const fishRadius = fish.userData.size * 1.5;
+                    
+                    // 计算距离
+                    const distance = playerFish.position.distanceTo(fish.position);
+                    
+                    // 如果发生碰撞
+                    if (distance < playerRadius + fishRadius) {
+                        // 玩家鱼可以吃这条鱼
+                        if (playerSize > fish.userData.size * 1.2) {
+                            // 移除被吃的鱼
+                            scene.remove(fish);
+                            fishes.splice(i, 1);
+                            
+                            // 增加分数和大小
+                            score += Math.floor(fish.userData.size * 10);
+                            playerSize += fish.userData.size * 0.05;
+                            
+                            // 更新UI
+                            scoreElement.textContent = score;
+                            sizeBar.style.width = `${Math.min(100, playerSize * 30)}%`;
+                            
+                            // 调整玩家鱼大小
+                            playerFish.scale.set(playerSize, playerSize, playerSize);
+                            
+                            // 生成新的鱼
+                            setTimeout(() => {
+                                if (!isGameOver) {
+                                    generateFishes(1);
+                                }
+                            }, 1000);
+                        } 
+                        // 玩家鱼被吃
+                        else if (fish.userData.size > playerSize * 1.2) {
+                            gameOver();
+                        }
+                    }
+                }
+            };
+            
+            // 游戏结束
+            const gameOver = () => {
+                isGameOver = true;
+                
+                // 创建游戏结束屏幕
+                const gameOverScreen = document.createElement('div');
+                gameOverScreen.className = 'absolute inset-0 bg-dark/80 backdrop-blur-md flex flex-col items-center justify-center z-20';
+                gameOverScreen.innerHTML = `
+                    <h2 class="text-4xl font-bold text-white mb-4">游戏结束</h2>
+                    <p class="text-2xl text-white mb-6">最终得分: ${score}</p>
+                    <button id="restart-btn" class="btn-primary">
+                        <i class="fa fa-refresh mr-2"></i>重新开始
+                    </button>
+                `;
+                canvas.appendChild(gameOverScreen);
+                
+                // 重新开始按钮
+                document.getElementById('restart-btn').addEventListener('click', () => {
+                    // 移除游戏结束屏幕
+                    canvas.removeChild(gameOverScreen);
+                    
+                    // 重置游戏
+                    resetGame();
+                });
+            };
+            
+            // 重置游戏
+            const resetGame = () => {
+                // 移除所有鱼
+                fishes.forEach(fish => {
+                    scene.remove(fish);
+                });
+                fishes.length = 0;
+                
+                // 移除玩家鱼
+                scene.remove(playerFish);
+                
+                // 重置游戏状态
+                playerSize = 1;
+                score = 0;
+                gameTime = 60;
+                isGameOver = false;
+                
+                // 更新UI
+                scoreElement.textContent = score;
+                sizeBar.style.width = `${playerSize * 30}%`;
+                timeBar.style.width = '100%';
+                
+                // 创建新的玩家鱼
+                createPlayerFish();
+                
+                // 生成新的鱼群
+                generateFishes(15);
+            };
+            
+            // 响应窗口大小变化
+            window.addEventListener('resize', () => {
+                camera.aspect = canvas.clientWidth / canvas.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            });
+            
+            // 动画循环
+            const animate = () => {
+                requestAnimationFrame(animate);
+                
+                // 移动鱼
+                moveFishes();
+                
+                // 更新控制器
+                controls.update();
+                
+                // 渲染场景
+                renderer.render(scene, camera);
+            };
+            
+            // 开始动画
+            animate();
+            
+            // 开始游戏倒计时
+            setTimeout(() => {
+                if (!isGameOver) {
+                    gameOver();
+                }
+            }, 60000); // 60秒后游戏结束
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '王茗骏';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

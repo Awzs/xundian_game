@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>森林冰火人</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fire: '#FF4500',
+                        ice: '#1E90FF',
+                        forest: '#228B22',
+                        wall: '#8B4513',
+                        portal: '#8A2BE2',
+                        water: '#00BFFF',
+                        lava: '#FF6347',
+                        coin: '#FFD700',
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'cursive', 'system-ui'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-corners {
+                clip-path: polygon(
+                    0% 4px, 4px 4px, 4px 0%, calc(100% - 4px) 0%, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+                    4px 100%, 4px calc(100% - 4px), 0% calc(100% - 4px)
+                );
+            }
+            .game-shadow {
+                box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+            }
+            .character-shadow {
+                filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.3));
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center p-4 overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full mx-auto bg-gray-800 rounded-lg shadow-xl overflow-hidden pixel-corners">
+        <header class="bg-forest py-4 px-6 border-b-4 border-gray-700 flex justify-between items-center">
+            <h1 class="text-2xl font-game text-white tracking-wider">森林冰火人</h1>
+            <div class="flex items-center gap-6">
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-fire text-fire text-xl"></i>
+                    <span class="font-game text-sm">生命: <span id="fire-life">3</span></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-snowflake-o text-ice text-xl"></i>
+                    <span class="font-game text-sm">生命: <span id="ice-life">3</span></span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa fa-diamond text-coin text-xl"></i>
+                    <span class="font-game text-sm">金币: <span id="coins">0/8</span></span>
+                </div>
+            </div>
+        </header>
+        
+        <main class="relative bg-gray-800">
+            <div id="game-container" class="relative w-full h-[500px] bg-gray-700 overflow-hidden">
+                <!-- 游戏地图将通过JS生成 -->
+            </div>
+            
+            <div class="absolute inset-0 bg-black/70 flex items-center justify-center z-10 hidden" id="game-over">
+                <div class="bg-gray-800 p-8 rounded-lg text-center pixel-corners game-shadow">
+                    <h2 class="text-3xl font-game mb-6 text-fire">游戏结束!</h2>
+                    <p class="text-xl mb-6">你收集了 <span id="final-coins" class="text-coin font-bold">0</span> 个金币</p>
+                    <button id="restart-btn" class="bg-fire hover:bg-fire/80 text-white font-game py-3 px-6 rounded pixel-corners game-shadow transition-all">
+                        重新开始
+                    </button>
+                </div>
+            </div>
+            
+            <div class="absolute inset-0 bg-black/70 flex items-center justify-center z-10 hidden" id="level-complete">
+                <div class="bg-gray-800 p-8 rounded-lg text-center pixel-corners game-shadow">
+                    <h2 class="text-3xl font-game mb-6 text-ice">关卡完成!</h2>
+                    <p class="text-xl mb-6">你收集了 <span id="completed-coins" class="text-coin font-bold">0</span> 个金币</p>
+                    <button id="next-level-btn" class="bg-ice hover:bg-ice/80 text-white font-game py-3 px-6 rounded pixel-corners game-shadow transition-all">
+                        下一关
+                    </button>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="bg-gray-800 py-3 px-6 border-t-4 border-gray-700 flex justify-between items-center">
+            <div class="text-sm text-gray-400">
+                <span class="font-game">WASD</span> - 控制火娃 | 
+                <span class="font-game">方向键</span> - 控制冰娃
+            </div>
+            <div class="flex gap-3">
+                <button id="pause-btn" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded pixel-corners transition-all">
+                    <i class="fa fa-pause"></i>
+                </button>
+                <button id="sound-btn" class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded pixel-corners transition-all">
+                    <i class="fa fa-volume-up"></i>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // 游戏配置
+        const config = {
+            tileSize: 40,
+            gravity: 0.5,
+            jumpForce: -10,
+            playerSpeed: 4,
+            friction: 0.8,
+            level: 1,
+            coinsCollected: 0,
+            totalCoins: 8,
+            fireLife: 3,
+            iceLife: 3
+        };
+
+        // 游戏元素类型
+        const TILE_TYPES = {
+            EMPTY: 0,
+            WALL: 1,
+            LAVA: 2,
+            WATER: 3,
+            COIN: 4,
+            PORTAL: 5,
+            SPIKE: 6
+        };
+
+        // 玩家状态
+        const PLAYER_STATE = {
+            IDLE: 0,
+            RUNNING: 1,
+            JUMPING: 2,
+            FALLING: 3
+        };
+
+        // 方向
+        const DIRECTION = {
+            LEFT: -1,
+            RIGHT: 1,
+            NONE: 0
+        };
+
+        // 第一关地图
+        const level1 = [
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        ];
+
+        // 障碍物和特殊元素位置
+        const obstacles = {
+            1: [
+                // 墙壁
+                {x: 2, y: 14, width: 4, height: 1},
+                {x: 7, y: 13, width: 3, height: 1},
+                {x: 12, y: 12, width: 4, height: 1},
+                {x: 18, y: 13, width: 3, height: 1},
+                {x: 23, y: 14, width: 4, height: 1},
+                
+                // 岩浆
+                {x: 6, y: 15, width: 2, height: 1, type: TILE_TYPES.LAVA},
+                {x: 11, y: 15, width: 2, height: 1, type: TILE_TYPES.LAVA},
+                {x: 16, y: 15, width: 2, height: 1, type: TILE_TYPES.LAVA},
+                {x: 21, y: 15, width: 2, height: 1, type: TILE_TYPES.LAVA},
+                
+                // 水
+                {x: 5, y: 12, width: 2, height: 1, type: TILE_TYPES.WATER},
+                {x: 10, y: 12, width: 2, height: 1, type: TILE_TYPES.WATER},
+                {x: 15, y: 12, width: 2, height: 1, type: TILE_TYPES.WATER},
+                {x: 20, y: 12, width: 2, height: 1, type: TILE_TYPES.WATER},
+                
+                // 尖刺
+                {x: 8, y: 10, width: 1, height: 1, type: TILE_TYPES.SPIKE},
+                {x: 17, y: 10, width: 1, height: 1, type: TILE_TYPES.SPIKE},
+                
+                // 金币
+                {x: 3, y: 13, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 8, y: 12, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 13, y: 11, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 18, y: 12, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 23, y: 13, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 4, y: 10, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 15, y: 10, width: 1, height: 1, type: TILE_TYPES.COIN},
+                {x: 24, y: 10, width: 1, height: 1, type: TILE_TYPES.COIN},
+                
+                // 传送门
+                {x: 28, y: 14, width: 2, height: 2, type: TILE_TYPES.PORTAL}
+            ]
+        };
+
+        // 玩家类
+        class Player {
+            constructor(x, y, color, controls) {
+                this.x = x;
+                this.y = y;
+                this.width = config.tileSize * 0.8;
+                this.height = config.tileSize * 1.2;
+                this.color = color;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                this.speed = config.playerSpeed;
+                this.jumpForce = config.jumpForce;
+                this.onGround = false;
+                this.facing = DIRECTION.RIGHT;
+                this.state = PLAYER_STATE.IDLE;
+                this.controls = controls;
+                this.element = null;
+                this.isAlive = true;
+                this.animationFrame = 0;
+                this.animationSpeed = 5;
+            }
+
+            createElement() {
+                const player = document.createElement('div');
+                player.className = `absolute w-[${this.width}px] h-[${this.height}px] character-shadow transition-all duration-75`;
+                player.style.backgroundColor = this.color;
+                player.style.transform = 'translateZ(0)'; // 启用硬件加速
+                
+                // 添加头部
+                const head = document.createElement('div');
+                head.className = 'w-[60%] h-[30%] mx-auto bg-white rounded-t-full';
+                head.style.marginTop = '5%';
+                
+                // 添加眼睛
+                const eyes = document.createElement('div');
+                eyes.className = 'flex justify-center gap-[15%] mt-[15%]';
+                
+                const eye1 = document.createElement('div');
+                eye1.className = 'w-[15%] h-[15%] bg-black rounded-full';
+                
+                const eye2 = document.createElement('div');
+                eye2.className = 'w-[15%] h-[15%] bg-black rounded-full';
+                
+                eyes.appendChild(eye1);
+                eyes.appendChild(eye2);
+                head.appendChild(eyes);
+                
+                // 添加身体特征
+                const bodyFeatures = document.createElement('div');
+                bodyFeatures.className = 'w-[80%] h-[40%] mx-auto mt-[10%]';
+                
+                if (this.color === '#FF4500') { // 火娃
+                    bodyFeatures.innerHTML = `
+                        <div class="w-full h-full relative">
+                            <div class="absolute top-0 left-1/2 w-[10%] h-[30%] bg-yellow-400 rounded-full transform -translate-x-1/2"></div>
+                            <div class="absolute top-[25%] left-1/4 w-[15%] h-[20%] bg-yellow-400 rounded-full"></div>
+                            <div class="absolute top-[25%] right-1/4 w-[15%] h-[20%] bg-yellow-400 rounded-full"></div>
+                            <div class="absolute bottom-[10%] left-1/2 w-[20%] h-[20%] bg-yellow-400 rounded-full transform -translate-x-1/2"></div>
+                        </div>
+                    `;
+                } else { // 冰娃
+                    bodyFeatures.innerHTML = `
+                        <div class="w-full h-full relative">
+                            <div class="absolute top-[15%] left-1/2 w-[30%] h-[10%] bg-blue-200 rounded-full transform -translate-x-1/2"></div>
+                            <div class="absolute top-[35%] left-1/2 w-[20%] h-[10%] bg-blue-200 rounded-full transform -translate-x-1/2"></div>
+                            <div class="absolute bottom-[20%] left-1/2 w-[25%] h-[10%] bg-blue-200 rounded-full transform -translate-x-1/2"></div>
+                        </div>
+                    `;
+                }
+                
+                player.appendChild(head);
+                player.appendChild(bodyFeatures);
+                this.element = player;
+                return player;
+            }
+
+            updatePosition() {
+                if (!this.isAlive) return;
+                
+                // 应用重力
+                this.velocityY += config.gravity;
+                
+                // 应用摩擦力
+                this.velocityX *= config.friction;
+                
+                // 限制最大下落速度
+                if (this.velocityY > 15) {
+                    this.velocityY = 15;
+                }
+                
+                // 更新位置
+                this.x += this.velocityX;
+                this.y += this.velocityY;
+                
+                // 更新状态
+                if (this.velocityY < 0) {
+                    this.state = PLAYER_STATE.JUMPING;
+                } else if (this.velocityY > 0) {
+                    this.state = PLAYER_STATE.FALLING;
+                } else if (Math.abs(this.velocityX) > 0.1) {
+                    this.state = PLAYER_STATE.RUNNING;
+                } else {
+                    this.state = PLAYER_STATE.IDLE;
+                }
+                
+                // 更新元素位置
+                this.element.style.left = `${this.x}px`;
+                this.element.style.top = `${this.y}px`;
+                
+                // 更新动画
+                this.updateAnimation();
+            }
+
+            updateAnimation() {
+                // 简单的跑步动画
+                if (this.state === PLAYER_STATE.RUNNING) {
+                    this.animationFrame = (this.animationFrame + 1) % (this.animationSpeed * 2);
+                    
+                    // 改变宽度来模拟跑步动作
+                    if (this.animationFrame < this.animationSpeed) {
+                        this.element.style.width = `${this.width * 0.9}px`;
+                        this.element.style.height = `${this.height * 1.1}px`;
+                    } else {
+                        this.element.style.width = `${this.width}px`;
+                        this.element.style.height = `${this.height}px`;
+                    }
+                } else {
+                    // 重置为默认大小
+                    this.element.style.width = `${this.width}px`;
+                    this.element.style.height = `${this.height}px`;
+                    this.animationFrame = 0;
+                }
+                
+                // 翻转角色
+                if (this.facing === DIRECTION.RIGHT) {
+                    this.element.style.transform = 'scaleX(1)';
+                } else {
+                    this.element.style.transform = 'scaleX(-1)';
+                }
+            }
+
+            handleInput(keys) {
+                if (!this.isAlive) return;
+                
+                this.velocityX = 0;
+                
+                if (keys[this.controls.left]) {
+                    this.velocityX = -this.speed;
+                    this.facing = DIRECTION.LEFT;
+                }
+                
+                if (keys[this.controls.right]) {
+                    this.velocityX = this.speed;
+                    this.facing = DIRECTION.RIGHT;
+                }
+                
+                if (keys[this.controls.jump] && this.onGround) {
+                    this.velocityY = this.jumpForce;
+                    this.onGround = false;
+                    
+                    // 跳跃音效（这里只是示例，实际需要添加音频元素）
+                    console.log(`${this.color === '#FF4500' ? '火娃' : '冰娃'} 跳跃`);
+                }
+            }
+
+            checkCollision(tile) {
+                return (
+                    this.x < tile.x + tile.width &&
+                    this.x + this.width > tile.x &&
+                    this.y < tile.y + tile.height &&
+                    this.y + this.height > tile.y
+                );
+            }
+
+            handleCollision(tile) {
+                if (!this.isAlive) return;
+                
+                // 计算碰撞深度
+                const overlapX = Math.min(this.x + this.width, tile.x + tile.width) - Math.max(this.x, tile.x);
+                const overlapY = Math.min(this.y + this.height, tile.y + tile.height) - Math.max(this.y, tile.y);
+                
+                // 根据重叠量决定如何解决碰撞
+                if (overlapX < overlapY) {
+                    // 水平碰撞
+                    if (this.x < tile.x) {
+                        this.x = tile.x - this.width;
+                    } else {
+                        this.x = tile.x + tile.width;
+                    }
+                    this.velocityX = 0;
+                } else {
+                    // 垂直碰撞
+                    if (this.y < tile.y) {
+                        this.y = tile.y - this.height;
+                        this.velocityY = 0;
+                        this.onGround = true;
+                    } else {
+                        this.y = tile.y + tile.height;
+                        this.velocityY = 0;
+                        
+                        // 如果玩家从下方碰到物体，可能是天花板，给一点下落速度
+                        this.velocityY = 2;
+                    }
+                }
+            }
+
+            die() {
+                if (!this.isAlive) return;
+                
+                this.isAlive = false;
+                this.velocityX = 0;
+                this.velocityY = 0;
+                
+                // 死亡动画
+                this.element.style.opacity = '0.5';
+                this.element.style.transform = 'scale(0.8)';
+                
+                // 减少生命值
+                if (this.color === '#FF4500') {
+                    config.fireLife--;
+                    document.getElementById('fire-life').textContent = config.fireLife;
+                } else {
+                    config.iceLife--;
+                    document.getElementById('ice-life').textContent = config.iceLife;
+                }
+                
+                // 检查游戏是否结束
+                if (config.fireLife <= 0 || config.iceLife <= 0) {
+                    endGame();
+                } else {
+                    // 重新开始关卡
+                    setTimeout(() => {
+                        restartLevel();
+                    }, 1000);
+                }
+            }
+
+            collectCoin(coin) {
+                // 移除金币
+                coin.element.remove();
+                obstacles[config.level] = obstacles[config.level].filter(t => t !== coin);
+                
+                // 更新金币计数
+                config.coinsCollected++;
+                document.getElementById('coins').textContent = `${config.coinsCollected}/${config.totalCoins}`;
+                
+                // 金币收集音效
+                console.log("金币收集！");
+                
+                // 检查是否收集了所有金币
+                if (config.coinsCollected === config.totalCoins) {
+                    // 激活传送门
+                    const portals = obstacles[config.level].filter(t => t.type === TILE_TYPES.PORTAL);
+                    portals.forEach(portal => {
+                        portal.isActive = true;
+                        portal.element.classList.add('bg-purple-500', 'animate-pulse');
+                    });
+                }
+            }
+
+            checkWin() {
+                const portals = obstacles[config.level].filter(t => t.type === TILE_TYPES.PORTAL && t.isActive);
+                return portals.some(portal => this.checkCollision(portal));
+            }
+        }
+
+        // 游戏引擎类
+        class Game {
+            constructor() {
+                this.gameContainer = document.getElementById('game-container');
+                this.keys = {};
+                this.players = [];
+                this.obstacles = [];
+                this.isRunning = false;
+                this.animationId = null;
+                this.lastTime = 0;
+                this.fps = 60;
+                this.frameInterval = 1000 / this.fps;
+                this.lastFrameTime = 0;
+            }
+
+            init() {
+                // 清空游戏容器
+                this.gameContainer.innerHTML = '';
+                
+                // 创建玩家
+                this.players = [
+                    new Player(config.tileSize * 2, config.tileSize * 13, '#FF4500', {
+                        left: 'KeyA',
+                        right: 'KeyD',
+                        jump: 'KeyW'
+                    }),
+                    new Player(config.tileSize * 28, config.tileSize * 13, '#1E90FF', {
+                        left: 'ArrowLeft',
+                        right: 'ArrowRight',
+                        jump: 'ArrowUp'
+                    })
+                ];
+                
+                // 将玩家添加到游戏容器
+                this.players.forEach(player => {
+                    this.gameContainer.appendChild(player.createElement());
+                });
+                
+                // 加载关卡
+                this.loadLevel(config.level);
+                
+                // 绑定键盘事件
+                window.addEventListener('keydown', this.handleKeyDown.bind(this));
+                window.addEventListener('keyup', this.handleKeyUp.bind(this));
+                
+                // 绑定按钮事件
+                document.getElementById('restart-btn').addEventListener('click', restartLevel);
+                document.getElementById('next-level-btn').addEventListener('click', nextLevel);
+                document.getElementById('pause-btn').addEventListener('click', togglePause);
+                
+                // 开始游戏循环
+                this.start();
+            }
+
+            loadLevel(level) {
+                // 清空障碍物
+                this.obstacles = [];
+                
+                // 添加边界墙
+                const mapWidth = level1[0].length;
+                const mapHeight = level1.length;
+                
+                // 添加底部边界
+                for (let x = 0; x < mapWidth; x++) {
+                    this.obstacles.push({
+                        x: x * config.tileSize,
+                        y: (mapHeight - 1) * config.tileSize,
+                        width: config.tileSize,
+                        height: config.tileSize,
+                        type: TILE_TYPES.WALL
+                    });
+                }
+                
+                // 添加左右边界
+                for (let y = 0; y < mapHeight; y++) {
+                    this.obstacles.push({
+                        x: 0,
+                        y: y * config.tileSize,
+                        width: config.tileSize,
+                        height: config.tileSize,
+                        type: TILE_TYPES.WALL
+                    });
+                    
+                    this.obstacles.push({
+                        x: (mapWidth - 1) * config.tileSize,
+                        y: y * config.tileSize,
+                        width: config.tileSize,
+                        height: config.tileSize,
+                        type: TILE_TYPES.WALL
+                    });
+                }
+                
+                // 添加关卡特定障碍物
+                if (obstacles[level]) {
+                    obstacles[level].forEach(obstacle => {
+                        // 复制障碍物，避免修改原始数据
+                        const newObstacle = {
+                            ...obstacle,
+                            x: obstacle.x * config.tileSize,
+                            y: obstacle.y * config.tileSize,
+                            width: obstacle.width * config.tileSize,
+                            height: obstacle.height * config.tileSize
+                        };
+                        
+                        // 特殊处理传送门
+                        if (obstacle.type === TILE_TYPES.PORTAL) {
+                            newObstacle.isActive = false;
+                        }
+                        
+                        this.obstacles.push(newObstacle);
+                    });
+                }
+                
+                // 渲染地图
+                this.renderMap();
+            }
+
+            renderMap() {
+                // 清空地图
+                const existingTiles = document.querySelectorAll('.game-tile');
+                existingTiles.forEach(tile => tile.remove());
+                
+                // 渲染障碍物
+                this.obstacles.forEach(obstacle => {
+                    const tile = document.createElement('div');
+                    tile.className = 'absolute game-tile pixel-corners';
+                    tile.style.left = `${obstacle.x}px`;
+                    tile.style.top = `${obstacle.y}px`;
+                    tile.style.width = `${obstacle.width}px`;
+                    tile.style.height = `${obstacle.height}px`;
+                    
+                    // 设置不同类型障碍物的样式
+                    switch(obstacle.type) {
+                        case TILE_TYPES.WALL:
+                            tile.classList.add('bg-wall');
+                            break;
+                        case TILE_TYPES.LAVA:
+                            tile.classList.add('bg-lava', 'animate-pulse');
+                            break;
+                        case TILE_TYPES.WATER:
+                            tile.classList.add('bg-water', 'animate-pulse');
+                            break;
+                        case TILE_TYPES.COIN:
+                            tile.classList.add('bg-coin', 'rounded-full', 'animate-spin-slow');
+                            break;
+                        case TILE_TYPES.PORTAL:
+                            tile.classList.add('bg-portal');
+                            if (obstacle.isActive) {
+                                tile.classList.add('animate-pulse');
+                            }
+                            break;
+                        case TILE_TYPES.SPIKE:
+                            tile.innerHTML = `
+                                <div class="w-full h-full relative">
+                                    <div class="absolute inset-0 flex justify-center">
+                                        <div class="w-[80%] h-[80%] clip-triangle-up bg-red-600"></div>
+                                    </div>
+                                </div>
+                            `;
+                            tile.classList.add('bg-transparent');
+                            break;
+                    }
+                    
+                    obstacle.element = tile;
+                    this.gameContainer.appendChild(tile);
+                });
+            }
+
+            handleKeyDown(e) {
+                this.keys[e.code] = true;
+            }
+
+            handleKeyUp(e) {
+                this.keys[e.code] = false;
+            }
+
+            update(deltaTime) {
+                if (!this.isRunning) return;
+                
+                // 更新玩家
+                this.players.forEach(player => {
+                    // 处理输入
+                    player.handleInput(this.keys);
+                    
+                    // 更新位置
+                    player.updatePosition();
+                    
+                    // 检查碰撞
+                    this.obstacles.forEach(obstacle => {
+                        if (player.checkCollision(obstacle)) {
+                            switch(obstacle.type) {
+                                case TILE_TYPES.WALL:
+                                    player.handleCollision(obstacle);
+                                    break;
+                                case TILE_TYPES.LAVA:
+                                    // 火娃可以穿过岩浆，冰娃会死亡
+                                    if (player.color === '#1E90FF') {
+                                        player.die();
+                                    }
+                                    break;
+                                case TILE_TYPES.WATER:
+                                    // 冰娃可以穿过水，火娃会死亡
+                                    if (player.color === '#FF4500') {
+                                        player.die();
+                                    }
+                                    break;
+                                case TILE_TYPES.COIN:
+                                    player.collectCoin(obstacle);
+                                    break;
+                                case TILE_TYPES.SPIKE:
+                                    player.die();
+                                    break;
+                            }
+                        }
+                    });
+                    
+                    // 检查是否获胜
+                    if (player.checkWin() && config.coinsCollected === config.totalCoins) {
+                        completeLevel();
+                    }
+                });
+            }
+
+            start() {
+                this.isRunning = true;
+                this.lastFrameTime = performance.now();
+                this.gameLoop();
+            }
+
+            stop() {
+                this.isRunning = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                }
+            }
+
+            gameLoop(timestamp) {
+                if (!timestamp) timestamp = performance.now();
+                const deltaTime = timestamp - this.lastFrameTime;
+                
+                if (deltaTime >= this.frameInterval) {
+                    // 计算应该更新的帧数
+                    const numFrames = Math.floor(deltaTime / this.frameInterval);
+                    
+                    // 更新游戏状态
+                    for (let i = 0; i < numFrames; i++) {
+                        this.update(this.frameInterval);
+                    }
+                    
+                    this.lastFrameTime = timestamp - (deltaTime % this.frameInterval);
+                }
+                
+                this.animationId = requestAnimationFrame(this.gameLoop.bind(this));
+            }
+        }
+
+        // 游戏控制函数
+        const game = new Game();
+        
+        function startGame() {
+            game.init();
+        }
+        
+        function restartLevel() {
+            config.coinsCollected = 0;
+            document.getElementById('coins').textContent = `0/${config.totalCoins}`;
+            document.getElementById('game-over').classList.add('hidden');
+            game.loadLevel(config.level);
+            
+            // 重置玩家状态
+            game.players.forEach(player => {
+                player.isAlive = true;
+                player.element.style.opacity = '1';
+                player.element.style.transform = 'scale(1)';
+                
+                // 重置火娃位置
+                if (player.color === '#FF4500') {
+                    player.x = config.tileSize * 2;
+                    player.y = config.tileSize * 13;
+                } 
+                // 重置冰娃位置
+                else {
+                    player.x = config.tileSize * 28;
+                    player.y = config.tileSize * 13;
+                }
+                
+                player.velocityX = 0;
+                player.velocityY = 0;
+                player.onGround = false;
+            });
+        }
+        
+        function nextLevel() {
+            // 简单实现：重置关卡
+            config.level = 1;
+            config.coinsCollected = 0;
+            config.fireLife = 3;
+            config.iceLife = 3;
+            
+            document.getElementById('coins').textContent = `0/${config.totalCoins}`;
+            document.getElementById('fire-life').textContent = config.fireLife;
+            document.getElementById('ice-life').textContent = config.iceLife;
+            document.getElementById('level-complete').classList.add('hidden');
+            
+            game.loadLevel(config.level);
+            
+            // 重置玩家状态
+            game.players.forEach(player => {
+                player.isAlive = true;
+                player.element.style.opacity = '1';
+                player.element.style.transform = 'scale(1)';
+                
+                // 重置火娃位置
+                if (player.color === '#FF4500') {
+                    player.x = config.tileSize * 2;
+                    player.y = config.tileSize * 13;
+                } 
+                // 重置冰娃位置
+                else {
+                    player.x = config.tileSize * 28;
+                    player.y = config.tileSize * 13;
+                }
+                
+                player.velocityX = 0;
+                player.velocityY = 0;
+                player.onGround = false;
+            });
+        }
+        
+        function endGame() {
+            game.stop();
+            document.getElementById('final-coins').textContent = config.coinsCollected;
+            document.getElementById('game-over').classList.remove('hidden');
+        }
+        
+        function completeLevel() {
+            game.stop();
+            document.getElementById('completed-coins').textContent = config.coinsCollected;
+            document.getElementById('level-complete').classList.remove('hidden');
+        }
+        
+        function togglePause() {
+            if (game.isRunning) {
+                game.stop();
+                document.getElementById('pause-btn').innerHTML = '<i class="fa fa-play"></i>';
+            } else {
+                game.start();
+                document.getElementById('pause-btn').innerHTML = '<i class="fa fa-pause"></i>';
+            }
+        }
+        
+        // 启动游戏
+        startGame();
+    </style>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '马绮遥';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

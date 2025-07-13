@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shooting Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1F2937',
+                        light: '#F9FAFB'
+                    },
+                    fontFamily: {
+                        game: ['Orbitron', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .text-shadow-lg {
+                text-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+            .animate-float {
+                animation: float 3s ease-in-out infinite;
+            }
+            .animate-pulse-slow {
+                animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-dark text-light font-game min-h-screen overflow-hidden flex flex-col">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- Game Header -->
+    <header class="bg-primary/20 backdrop-blur-sm p-4 border-b border-primary/30 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <i class="fa fa-crosshairs text-primary text-2xl"></i>
+            <h1 class="text-2xl md:text-3xl font-bold text-shadow-lg">Blast Shooter</h1>
+        </div>
+        <div class="flex space-x-4 items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-star text-yellow-400"></i>
+                <span id="score" class="font-bold text-xl">0</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-clock-o text-secondary"></i>
+                <span id="timer" class="font-bold text-xl">30</span>
+            </div>
+            <button id="startBtn" class="bg-secondary hover:bg-secondary/80 text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105">
+                <i class="fa fa-play mr-2"></i>Start
+            </button>
+        </div>
+    </header>
+
+    <!-- Game Container -->
+    <main class="flex-grow flex flex-col items-center justify-center relative">
+        <div id="gameContainer" class="relative w-full max-w-4xl h-[60vh] md:h-[70vh] bg-dark/80 backdrop-blur-sm border-2 border-primary/50 rounded-xl overflow-hidden shadow-2xl shadow-primary/20">
+            <!-- Targets will be generated here -->
+            <div id="targetsContainer" class="w-full h-full relative">
+                <!-- Game Overlay -->
+                <div id="gameOverlay" class="absolute inset-0 bg-dark/90 flex flex-col items-center justify-center z-10">
+                    <h2 class="text-4xl md:text-5xl font-bold text-primary mb-6 text-shadow-lg">Blast Shooter</h2>
+                    <p class="text-xl md:text-2xl text-light/80 mb-8 text-center max-w-md">Shoot as many targets as you can before time runs out!</p>
+                    <button id="overlayStartBtn" class="bg-secondary hover:bg-secondary/80 text-white px-8 py-4 rounded-lg font-semibold text-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50">
+                        <i class="fa fa-play-circle mr-2"></i>Start Game
+                    </button>
+                </div>
+
+                <!-- Game Over Screen -->
+                <div id="gameOverScreen" class="absolute inset-0 bg-dark/90 flex-col items-center justify-center z-10 hidden">
+                    <h2 class="text-4xl md:text-5xl font-bold text-danger mb-4 text-shadow-lg">Game Over</h2>
+                    <p class="text-2xl md:text-3xl text-light mb-2">Your Score: <span id="finalScore" class="text-primary font-bold">0</span></p>
+                    <p class="text-xl text-light/80 mb-8">Good job! Try again to beat your score.</p>
+                    <button id="playAgainBtn" class="bg-secondary hover:bg-secondary/80 text-white px-8 py-4 rounded-lg font-semibold text-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50">
+                        <i class="fa fa-refresh mr-2"></i>Play Again
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Instructions -->
+        <div class="mt-6 bg-dark/60 backdrop-blur-sm p-4 rounded-lg border border-primary/30 max-w-3xl w-full">
+            <h3 class="text-xl font-semibold text-primary mb-2 flex items-center">
+                <i class="fa fa-info-circle mr-2"></i>Game Instructions
+            </h3>
+            <ul class="list-disc pl-5 space-y-1 text-light/80">
+                <li>Click on the moving targets to score points</li>
+                <li>Smaller targets give more points</li>
+                <li>You have 30 seconds to score as many points as possible</li>
+                <li>Avoid clicking outside the targets to prevent penalties</li>
+            </ul>
+        </div>
+    </main>
+
+    <!-- Game Footer -->
+    <footer class="bg-primary/10 backdrop-blur-sm p-4 border-t border-primary/20 text-center text-light/60">
+        <p>Blast Shooter © 2025 | Created with <i class="fa fa-heart text-danger"></i> using HTML, CSS and JavaScript</p>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game elements
+            const gameContainer = document.getElementById('gameContainer');
+            const targetsContainer = document.getElementById('targetsContainer');
+            const gameOverlay = document.getElementById('gameOverlay');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const startBtn = document.getElementById('startBtn');
+            const overlayStartBtn = document.getElementById('overlayStartBtn');
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            const scoreElement = document.getElementById('score');
+            const timerElement = document.getElementById('timer');
+            const finalScoreElement = document.getElementById('finalScore');
+
+            // Game variables
+            let score = 0;
+            let timeLeft = 30;
+            let gameActive = false;
+            let timerInterval;
+            let targetInterval;
+            let targets = [];
+
+            // Colors for targets
+            const targetColors = [
+                'bg-red-500', 'bg-blue-500', 'bg-green-500', 
+                'bg-yellow-500', 'bg-purple-500', 'bg-pink-500',
+                'bg-indigo-500', 'bg-teal-500', 'bg-orange-500'
+            ];
+
+            // Target sizes and points
+            const targetSizes = [
+                { size: 40, points: 10, className: 'sm' },
+                { size: 60, points: 5, className: 'md' },
+                { size: 80, points: 2, className: 'lg' }
+            ];
+
+            // Initialize the game
+            function initGame() {
+                score = 0;
+                timeLeft = 30;
+                scoreElement.textContent = score;
+                timerElement.textContent = timeLeft;
+                clearIntervals();
+                clearTargets();
+            }
+
+            // Start the game
+            function startGame() {
+                initGame();
+                gameActive = true;
+                gameOverlay.classList.add('hidden');
+                gameOverScreen.classList.add('hidden');
+                
+                // Start timer
+                timerInterval = setInterval(() => {
+                    timeLeft--;
+                    timerElement.textContent = timeLeft;
+                    
+                    if (timeLeft <= 0) {
+                        endGame();
+                    }
+                }, 1000);
+                
+                // Create targets
+                createInitialTargets();
+                targetInterval = setInterval(createRandomTarget, 1000);
+            }
+
+            // End the game
+            function endGame() {
+                gameActive = false;
+                clearIntervals();
+                clearTargets();
+                
+                finalScoreElement.textContent = score;
+                gameOverScreen.classList.remove('hidden');
+                gameOverScreen.classList.add('flex');
+            }
+
+            // Clear intervals
+            function clearIntervals() {
+                clearInterval(timerInterval);
+                clearInterval(targetInterval);
+            }
+
+            // Clear all targets
+            function clearTargets() {
+                targets.forEach(target => {
+                    target.element.remove();
+                });
+                targets = [];
+            }
+
+            // Create initial targets
+            function createInitialTargets() {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(createRandomTarget, i * 500);
+                }
+            }
+
+            // Create a random target
+            function createRandomTarget() {
+                if (!gameActive) return;
+                
+                // Random properties for the target
+                const randomSize = targetSizes[Math.floor(Math.random() * targetSizes.length)];
+                const randomColor = targetColors[Math.floor(Math.random() * targetColors.length)];
+                const containerWidth = gameContainer.clientWidth;
+                const containerHeight = gameContainer.clientHeight;
+                
+                // Make sure the target is within bounds
+                const maxLeft = containerWidth - randomSize.size;
+                const maxTop = containerHeight - randomSize.size;
+                
+                const left = Math.floor(Math.random() * maxLeft);
+                const top = Math.floor(Math.random() * maxTop);
+                
+                // Create target element
+                const target = document.createElement('div');
+                target.className = `absolute rounded-full cursor-pointer transform transition-all duration-300 ease-in-out animate-float ${randomColor}`;
+                target.style.width = `${randomSize.size}px`;
+                target.style.height = `${randomSize.size}px`;
+                target.style.left = `${left}px`;
+                target.style.top = `${top}px`;
+                target.style.boxShadow = `0 0 15px ${randomColor.replace('bg-', '').replace('-500', '')}/50`;
+                
+                // Add points text
+                const pointsText = document.createElement('div');
+                pointsText.className = 'w-full h-full flex items-center justify-center font-bold text-white';
+                pointsText.textContent = randomSize.points;
+                target.appendChild(pointsText);
+                
+                // Add click event
+                target.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    hitTarget(target, randomSize.points);
+                });
+                
+                // Add to container and targets array
+                targetsContainer.appendChild(target);
+                targets.push({
+                    element: target,
+                    timeout: setTimeout(() => {
+                        removeTarget(target);
+                    }, 2000)
+                });
+            }
+
+            // Handle target hit
+            function hitTarget(target, points) {
+                // Add score
+                score += points;
+                scoreElement.textContent = score;
+                
+                // Show score animation
+                showScoreAnimation(target, points);
+                
+                // Remove the target
+                removeTarget(target);
+            }
+
+            // Remove target
+            function removeTarget(target) {
+                const targetIndex = targets.findIndex(t => t.element === target);
+                if (targetIndex !== -1) {
+                    clearTimeout(targets[targetIndex].timeout);
+                    targets.splice(targetIndex, 1);
+                }
+                
+                // Animate removal
+                target.classList.add('scale-0', 'opacity-0');
+                setTimeout(() => {
+                    target.remove();
+                }, 300);
+            }
+
+            // Show score animation
+            function showScoreAnimation(target, points) {
+                const scoreAnim = document.createElement('div');
+                scoreAnim.className = 'absolute text-white font-bold text-xl animate-pulse-slow';
+                scoreAnim.textContent = `+${points}`;
+                
+                // Position the score animation
+                const targetRect = target.getBoundingClientRect();
+                const containerRect = gameContainer.getBoundingClientRect();
+                
+                scoreAnim.style.left = `${targetRect.left - containerRect.left + targetRect.width/2 - 10}px`;
+                scoreAnim.style.top = `${targetRect.top - containerRect.top - 30}px`;
+                
+                // Add to container
+                targetsContainer.appendChild(scoreAnim);
+                
+                // Remove after animation
+                setTimeout(() => {
+                    scoreAnim.remove();
+                }, 1000);
+            }
+
+            // Click outside penalty
+            targetsContainer.addEventListener('click', () => {
+                if (gameActive && score > 0) {
+                    score -= 1;
+                    scoreElement.textContent = score;
+                    
+                    // Show penalty animation
+                    const penaltyAnim = document.createElement('div');
+                    penaltyAnim.className = 'absolute text-danger font-bold text-xl animate-pulse-slow';
+                    penaltyAnim.textContent = '-1';
+                    
+                    // Position the penalty animation
+                    penaltyAnim.style.left = `${gameContainer.clientWidth/2 - 10}px`;
+                    penaltyAnim.style.top = `${gameContainer.clientHeight/2 - 20}px`;
+                    
+                    // Add to container
+                    targetsContainer.appendChild(penaltyAnim);
+                    
+                    // Remove after animation
+                    setTimeout(() => {
+                        penaltyAnim.remove();
+                    }, 1000);
+                }
+            });
+
+            // Add event listeners
+            startBtn.addEventListener('click', startGame);
+            overlayStartBtn.addEventListener('click', startGame);
+            playAgainBtn.addEventListener('click', startGame);
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '未知';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

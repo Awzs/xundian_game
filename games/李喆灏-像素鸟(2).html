@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素鸟</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4CAF50',
+                        secondary: '#FFC107',
+                        accent: '#FF5722',
+                        dark: '#212121',
+                        light: '#F5F5F5',
+                        gold: '#FFD700',
+                        powerup: '#2196F3',
+                        shield: '#9C27B0',
+                        magnet: '#795548'
+                    },
+                    fontFamily: {
+                        pixel: ['"Press Start 2P"', 'cursive']
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-art {
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+            .game-shadow {
+                box-shadow: 0 8px 0 rgba(0, 0, 0, 0.2);
+            }
+            .btn-pixel {
+                position: relative;
+                transition: all 0.1s ease;
+            }
+            .btn-pixel:active {
+                transform: translateY(4px);
+                box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2);
+            }
+            .gold-animation {
+                animation: pulse 1s infinite alternate;
+            }
+            .powerup-animation {
+                animation: float 2s infinite ease-in-out;
+            }
+            @keyframes pulse {
+                from { transform: scale(1); }
+                to { transform: scale(1.1); }
+            }
+            @keyframes float {
+                0% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+                100% { transform: translateY(0px); }
+            }
+            .shield-effect {
+                box-shadow: 0 0 15px rgba(156, 39, 176, 0.7);
+                animation: shield-pulse 0.5s infinite alternate;
+            }
+            @keyframes shield-pulse {
+                from { box-shadow: 0 0 10px rgba(156, 39, 176, 0.5); }
+                to { box-shadow: 0 0 20px rgba(156, 39, 176, 0.9); }
+            }
+            .wing-effect {
+                box-shadow: 0 0 15px rgba(33, 150, 243, 0.7);
+                animation: wing-pulse 0.5s infinite alternate;
+            }
+            @keyframes wing-pulse {
+                from { box-shadow: 0 0 10px rgba(33, 150, 243, 0.5); }
+                to { box-shadow: 0 0 20px rgba(33, 150, 243, 0.9); }
+            }
+            .magnet-effect {
+                box-shadow: 0 0 15px rgba(121, 85, 72, 0.7);
+                animation: magnet-pulse 0.5s infinite alternate;
+            }
+            @keyframes magnet-pulse {
+                from { box-shadow: 0 0 10px rgba(121, 85, 72, 0.5); }
+                to { box-shadow: 0 0 20px rgba(121, 85, 72, 0.9); }
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-dark min-h-screen flex items-center justify-center p-4 font-pixel text-light overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="relative">
+        <!-- 游戏容器 -->
+        <div id="game-container" class="relative w-[320px] h-[568px] bg-primary game-shadow overflow-hidden">
+            <!-- 背景 -->
+            <div id="background" class="absolute inset-0 bg-primary">
+                <div id="ground" class="absolute bottom-0 left-0 w-full h-[112px] bg-dark"></div>
+            </div>
+            
+            <!-- 游戏元素 -->
+            <div id="game-elements" class="absolute inset-0 pointer-events-none">
+                <!-- 小鸟 -->
+                <div id="bird" class="absolute w-[34px] h-[24px] bg-secondary rounded-full pointer-events-auto" style="left: 80px; top: 250px;"></div>
+                
+                <!-- 管道将通过JS动态生成 -->
+                <div id="pipes-container" class="absolute inset-0"></div>
+                
+                <!-- 金条容器 -->
+                <div id="gold-container" class="absolute inset-0"></div>
+                
+                <!-- 道具容器 -->
+                <div id="powerup-container" class="absolute inset-0"></div>
+                
+                <!-- 分数显示 -->
+                <div id="score-display" class="absolute top-[50px] left-0 w-full text-center text-[24px] z-10 pointer-events-none opacity-0 transition-opacity duration-300">0</div>
+                
+                <!-- 金币计数 -->
+                <div id="gold-count" class="absolute top-[100px] left-0 w-full text-center text-[16px] z-10 pointer-events-none opacity-0 transition-opacity duration-300">
+                    <i class="fa fa-star text-gold"></i> 0
+                </div>
+                
+                <!-- 道具状态显示 -->
+                <div id="powerup-status" class="absolute top-[140px] left-0 w-full text-center text-[14px] z-10 pointer-events-none opacity-0 transition-opacity duration-300">
+                    <span id="powerup-text"></span>
+                    <span id="powerup-timer" class="ml-2"></span>
+                </div>
+            </div>
+            
+            <!-- 开始屏幕 -->
+            <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-dark/80 z-20">
+                <div class="text-[24px] mb-8 text-secondary">像素鸟</div>
+                <div class="w-[34px] h-[24px] bg-secondary rounded-full mb-12 animate-bounce"></div>
+                <div class="text-center mb-12 px-4">
+                    <div class="mb-4">点击或按空格键</div>
+                    <div>来飞</div>
+                </div>
+                <div class="text-center mb-8 text-sm">
+                    <div class="flex items-center justify-center mb-2">
+                        <div class="w-6 h-6 bg-powerup rounded-full mr-2"></div>
+                        <div>翅膀 - 延长跳跃</div>
+                    </div>
+                    <div class="flex items-center justify-center mb-2">
+                        <div class="w-6 h-6 bg-shield rounded-full mr-2"></div>
+                        <div>护盾 - 无敌状态</div>
+                    </div>
+                    <div class="flex items-center justify-center">
+                        <div class="w-6 h-6 bg-magnet rounded-full mr-2"></div>
+                        <div>磁铁 - 自动吸金</div>
+                    </div>
+                </div>
+                <button id="start-button" class="bg-accent text-light px-6 py-3 rounded-md btn-pixel game-shadow">
+                    开始游戏
+                </button>
+            </div>
+            
+            <!-- 结束屏幕 -->
+            <div id="end-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-dark/80 z-20 opacity-0 pointer-events-none transition-opacity duration-300">
+                <div class="text-[24px] mb-4 text-accent">游戏结束</div>
+                <div class="mb-4">分数: <span id="final-score">0</span></div>
+                <div class="mb-4">金条: <span id="gold-score">0</span></div>
+                <div class="mb-8">最高分: <span id="high-score">0</span></div>
+                <button id="restart-button" class="bg-accent text-light px-6 py-3 rounded-md btn-pixel game-shadow">
+                    再玩一次
+                </button>
+            </div>
+        </div>
+        
+        <!-- 控制按钮 -->
+        <div class="mt-6 flex justify-center gap-4">
+            <button id="sound-button" class="bg-dark text-light p-3 rounded-full game-shadow hover:bg-primary/80 transition-colors">
+                <i class="fa fa-volume-up"></i>
+            </button>
+            <button id="pause-button" class="bg-dark text-light p-3 rounded-full game-shadow hover:bg-primary/80 transition-colors">
+                <i class="fa fa-pause"></i>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const game = {
+            started: false,
+            over: false,
+            score: 0,
+            gold: 0,
+            highScore: localStorage.getItem('flappyHighScore') || 0,
+            soundEnabled: true,
+            paused: false,
+            powerupActive: false,
+            powerupType: null,
+            powerupEndTime: 0
+        };
+        
+        // 游戏配置
+        const config = {
+            gravity: 0.25,
+            jump: -6,
+            pipeSpeed: 2,
+            pipeInterval: 1500,
+            pipeGap: 150,
+            groundY: 456,
+            goldWidth: 20,
+            goldHeight: 20,
+            goldSpawnChance: 0.3,
+            movingObstacleChance: 0.4,
+            obstacleAmplitude: 30,
+            obstacleFrequency: 0.01,
+            powerupSpawnChance: 0.15,
+            powerupDuration: 5000, // 5秒
+            powerupTypes: ['wing', 'shield', 'magnet'],
+            magnetRange: 100,
+            wingJumpBoost: -8
+        };
+        
+        // 游戏元素
+        const elements = {
+            bird: document.getElementById('bird'),
+            pipesContainer: document.getElementById('pipes-container'),
+            goldContainer: document.getElementById('gold-container'),
+            powerupContainer: document.getElementById('powerup-container'),
+            scoreDisplay: document.getElementById('score-display'),
+            goldCount: document.getElementById('gold-count'),
+            powerupStatus: document.getElementById('powerup-status'),
+            powerupText: document.getElementById('powerup-text'),
+            powerupTimer: document.getElementById('powerup-timer'),
+            startScreen: document.getElementById('start-screen'),
+            endScreen: document.getElementById('end-screen'),
+            finalScore: document.getElementById('final-score'),
+            goldScore: document.getElementById('gold-score'),
+            highScore: document.getElementById('high-score'),
+            ground: document.getElementById('ground'),
+            startButton: document.getElementById('start-button'),
+            restartButton: document.getElementById('restart-button'),
+            soundButton: document.getElementById('sound-button'),
+            pauseButton: document.getElementById('pause-button')
+        };
+        
+        // 小鸟状态
+        const bird = {
+            x: 80,
+            y: 250,
+            velocity: 0,
+            width: 34,
+            height: 24,
+            rotation: 0
+        };
+        
+        // 管道数组
+        let pipes = [];
+        // 金条数组
+        let golds = [];
+        // 道具数组
+        let powerups = [];
+        let lastPipeTime = 0;
+        let lastGoldTime = 0;
+        let lastPowerupTime = 0;
+        let animationId = null;
+        
+        // 初始化游戏
+        function initGame() {
+            // 设置最高分显示
+            elements.highScore.textContent = game.highScore;
+            
+            // 事件监听
+            elements.startButton.addEventListener('click', startGame);
+            elements.restartButton.addEventListener('click', restartGame);
+            elements.soundButton.addEventListener('click', toggleSound);
+            elements.pauseButton.addEventListener('click', togglePause);
+            
+            // 键盘控制
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // 鼠标/触摸控制
+            document.addEventListener('click', handleClick);
+            
+            // 游戏循环
+            gameLoop();
+        }
+        
+        // 开始游戏
+        function startGame() {
+            game.started = true;
+            game.over = false;
+            game.score = 0;
+            game.gold = 0;
+            game.powerupActive = false;
+            game.powerupType = null;
+            game.powerupEndTime = 0;
+            bird.y = 250;
+            bird.velocity = 0;
+            pipes = [];
+            golds = [];
+            powerups = [];
+            
+            // 重置小鸟样式
+            elements.bird.className = 'absolute w-[34px] h-[24px] bg-secondary rounded-full pointer-events-auto';
+            
+            // 清空容器
+            elements.pipesContainer.innerHTML = '';
+            elements.goldContainer.innerHTML = '';
+            elements.powerupContainer.innerHTML = '';
+            
+            elements.startScreen.classList.add('pointer-events-none');
+            elements.startScreen.style.opacity = '0';
+            elements.scoreDisplay.style.opacity = '1';
+            elements.goldCount.style.opacity = '1';
+            elements.powerupStatus.style.opacity = '0';
+            elements.scoreDisplay.textContent = '0';
+            elements.goldCount.innerHTML = '<i class="fa fa-star text-gold"></i> 0';
+            
+            lastPipeTime = performance.now();
+            lastGoldTime = performance.now();
+            lastPowerupTime = performance.now();
+        }
+        
+        // 重新开始游戏
+        function restartGame() {
+            elements.endScreen.classList.add('pointer-events-none');
+            elements.endScreen.style.opacity = '0';
+            startGame();
+        }
+        
+        // 游戏结束
+        function gameOver() {
+            game.over = true;
+            game.started = false;
+            game.powerupActive = false;
+            game.powerupType = null;
+            
+            // 重置小鸟样式
+            elements.bird.className = 'absolute w-[34px] h-[24px] bg-secondary rounded-full pointer-events-auto';
+            
+            // 更新最高分
+            if (game.score > game.highScore) {
+                game.highScore = game.score;
+                localStorage.setItem('flappyHighScore', game.highScore);
+            }
+            
+            // 显示结束屏幕
+            elements.finalScore.textContent = game.score;
+            elements.goldScore.textContent = game.gold;
+            elements.highScore.textContent = game.highScore;
+            elements.endScreen.classList.remove('pointer-events-none');
+            elements.endScreen.style.opacity = '1';
+            elements.powerupStatus.style.opacity = '0';
+        }
+        
+        // 跳跃
+        function jump() {
+            if (!game.started || game.over || game.paused) return;
+            
+            // 使用翅膀道具时增加跳跃力
+            bird.velocity = game.powerupType === 'wing' ? config.wingJumpBoost : config.jump;
+            // 播放跳跃音效（这里可以添加音效）
+        }
+        
+        // 切换音效
+        function toggleSound() {
+            game.soundEnabled = !game.soundEnabled;
+            elements.soundButton.innerHTML = game.soundEnabled ? 
+                '<i class="fa fa-volume-up"></i>' : 
+                '<i class="fa fa-volume-off"></i>';
+        }
+        
+        // 暂停/继续游戏
+        function togglePause() {
+            if (game.over) return;
+            
+            game.paused = !game.paused;
+            
+            if (game.paused) {
+                elements.pauseButton.innerHTML = '<i class="fa fa-play"></i>';
+                // 显示暂停遮罩
+                if (!document.getElementById('pause-overlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'pause-overlay';
+                    overlay.className = 'absolute inset-0 bg-dark/50 z-30 flex items-center justify-center pointer-events-none';
+                    overlay.innerHTML = '<div class="text-[24px] text-secondary">暂停</div>';
+                    elements.gameContainer.appendChild(overlay);
+                }
+            } else {
+                elements.pauseButton.innerHTML = '<i class="fa fa-pause"></i>';
+                // 移除暂停遮罩
+                const overlay = document.getElementById('pause-overlay');
+                if (overlay) overlay.remove();
+            }
+        }
+        
+        // 处理键盘事件
+        function handleKeyPress(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (game.over) {
+                    restartGame();
+                } else {
+                    jump();
+                }
+            } else if (e.code === 'KeyP') {
+                togglePause();
+            } else if (e.code === 'KeyM') {
+                toggleSound();
+            }
+        }
+        
+        // 处理点击/触摸事件
+        function handleClick(e) {
+            if (game.over) {
+                restartGame();
+            } else {
+                jump();
+            }
+        }
+        
+        // 创建管道
+        function createPipe() {
+            const isMovingObstacle = Math.random() < config.movingObstacleChance;
+            const pipeHeight = 150 + Math.random() * 200;
+            const gap = config.pipeGap;
+            const pipeX = 320;
+            const topPipeY = 0 - pipeHeight;
+            const bottomPipeY = pipeHeight + gap;
+            
+            // 上管道
+            const topPipe = document.createElement('div');
+            topPipe.className = `absolute bg-dark game-shadow ${isMovingObstacle ? 'moving-obstacle' : ''}`;
+            topPipe.style.width = '52px';
+            topPipe.style.height = `${pipeHeight}px`;
+            topPipe.style.left = `${pipeX}px`;
+            topPipe.style.top = `${topPipeY}px`;
+            topPipe.dataset.passed = 'false';
+            topPipe.dataset.moving = isMovingObstacle;
+            topPipe.dataset.startY = topPipeY;
+            topPipe.dataset.timeOffset = Math.random() * 1000;
+            
+            // 下管道
+            const bottomPipe = document.createElement('div');
+            bottomPipe.className = `absolute bg-dark game-shadow ${isMovingObstacle ? 'moving-obstacle' : ''}`;
+            bottomPipe.style.width = '52px';
+            bottomPipe.style.height = `${568 - bottomPipeY}px`;
+            bottomPipe.style.left = `${pipeX}px`;
+            bottomPipe.style.top = `${bottomPipeY}px`;
+            bottomPipe.dataset.moving = isMovingObstacle;
+            bottomPipe.dataset.startY = bottomPipeY;
+            bottomPipe.dataset.timeOffset = Math.random() * 1000;
+            
+            elements.pipesContainer.appendChild(topPipe);
+            elements.pipesContainer.appendChild(bottomPipe);
+            
+            pipes.push({
+                x: pipeX,
+                topPipe,
+                bottomPipe,
+                width: 52,
+                passed: false,
+                isMoving: isMovingObstacle
+            });
+            
+            // 有一定概率在管道中间生成金条
+            if (Math.random() < config.goldSpawnChance) {
+                createGold(pipeX, pipeHeight + gap/2);
+            }
+            
+            // 有一定概率生成道具
+            if (Math.random() < config.powerupSpawnChance && !game.powerupActive && powerups.length === 0) {
+                createPowerup(pipeX, pipeHeight + gap/2);
+            }
+        }
+        
+        // 创建金条
+        function createGold(x, y) {
+            const gold = document.createElement('div');
+            gold.className = 'absolute bg-gold rounded game-shadow gold-animation';
+            gold.style.width = `${config.goldWidth}px`;
+            gold.style.height = `${config.goldHeight}px`;
+            gold.style.left = `${x}px`;
+            gold.style.top = `${y - config.goldHeight/2}px`;
+            gold.dataset.collected = 'false';
+            
+            elements.goldContainer.appendChild(gold);
+            
+            golds.push({
+                x,
+                y: y - config.goldHeight/2,
+                element: gold,
+                width: config.goldWidth,
+                height: config.goldHeight,
+                collected: false
+            });
+        }
+        
+        // 创建道具
+        function createPowerup(x, y) {
+            const powerupTypes = config.powerupTypes;
+            const randomType = powerupTypes[Math.floor(Math.random() * powerupTypes.length)];
+            
+            let color, icon;
+            switch(randomType) {
+                case 'wing':
+                    color = 'bg-powerup';
+                    icon = 'fa-rocket';
+                    break;
+                case 'shield':
+                    color = 'bg-shield';
+                    icon = 'fa-shield';
+                    break;
+                case 'magnet':
+                    color = 'bg-magnet';
+                    icon = 'fa-bullseye';
+                    break;
+                default:
+                    color = 'bg-powerup';
+                    icon = 'fa-star';
+            }
+            
+            const powerup = document.createElement('div');
+            powerup.className = `absolute ${color} rounded-full game-shadow powerup-animation flex items-center justify-center`;
+            powerup.style.width = '30px';
+            powerup.style.height = '30px';
+            powerup.style.left = `${x}px`;
+            powerup.style.top = `${y - 15}px`;
+            powerup.innerHTML = `<i class="fa ${icon} text-light"></i>`;
+            powerup.dataset.type = randomType;
+            powerup.dataset.collected = 'false';
+            
+            elements.powerupContainer.appendChild(powerup);
+            
+            powerups.push({
+                x,
+                y: y - 15,
+                element: powerup,
+                width: 30,
+                height: 30,
+                type: randomType,
+                collected: false
+            });
+        }
+        
+        // 激活道具
+        function activatePowerup(powerupType) {
+            game.powerupActive = true;
+            game.powerupType = powerupType;
+            game.powerupEndTime = performance.now() + config.powerupDuration;
+            
+            // 更新小鸟样式
+            switch(powerupType) {
+                case 'wing':
+                    elements.bird.classList.add('wing-effect');
+                    break;
+                case 'shield':
+                    elements.bird.classList.add('shield-effect');
+                    break;
+                case 'magnet':
+                    elements.bird.classList.add('magnet-effect');
+                    break;
+            }
+            
+            // 显示道具状态
+            elements.powerupStatus.style.opacity = '1';
+            
+            // 播放道具音效（这里可以添加音效）
+        }
+        
+        // 移动管道、金条和道具
+        function movePipesGoldAndPowerups(timestamp) {
+            // 检查道具是否过期
+            if (game.powerupActive && timestamp > game.powerupEndTime) {
+                deactivatePowerup();
+            }
+            
+            // 更新道具状态显示
+            if (game.powerupActive) {
+                const remainingTime = Math.ceil((game.powerupEndTime - timestamp) / 1000);
+                let powerupName = '';
+                
+                switch(game.powerupType) {
+                    case 'wing':
+                        powerupName = '翅膀';
+                        break;
+                    case 'shield':
+                        powerupName = '护盾';
+                        break;
+                    case 'magnet':
+                        powerupName = '磁铁';
+                        break;
+                }
+                
+                elements.powerupText.textContent = powerupName;
+                elements.powerupTimer.textContent = `${remainingTime}s`;
+            }
+            
+            // 创建新管道
+            if (timestamp - lastPipeTime > config.pipeInterval) {
+                createPipe();
+                lastPipeTime = timestamp;
+            }
+            
+            // 移动所有管道
+            for (let i = pipes.length - 1; i >= 0; i--) {
+                const pipe = pipes[i];
+                pipe.x -= config.pipeSpeed;
+                pipe.topPipe.style.left = `${pipe.x}px`;
+                pipe.bottomPipe.style.left = `${pipe.x}px`;
+                
+                // 移动障碍的动画
+                if (pipe.isMoving) {
+                    const sineWave = Math.sin((timestamp + parseInt(pipe.topPipe.dataset.timeOffset)) * config.obstacleFrequency) * config.obstacleAmplitude;
+                    const startYTop = parseInt(pipe.topPipe.dataset.startY);
+                    const startYBottom = parseInt(pipe.bottomPipe.dataset.startY);
+                    
+                    pipe.topPipe.style.top = `${startYTop + sineWave}px`;
+                    pipe.bottomPipe.style.top = `${startYBottom + sineWave}px`;
+                }
+                
+                // 移除屏幕外的管道
+                if (pipe.x + pipe.width < 0) {
+                    pipe.topPipe.remove();
+                    pipe.bottomPipe.remove();
+                    pipes.splice(i, 1);
+                }
+                
+                // 检测分数
+                if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+                    pipe.passed = true;
+                    game.score++;
+                    elements.scoreDisplay.textContent = game.score;
+                    // 播放得分音效（这里可以添加音效）
+                }
+                
+                // 碰撞检测（如果没有护盾道具）
+                if (!game.powerupActive || game.powerupType !== 'shield') {
+                    if (checkCollision(pipe)) {
+                        gameOver();
+                        // 播放碰撞音效（这里可以添加音效）
+                    }
+                }
+            }
+            
+            // 移动所有金条
+            for (let i = golds.length - 1; i >= 0; i--) {
+                const gold = golds[i];
+                
+                // 如果是磁铁道具激活状态，金条会被吸引
+                if (game.powerupType === 'magnet') {
+                    const dx = bird.x - (gold.x + gold.width/2);
+                    const dy = bird.y - (gold.y + gold.height/2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < config.magnetRange) {
+                        const speed = 3;
+                        gold.x += (dx / distance) * speed;
+                        gold.y += (dy / distance) * speed;
+                        gold.element.style.left = `${gold.x}px`;
+                        gold.element.style.top = `${gold.y}px`;
+                    }
+                } else {
+                    gold.x -= config.pipeSpeed;
+                    gold.element.style.left = `${gold.x}px`;
+                }
+                
+                // 移除屏幕外的金条
+                if (gold.x + gold.width < 0) {
+                    gold.element.remove();
+                    golds.splice(i, 1);
+                }
+                
+                // 检测是否收集金条
+                if (!gold.collected && checkGoldCollision(gold)) {
+                    collectGold(gold, i);
+                }
+            }
+            
+            // 移动所有道具
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const powerup = powerups[i];
+                powerup.x -= config.pipeSpeed;
+                powerup.element.style.left = `${powerup.x}px`;
+                
+                // 移除屏幕外的道具
+                if (powerup.x + powerup.width < 0) {
+                    powerup.element.remove();
+                    powerups.splice(i, 1);
+                }
+                
+                // 检测是否收集道具
+                if (!powerup.collected && checkPowerupCollision(powerup)) {
+                    collectPowerup(powerup, i);
+                }
+            }
+        }
+        
+        // 碰撞检测
+        function checkCollision(pipe) {
+            // 简化的碰撞检测
+            const birdBox = {
+                x: bird.x - bird.width / 2,
+                y: bird.y - bird.height / 2,
+                width: bird.width,
+                height: bird.height
+            };
+            
+            // 获取管道的当前位置（考虑移动的管道）
+            const topPipeY = parseInt(pipe.topPipe.style.top);
+            const bottomPipeY = parseInt(pipe.bottomPipe.style.top);
+            
+            // 检测与管道的碰撞
+            const topPipeBox = {
+                x: pipe.x,
+                y: topPipeY,
+                width: pipe.width,
+                height: parseInt(pipe.topPipe.style.height)
+            };
+            
+            const bottomPipeBox = {
+                x: pipe.x,
+                y: bottomPipeY,
+                width: pipe.width,
+                height: parseInt(pipe.bottomPipe.style.height)
+            };
+            
+            // 检测与地面的碰撞
+            if (bird.y + bird.height / 2 >= config.groundY) {
+                return true;
+            }
+            
+            // 检测与管道的碰撞
+            if (birdBox.x + birdBox.width > topPipeBox.x && 
+                birdBox.x < topPipeBox.x + topPipeBox.width && 
+                birdBox.y < topPipeBox.y + topPipeBox.height) {
+                return true;
+            }
+            
+            if (birdBox.x + birdBox.width > bottomPipeBox.x && 
+                birdBox.x < bottomPipeBox.x + bottomPipeBox.width && 
+                birdBox.y + birdBox.height > bottomPipeBox.y) {
+                return true;
+            }
+            
+            return false;
+        }
+        
+        // 检测金条碰撞
+        function checkGoldCollision(gold) {
+            const birdBox = {
+                x: bird.x - bird.width / 2,
+                y: bird.y - bird.height / 2,
+                width: bird.width,
+                height: bird.height
+            };
+            
+            const goldBox = {
+                x: gold.x,
+                y: gold.y,
+                width: gold.width,
+                height: gold.height
+            };
+            
+            return (birdBox.x < goldBox.x + goldBox.width &&
+                    birdBox.x + birdBox.width > goldBox.x &&
+                    birdBox.y < goldBox.y + goldBox.height &&
+                    birdBox.y + birdBox.height > goldBox.y);
+        }
+        
+        // 检测道具碰撞
+        function checkPowerupCollision(powerup) {
+            const birdBox = {
+                x: bird.x - bird.width / 2,
+                y: bird.y - bird.height / 2,
+                width: bird.width,
+                height: bird.height
+            };
+            
+            const powerupBox = {
+                x: powerup.x,
+                y: powerup.y,
+                width: powerup.width,
+                height: powerup.height
+            };
+            
+            return (birdBox.x < powerupBox.x + powerupBox.width &&
+                    birdBox.x + birdBox.width > powerupBox.x &&
+                    birdBox.y < powerupBox.y + powerupBox.height &&
+                    birdBox.y + birdBox.height > powerupBox.y);
+        }
+        
+        // 收集金条
+        function collectGold(gold, index) {
+            gold.collected = true;
+            gold.element.dataset.collected = 'true';
+            gold.element.classList.add('opacity-0', 'scale-150');
+            gold.element.style.transition = 'opacity 0.3s, transform 0.3s';
+            
+            game.gold++;
+            elements.goldCount.innerHTML = `<i class="fa fa-star text-gold"></i> ${game.gold}`;
+            
+            // 播放收集音效（这里可以添加音效）
+            
+            // 延迟移除金条元素
+            setTimeout(() => {
+                gold.element.remove();
+                golds.splice(index, 1);
+            }, 300);
+        }
+        
+        // 收集道具
+        function collectPowerup(powerup, index) {
+            powerup.collected = true;
+            powerup.element.dataset.collected = 'true';
+            powerup.element.classList.add('opacity-0', 'scale-150');
+            powerup.element.style.transition = 'opacity 0.3s, transform 0.3s';
+            
+            // 激活道具
+            activatePowerup(powerup.type);
+            
+            // 播放收集道具音效（这里可以添加音效）
+            
+            // 延迟移除道具元素
+            setTimeout(() => {
+                powerup.element.remove();
+                powerups.splice(index, 1);
+            }, 300);
+        }
+        
+        // 停用道具
+        function deactivatePowerup() {
+            game.powerupActive = false;
+            game.powerupType = null;
+            
+            // 移除小鸟特效
+            elements.bird.classList.remove('wing-effect', 'shield-effect', 'magnet-effect');
+            
+            // 隐藏道具状态
+            elements.powerupStatus.style.opacity = '0';
+        }
+        
+        // 更新小鸟位置
+        function updateBird() {
+            if (!game.started || game.paused) return;
+            
+            // 应用重力
+            bird.velocity += config.gravity;
+            bird.y += bird.velocity;
+            
+            // 更新小鸟DOM位置
+            elements.bird.style.top = `${bird.y}px`;
+            
+            // 旋转小鸟
+            bird.rotation = Math.min(Math.max(bird.velocity * 2, -25), 90);
+            elements.bird.style.transform = `rotate(${bird.rotation}deg)`;
+            
+            // 检测是否飞出屏幕顶部
+            if (bird.y < 0) {
+                bird.y = 0;
+                bird.velocity = 0;
+            }
+        }
+        
+        // 游戏循环
+        function gameLoop(timestamp) {
+            if (!game.paused) {
+                if (game.started && !game.over) {
+                    updateBird();
+                    movePipesGoldAndPowerups(timestamp);
+                }
+            }
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // 初始化游戏
+        initGame();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李喆灏';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>    

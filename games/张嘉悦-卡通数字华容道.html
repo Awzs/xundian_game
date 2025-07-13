@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卡通数字华容道</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366F1',
+                        secondary: '#EC4899',
+                        accent: '#8B5CF6',
+                        neutral: '#F3F4F6',
+                        "base-100": '#FFFFFF',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        error: '#EF4444',
+                        info: '#3B82F6',
+                    },
+                    fontFamily: {
+                        comic: ['"Comic Sans MS"', '"Marker Felt"', 'Arial', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .puzzle-shadow {
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            }
+            .tile-hover {
+                transition: all 0.2s ease;
+            }
+            .tile-hover:hover {
+                transform: scale(1.05);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            }
+            .btn-pop {
+                transition: all 0.15s ease;
+            }
+            .btn-pop:active {
+                transform: scale(0.95);
+            }
+            .celebration {
+                animation: celebration 0.6s ease-out;
+            }
+            @keyframes celebration {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+                100% { transform: scale(1); }
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-purple-50 min-h-screen font-comic text-gray-800 flex flex-col items-center justify-center p-4">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-3xl w-full mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
+        <!-- 游戏头部 -->
+        <header class="bg-gradient-to-r from-primary to-accent text-white p-6 text-center">
+            <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold mb-2 tracking-wide">卡通数字华容道</h1>
+            <p class="text-white/90 text-lg">滑动方块，将数字按顺序排列</p>
+        </header>
+
+        <!-- 游戏主体 -->
+        <main class="p-6 md:p-8">
+            <!-- 游戏信息 -->
+            <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="bg-neutral rounded-xl p-4 text-center shadow-md">
+                        <p class="text-sm text-gray-600 mb-1">步数</p>
+                        <p id="moves" class="text-2xl font-bold">0</p>
+                    </div>
+                    <div class="bg-neutral rounded-xl p-4 text-center shadow-md">
+                        <p class="text-sm text-gray-600 mb-1">时间</p>
+                        <p id="timer" class="text-2xl font-bold">00:00</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="startBtn" class="bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-xl shadow-md btn-pop flex items-center gap-2">
+                        <i class="fa fa-play"></i>
+                        <span>开始</span>
+                    </button>
+                    <button id="resetBtn" class="bg-secondary hover:bg-secondary/90 text-white px-6 py-3 rounded-xl shadow-md btn-pop flex items-center gap-2">
+                        <i class="fa fa-refresh"></i>
+                        <span>重置</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 难度选择 -->
+            <div class="mb-8">
+                <label for="difficulty" class="block text-gray-700 font-medium mb-2">选择难度:</label>
+                <select id="difficulty" class="bg-white border border-gray-300 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <option value="3">3x3 (简单)</option>
+                    <option value="4" selected>4x4 (中等)</option>
+                    <option value="5">5x5 (困难)</option>
+                </select>
+            </div>
+
+            <!-- 游戏区域 -->
+            <div class="relative">
+                <div id="puzzleContainer" class="grid grid-cols-4 gap-3 mx-auto transition-all duration-300">
+                    <!-- 数字方块将在这里动态生成 -->
+                </div>
+                
+                <!-- 成功弹窗 -->
+                <div id="successModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 opacity-0 pointer-events-none transition-opacity duration-300">
+                    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center shadow-2xl transform scale-95 transition-transform duration-300">
+                        <div class="text-6xl mb-4 text-yellow-500 celebration">🎉</div>
+                        <h2 class="text-3xl font-bold mb-2">恭喜你!</h2>
+                        <p class="text-gray-600 mb-6">你成功完成了挑战!</p>
+                        <div class="flex flex-wrap justify-center gap-4 mb-6">
+                            <div class="bg-neutral rounded-lg p-3 text-center w-32">
+                                <p class="text-sm text-gray-600 mb-1">总步数</p>
+                                <p id="finalMoves" class="text-2xl font-bold">0</p>
+                            </div>
+                            <div class="bg-neutral rounded-lg p-3 text-center w-32">
+                                <p class="text-sm text-gray-600 mb-1">用时</p>
+                                <p id="finalTime" class="text-2xl font-bold">00:00</p>
+                            </div>
+                        </div>
+                        <button id="playAgainBtn" class="bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-xl shadow-md btn-pop w-full">
+                            再玩一次
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 游戏底部 -->
+        <footer class="bg-gray-50 text-gray-600 p-4 text-center">
+            <p>滑动数字方块，将它们按顺序排列。点击与空白方块相邻的方块即可移动。</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 游戏状态
+            let puzzleSize = 4; // 默认4x4
+            let puzzle = [];
+            let emptyPos = { row: puzzleSize - 1, col: puzzleSize - 1 };
+            let moves = 0;
+            let timer = 0;
+            let timerInterval = null;
+            let isPlaying = false;
+            
+            // 颜色配置
+            const tileColors = [
+                'bg-red-400', 'bg-orange-400', 'bg-yellow-400', 'bg-green-400',
+                'bg-blue-400', 'bg-indigo-400', 'bg-purple-400', 'bg-pink-400',
+                'bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-green-500',
+                'bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-pink-500',
+                'bg-red-600', 'bg-orange-600', 'bg-yellow-600', 'bg-green-600',
+                'bg-blue-600', 'bg-indigo-600', 'bg-purple-600', 'bg-pink-600',
+            ];
+            
+            // DOM 元素
+            const puzzleContainer = document.getElementById('puzzleContainer');
+            const movesElement = document.getElementById('moves');
+            const timerElement = document.getElementById('timer');
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const difficultySelect = document.getElementById('difficulty');
+            const successModal = document.getElementById('successModal');
+            const finalMovesElement = document.getElementById('finalMoves');
+            const finalTimeElement = document.getElementById('finalTime');
+            const playAgainBtn = document.getElementById('playAgainBtn');
+            
+            // 初始化事件监听
+            startBtn.addEventListener('click', startGame);
+            resetBtn.addEventListener('click', resetGame);
+            playAgainBtn.addEventListener('click', () => {
+                successModal.classList.add('opacity-0', 'pointer-events-none');
+                resetGame();
+                startGame();
+            });
+            
+            difficultySelect.addEventListener('change', () => {
+                puzzleSize = parseInt(difficultySelect.value);
+                resetGame();
+            });
+            
+            // 初始化游戏
+            initPuzzle();
+            
+            // 初始化拼图
+            function initPuzzle() {
+                puzzle = [];
+                let value = 1;
+                
+                // 创建有序的拼图
+                for (let row = 0; row < puzzleSize; row++) {
+                    puzzle[row] = [];
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (row === puzzleSize - 1 && col === puzzleSize - 1) {
+                            puzzle[row][col] = 0; // 空白方块
+                        } else {
+                            puzzle[row][col] = value++;
+                        }
+                    }
+                }
+                
+                // 更新网格样式
+                puzzleContainer.style.gridTemplateColumns = `repeat(${puzzleSize}, 1fr)`;
+                
+                // 渲染拼图
+                renderPuzzle();
+            }
+            
+            // 渲染拼图
+            function renderPuzzle() {
+                puzzleContainer.innerHTML = '';
+                
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        const value = puzzle[row][col];
+                        const tile = document.createElement('div');
+                        
+                        if (value === 0) {
+                            // 空白方块
+                            tile.className = 'aspect-square rounded-xl bg-transparent';
+                        } else {
+                            // 数字方块
+                            const colorIndex = (value - 1) % tileColors.length;
+                            tile.className = `aspect-square rounded-xl flex items-center justify-center text-white text-2xl md:text-3xl font-bold ${tileColors[colorIndex]} tile-hover cursor-pointer shadow-md`;
+                            
+                            // 为方块添加卡通风格的表情
+                            const emojis = ['😀', '😎', '🤩', '🥳', '😊', '🤗', '🤓', '😜', '🤠', '🥰', '😇', '😛', '🤣', '😂', '😃', '😄'];
+                            const emojiIndex = (value - 1) % emojis.length;
+                            
+                            tile.innerHTML = `
+                                <div class="flex flex-col items-center">
+                                    <span class="text-3xl mb-1">${emojis[emojiIndex]}</span>
+                                    <span>${value}</span>
+                                </div>
+                            `;
+                            
+                            // 添加点击事件
+                            tile.addEventListener('click', () => moveTile(row, col));
+                        }
+                        
+                        puzzleContainer.appendChild(tile);
+                    }
+                }
+            }
+            
+            // 移动方块
+            function moveTile(row, col) {
+                if (!isPlaying) return;
+                
+                // 检查是否可以移动
+                if (
+                    (row === emptyPos.row && Math.abs(col - emptyPos.col) === 1) ||
+                    (col === emptyPos.col && Math.abs(row - emptyPos.row) === 1)
+                ) {
+                    // 交换方块
+                    puzzle[emptyPos.row][emptyPos.col] = puzzle[row][col];
+                    puzzle[row][col] = 0;
+                    
+                    // 更新空白方块位置
+                    emptyPos.row = row;
+                    emptyPos.col = col;
+                    
+                    // 更新步数
+                    moves++;
+                    movesElement.textContent = moves;
+                    
+                    // 重新渲染拼图
+                    renderPuzzle();
+                    
+                    // 检查是否完成
+                    if (isPuzzleSolved()) {
+                        stopTimer();
+                        isPlaying = false;
+                        showSuccessModal();
+                    }
+                }
+            }
+            
+            // 检查拼图是否已解决
+            function isPuzzleSolved() {
+                let value = 1;
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (row === puzzleSize - 1 && col === puzzleSize - 1) {
+                            if (puzzle[row][col] !== 0) return false;
+                        } else {
+                            if (puzzle[row][col] !== value++) return false;
+                        }
+                    }
+                }
+                return true;
+            }
+            
+            // 开始游戏
+            function startGame() {
+                if (isPlaying) return;
+                
+                // 打乱拼图
+                do {
+                    shufflePuzzle();
+                } while (!isSolvable() || isPuzzleSolved());
+                
+                // 重置游戏状态
+                moves = 0;
+                movesElement.textContent = moves;
+                startTimer();
+                isPlaying = true;
+                
+                // 更新按钮文本
+                startBtn.innerHTML = '<i class="fa fa-pause"></i><span>暂停</span>';
+                startBtn.classList.remove('bg-primary');
+                startBtn.classList.add('bg-warning');
+                
+                // 重新渲染拼图
+                renderPuzzle();
+            }
+            
+            // 重置游戏
+            function resetGame() {
+                stopTimer();
+                isPlaying = false;
+                initPuzzle();
+                
+                // 重置计时器
+                timer = 0;
+                timerElement.textContent = '00:00';
+                
+                // 重置步数
+                moves = 0;
+                movesElement.textContent = moves;
+                
+                // 更新按钮文本
+                startBtn.innerHTML = '<i class="fa fa-play"></i><span>开始</span>';
+                startBtn.classList.remove('bg-warning');
+                startBtn.classList.add('bg-primary');
+            }
+            
+            // 打乱拼图
+            function shufflePuzzle() {
+                // 从已解决状态开始，进行随机移动
+                emptyPos = { row: puzzleSize - 1, col: puzzleSize - 1 };
+                
+                const directions = [
+                    { row: -1, col: 0 }, // 上
+                    { row: 1, col: 0 },  // 下
+                    { row: 0, col: -1 }, // 左
+                    { row: 0, col: 1 }   // 右
+                ];
+                
+                let previousDirection = null;
+                const shuffleMoves = puzzleSize * puzzleSize * 10; // 足够多的随机移动
+                
+                for (let i = 0; i < shuffleMoves; i++) {
+                    // 获取可能的移动方向
+                    let possibleDirections = [];
+                    
+                    for (let dir of directions) {
+                        // 不允许直接回到上一步
+                        if (previousDirection && 
+                            dir.row === -previousDirection.row && 
+                            dir.col === -previousDirection.col) {
+                            continue;
+                        }
+                        
+                        const newRow = emptyPos.row + dir.row;
+                        const newCol = emptyPos.col + dir.col;
+                        
+                        if (newRow >= 0 && newRow < puzzleSize && newCol >= 0 && newCol < puzzleSize) {
+                            possibleDirections.push(dir);
+                        }
+                    }
+                    
+                    // 随机选择一个方向
+                    const randomIndex = Math.floor(Math.random() * possibleDirections.length);
+                    const direction = possibleDirections[randomIndex];
+                    
+                    // 移动方块
+                    const newRow = emptyPos.row + direction.row;
+                    const newCol = emptyPos.col + direction.col;
+                    
+                    puzzle[emptyPos.row][emptyPos.col] = puzzle[newRow][newCol];
+                    puzzle[newRow][newCol] = 0;
+                    emptyPos.row = newRow;
+                    emptyPos.col = newCol;
+                    
+                    // 记录当前方向
+                    previousDirection = direction;
+                }
+            }
+            
+            // 检查拼图是否可解
+            function isSolvable() {
+                // 将二维数组转换为一维数组
+                const flatPuzzle = [];
+                for (let row = 0; row < puzzleSize; row++) {
+                    for (let col = 0; col < puzzleSize; col++) {
+                        if (puzzle[row][col] !== 0) {
+                            flatPuzzle.push(puzzle[row][col]);
+                        }
+                    }
+                }
+                
+                // 计算逆序数
+                let inversions = 0;
+                for (let i = 0; i < flatPuzzle.length; i++) {
+                    for (let j = i + 1; j < flatPuzzle.length; j++) {
+                        if (flatPuzzle[i] > flatPuzzle[j]) {
+                            inversions++;
+                        }
+                    }
+                }
+                
+                // 根据拼图大小和空白方块位置判断是否可解
+                if (puzzleSize % 2 === 1) {
+                    // 奇数大小的拼图：逆序数为偶数时有解
+                    return inversions % 2 === 0;
+                } else {
+                    // 偶数大小的拼图：空白所在行的奇偶性决定逆序数的要求
+                    const blankRow = emptyPos.row;
+                    if ((blankRow % 2 === 0 && inversions % 2 === 1) || 
+                        (blankRow % 2 === 1 && inversions % 2 === 0)) {
+                        return true;
+                    }
+                    return false;
+                }
+            }
+            
+            // 开始计时器
+            function startTimer() {
+                stopTimer();
+                
+                timerInterval = setInterval(() => {
+                    timer++;
+                    const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
+                    const seconds = (timer % 60).toString().padStart(2, '0');
+                    timerElement.textContent = `${minutes}:${seconds}`;
+                }, 1000);
+            }
+            
+            // 停止计时器
+            function stopTimer() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+            
+            // 显示成功弹窗
+            function showSuccessModal() {
+                finalMovesElement.textContent = moves;
+                const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
+                const seconds = (timer % 60).toString().padStart(2, '0');
+                finalTimeElement.textContent = `${minutes}:${seconds}`;
+                
+                setTimeout(() => {
+                    successModal.classList.remove('opacity-0', 'pointer-events-none');
+                    successModal.querySelector('div').classList.remove('scale-95');
+                    successModal.querySelector('div').classList.add('scale-100');
+                }, 500);
+            }
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '张嘉悦';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

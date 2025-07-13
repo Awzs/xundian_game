@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>森林冰火人</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ice: '#3498db',
+                        fire: '#e74c3c',
+                        forest: '#2ecc71',
+                        wall: '#95a5a6',
+                        portal: '#9b59b6',
+                        coin: '#f1c40f',
+                    },
+                    fontFamily: {
+                        game: ['"Press Start 2P"', 'cursive', 'system-ui'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-corners {
+                clip-path: polygon(
+                    0% 4px, 4px 4px, 4px 0%, calc(100% - 4px) 0%, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+                    4px 100%, 4px calc(100% - 4px), 0% calc(100% - 4px)
+                );
+            }
+            .game-shadow {
+                box-shadow: 0 0 0 2px #000, 0 0 0 4px #95a5a6;
+            }
+            .pixel-borders {
+                position: relative;
+            }
+            .pixel-borders::before,
+            .pixel-borders::after {
+                content: "";
+                position: absolute;
+                background-color: #000;
+            }
+            .pixel-borders::before {
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+            }
+            .pixel-borders::after {
+                bottom: 0;
+                left: 0;
+                right: 0;
+                height: 2px;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 font-game text-white">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="w-full max-w-4xl bg-forest/80 rounded-lg pixel-corners game-shadow p-6 relative overflow-hidden">
+        <!-- 装饰元素 -->
+        <div class="absolute -top-4 -left-4 w-16 h-16 bg-ice/30 rounded-full blur-xl"></div>
+        <div class="absolute -bottom-4 -right-4 w-24 h-24 bg-fire/30 rounded-full blur-xl"></div>
+        
+        <header class="text-center mb-6 relative z-10">
+            <h1 class="text-[clamp(1.5rem,5vw,2.5rem)] text-shadow-lg mb-2">森林冰火人</h1>
+            <p class="text-sm text-gray-200">合作冒险游戏</p>
+        </header>
+        
+        <div class="flex flex-col md:flex-row gap-4">
+            <!-- 游戏区域 -->
+            <div class="flex-1 relative">
+                <canvas id="gameCanvas" class="w-full aspect-[4/3] bg-black rounded-lg pixel-corners game-shadow"></canvas>
+                
+                <!-- 游戏控制说明 -->
+                <div class="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-sm rounded px-3 py-2 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <p class="text-ice mb-1">冰人控制</p>
+                            <div class="flex items-center space-x-1">
+                                <span class="bg-white/10 px-2 py-1 rounded">W</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">A</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">S</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">D</span>
+                            </div>
+                        </div>
+                        <div>
+                            <p class="text-fire mb-1">火人控制</p>
+                            <div class="flex items-center space-x-1">
+                                <span class="bg-white/10 px-2 py-1 rounded">↑</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">←</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">↓</span>
+                                <span class="bg-white/10 px-2 py-1 rounded">→</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 游戏信息面板 -->
+            <div class="w-full md:w-80 space-y-4">
+                <!-- 玩家状态 -->
+                <div class="bg-black/50 backdrop-blur-sm rounded-lg pixel-corners p-4">
+                    <h2 class="text-sm font-bold mb-3">玩家状态</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-ice rounded-full mr-2"></div>
+                                <span class="text-xs">冰人</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa fa-star text-coin text-xs mr-1"></i>
+                                <span id="iceCoins" class="text-xs">0</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div id="iceHealth" class="bg-ice h-full w-full"></div>
+                        </div>
+                        
+                        <div class="flex items-center justify-between mt-3">
+                            <div class="flex items-center">
+                                <div class="w-6 h-6 bg-fire rounded-full mr-2"></div>
+                                <span class="text-xs">火人</span>
+                            </div>
+                            <div class="flex items-center">
+                                <i class="fa fa-star text-coin text-xs mr-1"></i>
+                                <span id="fireCoins" class="text-xs">0</span>
+                            </div>
+                        </div>
+                        <div class="w-full bg-gray-700 h-2 rounded-full overflow-hidden">
+                            <div id="fireHealth" class="bg-fire h-full w-full"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 关卡选择 -->
+                <div class="bg-black/50 backdrop-blur-sm rounded-lg pixel-corners p-4">
+                    <h2 class="text-sm font-bold mb-3">关卡选择</h2>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="level-btn bg-forest hover:bg-forest/80 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners active" data-level="1">关卡 1</button>
+                        <button class="level-btn bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners opacity-50 cursor-not-allowed" data-level="2">关卡 2</button>
+                        <button class="level-btn bg-gray-700 hover:bg-gray-600 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners opacity-50 cursor-not-allowed" data-level="3">关卡 3</button>
+                    </div>
+                </div>
+                
+                <!-- 游戏控制 -->
+                <div class="bg-black/50 backdrop-blur-sm rounded-lg pixel-corners p-4">
+                    <h2 class="text-sm font-bold mb-3">游戏控制</h2>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="startBtn" class="bg-green-600 hover:bg-green-700 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners">
+                            <i class="fa fa-play mr-1"></i> 开始
+                        </button>
+                        <button id="pauseBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners">
+                            <i class="fa fa-pause mr-1"></i> 暂停
+                        </button>
+                        <button id="restartBtn" class="bg-red-600 hover:bg-red-700 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners">
+                            <i class="fa fa-refresh mr-1"></i> 重置
+                        </button>
+                        <button id="soundBtn" class="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 rounded transition-all duration-200 pixel-corners">
+                            <i class="fa fa-volume-up mr-1"></i> 声音
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 游戏说明 -->
+                <div class="bg-black/50 backdrop-blur-sm rounded-lg pixel-corners p-4">
+                    <h2 class="text-sm font-bold mb-3">游戏说明</h2>
+                    <p class="text-xs text-gray-300 leading-relaxed">
+                        冰人和火人必须合作通过森林关卡。冰人只能触碰蓝色物品，火人只能触碰红色物品。收集所有金币并到达对应颜色的传送门即可通关。
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏结束/胜利提示 -->
+        <div id="gameMessage" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+            <div class="bg-white text-black p-6 rounded-lg text-center pixel-corners game-shadow max-w-md w-full">
+                <h2 id="messageTitle" class="text-xl font-bold mb-3"></h2>
+                <p id="messageContent" class="mb-4"></p>
+                <button id="messageBtn" class="bg-forest hover:bg-forest/80 text-white px-4 py-2 rounded transition-all duration-200 pixel-corners">
+                    再来一次
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="mt-6 text-center text-xs text-gray-500">
+        <p>© 2025 森林冰火人游戏 | 使用键盘控制角色</p>
+    </footer>
+
+    <script>
+        // 游戏常量
+        const TILE_SIZE = 32;
+        const PLAYER_SIZE = TILE_SIZE * 0.8;
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -12;
+        const MOVEMENT_SPEED = 5;
+        
+        // 获取DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const soundBtn = document.getElementById('soundBtn');
+        const levelBtns = document.querySelectorAll('.level-btn');
+        const gameMessage = document.getElementById('gameMessage');
+        const messageTitle = document.getElementById('messageTitle');
+        const messageContent = document.getElementById('messageContent');
+        const messageBtn = document.getElementById('messageBtn');
+        const iceCoinsEl = document.getElementById('iceCoins');
+        const fireCoinsEl = document.getElementById('fireCoins');
+        const iceHealthEl = document.getElementById('iceHealth');
+        const fireHealthEl = document.getElementById('fireHealth');
+        
+        // 设置Canvas尺寸
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        // 游戏状态
+        let gameState = {
+            isRunning: false,
+            isPaused: false,
+            currentLevel: 1,
+            score: {
+                ice: 0,
+                fire: 0
+            },
+            health: {
+                ice: 100,
+                fire: 100
+            }
+        };
+        
+        // 玩家对象
+        const players = {
+            ice: {
+                x: 100,
+                y: 100,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                velocityX: 0,
+                velocityY: 0,
+                isJumping: false,
+                color: '#3498db',
+                controls: {
+                    up: 'KeyW',
+                    left: 'KeyA',
+                    down: 'KeyS',
+                    right: 'KeyD',
+                    jump: 'KeyW'
+                },
+                coins: 0,
+                canJump: true
+            },
+            fire: {
+                x: 150,
+                y: 100,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                velocityX: 0,
+                velocityY: 0,
+                isJumping: false,
+                color: '#e74c3c',
+                controls: {
+                    up: 'ArrowUp',
+                    left: 'ArrowLeft',
+                    down: 'ArrowDown',
+                    right: 'ArrowRight',
+                    jump: 'ArrowUp'
+                },
+                coins: 0,
+                canJump: true
+            }
+        };
+        
+        // 关卡定义
+        const levels = {
+            1: {
+                map: [
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                ],
+                platforms: [
+                    { x: 2 * TILE_SIZE, y: 15 * TILE_SIZE, width: 5 * TILE_SIZE, height: TILE_SIZE, type: 'normal' },
+                    { x: 10 * TILE_SIZE, y: 13 * TILE_SIZE, width: 5 * TILE_SIZE, height: TILE_SIZE, type: 'normal' },
+                    { x: 18 * TILE_SIZE, y: 15 * TILE_SIZE, width: 5 * TILE_SIZE, height: TILE_SIZE, type: 'normal' },
+                    { x: 5 * TILE_SIZE, y: 10 * TILE_SIZE, width: 5 * TILE_SIZE, height: TILE_SIZE, type: 'ice' },
+                    { x: 15 * TILE_SIZE, y: 10 * TILE_SIZE, width: 5 * TILE_SIZE, height: TILE_SIZE, type: 'fire' },
+                    { x: 8 * TILE_SIZE, y: 7 * TILE_SIZE, width: 3 * TILE_SIZE, height: TILE_SIZE, type: 'normal' },
+                    { x: 14 * TILE_SIZE, y: 7 * TILE_SIZE, width: 3 * TILE_SIZE, height: TILE_SIZE, type: 'normal' },
+                    { x: 2 * TILE_SIZE, y: 4 * TILE_SIZE, width: 3 * TILE_SIZE, height: TILE_SIZE, type: 'fire' },
+                    { x: 20 * TILE_SIZE, y: 4 * TILE_SIZE, width: 3 * TILE_SIZE, height: TILE_SIZE, type: 'ice' }
+                ],
+                coins: [
+                    { x: 4 * TILE_SIZE, y: 14 * TILE_SIZE, type: 'ice' },
+                    { x: 12 * TILE_SIZE, y: 12 * TILE_SIZE, type: 'fire' },
+                    { x: 20 * TILE_SIZE, y: 14 * TILE_SIZE, type: 'ice' },
+                    { x: 7 * TILE_SIZE, y: 9 * TILE_SIZE, type: 'fire' },
+                    { x: 17 * TILE_SIZE, y: 9 * TILE_SIZE, type: 'ice' },
+                    { x: 9 * TILE_SIZE, y: 6 * TILE_SIZE, type: 'fire' },
+                    { x: 15 * TILE_SIZE, y: 6 * TILE_SIZE, type: 'ice' },
+                    { x: 3 * TILE_SIZE, y: 3 * TILE_SIZE, type: 'fire' },
+                    { x: 21 * TILE_SIZE, y: 3 * TILE_SIZE, type: 'ice' }
+                ],
+                portals: [
+                    { x: 3 * TILE_SIZE, y: 2 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: 'ice' },
+                    { x: 21 * TILE_SIZE, y: 2 * TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: 'fire' }
+                ],
+                hazards: [
+                    { x: 8 * TILE_SIZE, y: 16 * TILE_SIZE, width: 4 * TILE_SIZE, height: TILE_SIZE, type: 'lava' },
+                    { x: 14 * TILE_SIZE, y: 16 * TILE_SIZE, width: 4 * TILE_SIZE, height: TILE_SIZE, type: 'water' }
+                ]
+            }
+        };
+        
+        // 当前关卡数据
+        let currentLevelData = levels[1];
+        
+        // 键盘状态
+        const keys = {};
+        
+        // 游戏循环
+        let animationId;
+        let lastTime = 0;
+        
+        // 游戏初始化
+        function initGame() {
+            // 重置玩家位置和状态
+            players.ice.x = 100;
+            players.ice.y = 100;
+            players.ice.velocityX = 0;
+            players.ice.velocityY = 0;
+            players.ice.coins = 0;
+            
+            players.fire.x = 150;
+            players.fire.y = 100;
+            players.fire.velocityX = 0;
+            players.fire.velocityY = 0;
+            players.fire.coins = 0;
+            
+            // 重置游戏状态
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.score = {
+                ice: 0,
+                fire: 0
+            };
+            gameState.health = {
+                ice: 100,
+                fire: 100
+            };
+            
+            // 更新UI
+            updateUI();
+            
+            // 开始游戏循环
+            lastTime = performance.now();
+            gameLoop(lastTime);
+        }
+        
+        // 游戏主循环
+        function gameLoop(currentTime) {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            // 计算时间差
+            const deltaTime = (currentTime - lastTime) / 16.67; // 标准化为60fps
+            lastTime = currentTime;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawBackground();
+            
+            // 绘制地图
+            drawMap();
+            
+            // 绘制平台
+            drawPlatforms();
+            
+            // 绘制硬币
+            drawCoins();
+            
+            // 绘制传送门
+            drawPortals();
+            
+            // 绘制危险
+            drawHazards();
+            
+            // 更新和绘制玩家
+            updatePlayer(players.ice, deltaTime);
+            updatePlayer(players.fire, deltaTime);
+            drawPlayer(players.ice);
+            drawPlayer(players.fire);
+            
+            // 检查游戏胜利条件
+            checkWinCondition();
+            
+            // 继续游戏循环
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // 更新玩家状态
+        function updatePlayer(player, deltaTime) {
+            // 应用重力
+            player.velocityY += GRAVITY * deltaTime;
+            
+            // 水平移动
+            if (keys[player.controls.left]) {
+                player.velocityX = -MOVEMENT_SPEED * deltaTime;
+            } else if (keys[player.controls.right]) {
+                player.velocityX = MOVEMENT_SPEED * deltaTime;
+            } else {
+                player.velocityX = 0;
+            }
+            
+            // 跳跃
+            if (keys[player.controls.jump] && player.canJump) {
+                player.velocityY = JUMP_FORCE;
+                player.canJump = false;
+            }
+            
+            // 应用移动
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+            
+            // 碰撞检测
+            handleCollisions(player);
+            
+            // 边界检测
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+            if (player.y > canvas.height) {
+                // 如果玩家掉出屏幕，减少生命值
+                reduceHealth(player, 20);
+                // 重置玩家位置
+                resetPlayerPosition(player);
+            }
+            
+            // 检查危险
+            checkHazards(player);
+        }
+        
+        // 处理碰撞检测
+        function handleCollisions(player) {
+            // 平台碰撞
+            let isOnGround = false;
+            
+            currentLevelData.platforms.forEach(platform => {
+                // 平台类型检查：冰人只能站在普通和冰平台上，火人只能站在普通和火平台上
+                const canStandOnPlatform = 
+                    (player === players.ice && (platform.type === 'normal' || platform.type === 'ice')) ||
+                    (player === players.fire && (platform.type === 'normal' || platform.type === 'fire'));
+                
+                if (!canStandOnPlatform) return;
+                
+                // 简单的AABB碰撞检测
+                if (
+                    player.x + player.width > platform.x &&
+                    player.x < platform.x + platform.width &&
+                    player.y + player.height > platform.y &&
+                    player.y < platform.y + platform.height
+                ) {
+                    // 从上方碰撞
+                    if (player.y + player.height <= platform.y + 10 && player.velocityY > 0) {
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.canJump = true;
+                        isOnGround = true;
+                    }
+                    // 从下方碰撞
+                    else if (player.y >= platform.y + platform.height - 10 && player.velocityY < 0) {
+                        player.y = platform.y + platform.height;
+                        player.velocityY = 0;
+                    }
+                    // 从左侧碰撞
+                    else if (player.x + player.width >= platform.x && player.x + player.width <= platform.x + 10 && player.velocityX > 0) {
+                        player.x = platform.x - player.width;
+                        player.velocityX = 0;
+                    }
+                    // 从右侧碰撞
+                    else if (player.x <= platform.x + platform.width && player.x >= platform.x + platform.width - 10 && player.velocityX < 0) {
+                        player.x = platform.x + platform.width;
+                        player.velocityX = 0;
+                    }
+                }
+            });
+            
+            player.isJumping = !isOnGround;
+            
+            // 检查硬币收集
+            currentLevelData.coins = currentLevelData.coins.filter(coin => {
+                if (
+                    player.x + player.width > coin.x &&
+                    player.x < coin.x + TILE_SIZE * 0.6 &&
+                    player.y + player.height > coin.y &&
+                    player.y < coin.y + TILE_SIZE * 0.6
+                ) {
+                    // 只有对应类型的玩家才能收集对应类型的硬币
+                    if ((player === players.ice && coin.type === 'ice') || 
+                        (player === players.fire && coin.type === 'fire')) {
+                        player.coins++;
+                        updateUI();
+                        return false; // 移除硬币
+                    }
+                }
+                return true; // 保留硬币
+            });
+            
+            // 检查传送门
+            currentLevelData.portals.forEach(portal => {
+                if (
+                    player.x + player.width > portal.x &&
+                    player.x < portal.x + portal.width &&
+                    player.y + player.height > portal.y &&
+                    player.y < portal.y + portal.height
+                ) {
+                    // 只有对应类型的玩家才能进入对应类型的传送门
+                    if ((player === players.ice && portal.type === 'ice') || 
+                        (player === players.fire && portal.type === 'fire')) {
+                        player.isInPortal = true;
+                    }
+                } else {
+                    player.isInPortal = false;
+                }
+            });
+        }
+        
+        // 检查危险
+        function checkHazards(player) {
+            currentLevelData.hazards.forEach(hazard => {
+                if (
+                    player.x + player.width > hazard.x &&
+                    player.x < hazard.x + hazard.width &&
+                    player.y + player.height > hazard.y &&
+                    player.y < hazard.y + hazard.height
+                ) {
+                    // 冰人不能接触水，火人不能接触熔岩
+                    if ((player === players.ice && hazard.type === 'water') || 
+                        (player === players.fire && hazard.type === 'lava')) {
+                        reduceHealth(player, 10);
+                        // 被击退
+                        player.velocityY = -8;
+                        if (player.x < hazard.x + hazard.width / 2) {
+                            player.velocityX = -5;
+                        } else {
+                            player.velocityX = 5;
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 减少生命值
+        function reduceHealth(player, amount) {
+            const playerType = player === players.ice ? 'ice' : 'fire';
+            gameState.health[playerType] -= amount;
+            
+            if (gameState.health[playerType] <= 0) {
+                gameState.health[playerType] = 0;
+                // 游戏失败
+                showGameMessage('游戏失败', '一名角色失去了所有生命值！', () => {
+                    initGame();
+                });
+            }
+            
+            updateUI();
+        }
+        
+        // 重置玩家位置
+        function resetPlayerPosition(player) {
+            player.x = player === players.ice ? 100 : 150;
+            player.y = 100;
+            player.velocityX = 0;
+            player.velocityY = 0;
+        }
+        
+        // 检查胜利条件
+        function checkWinCondition() {
+            // 检查两个玩家是否都在各自的传送门中并且都收集了所有硬币
+            const totalIceCoins = levels[gameState.currentLevel].coins.filter(c => c.type === 'ice').length;
+            const totalFireCoins = levels[gameState.currentLevel].coins.filter(c => c.type === 'fire').length;
+            
+            if (
+                players.ice.isInPortal && 
+                players.fire.isInPortal && 
+                players.ice.coins >= totalIceCoins && 
+                players.fire.coins >= totalFireCoins
+            ) {
+                // 游戏胜利
+                showGameMessage('游戏胜利', '恭喜你完成了关卡！', () => {
+                    // 简单实现，实际游戏中可能有更多关卡
+                    if (gameState.currentLevel < Object.keys(levels).length) {
+                        gameState.currentLevel++;
+                        currentLevelData = levels[gameState.currentLevel];
+                        // 更新关卡按钮状态
+                        levelBtns.forEach(btn => {
+                            const level = parseInt(btn.dataset.level);
+                            if (level <= gameState.currentLevel) {
+                                btn.classList.remove('opacity-50', 'cursor-not-allowed', 'bg-gray-700', 'hover:bg-gray-600');
+                                btn.classList.add('bg-forest', 'hover:bg-forest/80');
+                            }
+                        });
+                    }
+                    initGame();
+                });
+            }
+        }
+        
+        // 显示游戏消息
+        function showGameMessage(title, content, callback) {
+            gameState.isRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            messageTitle.textContent = title;
+            messageContent.textContent = content;
+            gameMessage.classList.remove('hidden');
+            
+            messageBtn.onclick = () => {
+                gameMessage.classList.add('hidden');
+                if (callback) callback();
+            };
+        }
+        
+        // 更新UI
+        function updateUI() {
+            iceCoinsEl.textContent = players.ice.coins;
+            fireCoinsEl.textContent = players.fire.coins;
+            
+            iceHealthEl.style.width = `${gameState.health.ice}%`;
+            fireHealthEl.style.width = `${gameState.health.fire}%`;
+        }
+        
+        // 绘制背景
+        function drawBackground() {
+            // 绘制渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#2c3e50');
+            gradient.addColorStop(1, '#34495e');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制一些简单的星星
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            for (let i = 0; i < 50; i++) {
+                const x = Math.random() * canvas.width;
+                const y = Math.random() * canvas.height * 0.5;
+                const size = Math.random() * 2;
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // 绘制地图
+        function drawMap() {
+            currentLevelData.map.forEach((row, y) => {
+                row.forEach((tile, x) => {
+                    if (tile === 1) {
+                        ctx.fillStyle = '#95a5a6';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        
+                        // 边框
+                        ctx.strokeStyle = '#7f8c8d';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    }
+                });
+            });
+        }
+        
+        // 绘制平台
+        function drawPlatforms() {
+            currentLevelData.platforms.forEach(platform => {
+                switch (platform.type) {
+                    case 'normal':
+                        ctx.fillStyle = '#27ae60';
+                        break;
+                    case 'ice':
+                        ctx.fillStyle = '#3498db';
+                        break;
+                    case 'fire':
+                        ctx.fillStyle = '#e74c3c';
+                        break;
+                }
+                
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                
+                // 边框
+                ctx.strokeStyle = '#2c3e50';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            });
+        }
+        
+        // 绘制硬币
+        function drawCoins() {
+            currentLevelData.coins.forEach(coin => {
+                ctx.fillStyle = coin.type === 'ice' ? '#3498db' : '#e74c3c';
+                
+                // 绘制圆形硬币
+                ctx.beginPath();
+                ctx.arc(
+                    coin.x + TILE_SIZE * 0.3, 
+                    coin.y + TILE_SIZE * 0.3, 
+                    TILE_SIZE * 0.3, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // 硬币反光
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath();
+                ctx.arc(
+                    coin.x + TILE_SIZE * 0.15, 
+                    coin.y + TILE_SIZE * 0.15, 
+                    TILE_SIZE * 0.1, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+            });
+        }
+        
+        // 绘制传送门
+        function drawPortals() {
+            currentLevelData.portals.forEach(portal => {
+                // 传送门主体
+                ctx.fillStyle = portal.type === 'ice' ? '#3498db' : '#e74c3c';
+                ctx.fillRect(portal.x, portal.y, portal.width, portal.height);
+                
+                // 传送门内部发光效果
+                const gradient = ctx.createLinearGradient(
+                    portal.x, 
+                    portal.y, 
+                    portal.x + portal.width, 
+                    portal.y + portal.height
+                );
+                
+                if (portal.type === 'ice') {
+                    gradient.addColorStop(0, 'rgba(52, 152, 219, 0.3)');
+                    gradient.addColorStop(0.5, 'rgba(52, 152, 219, 0.8)');
+                    gradient.addColorStop(1, 'rgba(52, 152, 219, 0.3)');
+                } else {
+                    gradient.addColorStop(0, 'rgba(231, 76, 60, 0.3)');
+                    gradient.addColorStop(0.5, 'rgba(231, 76, 60, 0.8)');
+                    gradient.addColorStop(1, 'rgba(231, 76, 60, 0.3)');
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(portal.x + 4, portal.y + 4, portal.width - 8, portal.height - 8);
+                
+                // 边框
+                ctx.strokeStyle = '#2c3e50';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(portal.x, portal.y, portal.width, portal.height);
+            });
+        }
+        
+        // 绘制危险
+        function drawHazards() {
+            currentLevelData.hazards.forEach(hazard => {
+                if (hazard.type === 'lava') {
+                    // 熔岩
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+                    
+                    // 熔岩动画效果
+                    ctx.fillStyle = '#f39c12';
+                    for (let i = 0; i < hazard.width; i += 10) {
+                        const x = hazard.x + i;
+                        const y = hazard.y + Math.random() * 10;
+                        const width = 5 + Math.random() * 5;
+                        const height = 5 + Math.random() * 10;
+                        ctx.fillRect(x, y, width, height);
+                    }
+                } else if (hazard.type === 'water') {
+                    // 水
+                    ctx.fillStyle = '#3498db';
+                    ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+                    
+                    // 水波效果
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 2;
+                    
+                    for (let i = 0; i < hazard.width; i += 20) {
+                        const x = hazard.x + i;
+                        const y = hazard.y + Math.sin(Date.now() * 0.001 + i * 0.1) * 5;
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x, y);
+                        ctx.bezierCurveTo(
+                            x + 5, y - 5,
+                            x + 15, y - 5,
+                            x + 20, y
+                        );
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
+        
+        // 绘制玩家
+        function drawPlayer(player) {
+            // 玩家主体
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // 眼睛
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width * 0.3, 
+                player.y + player.height * 0.3, 
+                player.width * 0.1, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.arc(
+                player.x + player.width * 0.7, 
+                player.y + player.height * 0.3, 
+                player.width * 0.1, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 瞳孔
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width * 0.3, 
+                player.y + player.height * 0.3, 
+                player.width * 0.05, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.arc(
+                player.x + player.width * 0.7, 
+                player.y + player.height * 0.3, 
+                player.width * 0.05, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 如果玩家在传送门中，绘制一个发光效果
+            if (player.isInPortal) {
+                ctx.strokeStyle = player.color === '#3498db' ? 'rgba(52, 152, 219, 0.8)' : 'rgba(231, 76, 60, 0.8)';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 3]);
+                ctx.strokeRect(player.x - 5, player.y - 5, player.width + 10, player.height + 10);
+                ctx.setLineDash([]);
+            }
+        }
+        
+        // 事件监听
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            keys[e.code] = false;
+        });
+        
+        startBtn.addEventListener('click', () => {
+            if (!gameState.isRunning) {
+                initGame();
+            } else if (gameState.isPaused) {
+                gameState.isPaused = false;
+                lastTime = performance.now();
+                gameLoop(lastTime);
+            }
+        });
+        
+        pauseBtn.addEventListener('click', () => {
+            if (gameState.isRunning && !gameState.isPaused) {
+                gameState.isPaused = true;
+                cancelAnimationFrame(animationId);
+                showGameMessage('游戏暂停', '点击继续按钮恢复游戏', () => {
+                    gameState.isPaused = false;
+                    lastTime = performance.now();
+                    gameLoop(lastTime);
+                });
+            }
+        });
+        
+        restartBtn.addEventListener('click', () => {
+            initGame();
+        });
+        
+        soundBtn.addEventListener('click', () => {
+            // 这里可以实现声音控制逻辑
+            const icon = soundBtn.querySelector('i');
+            if (icon.classList.contains('fa-volume-up')) {
+                icon.classList.remove('fa-volume-up');
+                icon.classList.add('fa-volume-off');
+                // 实际项目中这里应该实现静音逻辑
+            } else {
+                icon.classList.remove('fa-volume-off');
+                icon.classList.add('fa-volume-up');
+                // 实际项目中这里应该实现恢复声音逻辑
+            }
+        });
+        
+        levelBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const level = parseInt(btn.dataset.level);
+                if (levels[level]) {
+                    gameState.currentLevel = level;
+                    currentLevelData = levels[level];
+                    initGame();
+                    
+                    // 更新按钮状态
+                    levelBtns.forEach(b => {
+                        if (parseInt(b.dataset.level) === level) {
+                            b.classList.add('active');
+                        } else {
+                            b.classList.remove('active');
+                        }
+                    });
+                }
+            });
+        });
+        
+        // 初始化UI
+        updateUI();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '马舶媛';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

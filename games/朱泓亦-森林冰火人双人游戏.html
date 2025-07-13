@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>森林冰火人双人游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ice: '#3498db',
+                        fire: '#e74c3c',
+                        wall: '#7f8c8d',
+                        portal: '#8e44ad',
+                        coin: '#f1c40f',
+                        lava: '#c0392b',
+                        water: '#2980b9',
+                    },
+                    fontFamily: {
+                        game: ['Arial', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-art {
+                image-rendering: pixelated;
+            }
+            .game-shadow {
+                box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen flex flex-col items-center justify-center p-4 font-game">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full">
+        <!-- 游戏标题 -->
+        <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-white text-center mb-4">森林冰火人双人游戏</h1>
+        
+        <!-- 游戏控制区 -->
+        <div class="bg-gray-800 rounded-lg p-4 mb-4 text-white game-shadow">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h2 class="text-xl font-semibold mb-2 flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full bg-fire mr-2"></span>
+                        火人控制
+                    </h2>
+                    <p class="text-gray-300"><i class="fa fa-arrow-up mr-2"></i>跳跃</p>
+                    <p class="text-gray-300"><i class="fa fa-arrow-left mr-2"></i>向左移动</p>
+                    <p class="text-gray-300"><i class="fa fa-arrow-right mr-2"></i>向右移动</p>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold mb-2 flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full bg-ice mr-2"></span>
+                        冰人控制
+                    </h2>
+                    <p class="text-gray-300"><i class="fa fa-w fa mr-2"></i>跳跃</p>
+                    <p class="text-gray-300"><i class="fa fa-a fa mr-2"></i>向左移动</p>
+                    <p class="text-gray-300"><i class="fa fa-d fa mr-2"></i>向右移动</p>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap justify-center gap-4">
+                <button id="startBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <i class="fa fa-play mr-2"></i>开始游戏
+                </button>
+                <button id="resetBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                    <i class="fa fa-refresh mr-2"></i>重置关卡
+                </button>
+                <button id="nextLevelBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-500" disabled>
+                    <i class="fa fa-arrow-right mr-2"></i>下一关
+                </button>
+            </div>
+        </div>
+        
+        <!-- 游戏区域 -->
+        <div class="relative">
+            <canvas id="gameCanvas" class="w-full game-shadow rounded-lg bg-black"></canvas>
+            <div id="gameOverScreen" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center hidden">
+                <h2 class="text-4xl font-bold text-white mb-4">游戏结束!</h2>
+                <p id="gameOverMessage" class="text-xl text-gray-300 mb-6">再来一次?</p>
+                <button id="restartBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-8 rounded text-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    <i class="fa fa-repeat mr-2"></i>重新开始
+                </button>
+            </div>
+            <div id="levelCompleteScreen" class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center hidden">
+                <h2 class="text-4xl font-bold text-green-500 mb-4">关卡完成!</h2>
+                <p id="levelCompleteMessage" class="text-xl text-gray-300 mb-6">做得好!</p>
+                <button id="continueBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded text-xl transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <i class="fa fa-arrow-right mr-2"></i>继续下一关
+                </button>
+            </div>
+        </div>
+        
+        <!-- 游戏状态 -->
+        <div class="grid grid-cols-2 gap-4 mt-4 text-white">
+            <div class="bg-gray-800 rounded-lg p-3 game-shadow">
+                <h2 class="text-xl font-semibold mb-1 flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full bg-fire mr-2"></span>
+                    火人分数: <span id="fireScore" class="ml-2">0</span>
+                </h2>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div id="fireHealth" class="bg-fire h-2.5 rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-3 game-shadow">
+                <h2 class="text-xl font-semibold mb-1 flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full bg-ice mr-2"></span>
+                    冰人分数: <span id="iceScore" class="ml-2">0</span>
+                </h2>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div id="iceHealth" class="bg-ice h-2.5 rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+            <div class="bg-gray-800 rounded-lg p-3 game-shadow col-span-2">
+                <h2 class="text-xl font-semibold mb-1">
+                    当前关卡: <span id="currentLevel">1</span> / <span id="totalLevels">3</span>
+                </h2>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                    <div id="levelProgress" class="bg-gradient-to-r from-blue-500 to-green-500 h-2.5 rounded-full" style="width: 33%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取游戏元素
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            const nextLevelBtn = document.getElementById('nextLevelBtn');
+            const restartBtn = document.getElementById('restartBtn');
+            const continueBtn = document.getElementById('continueBtn');
+            const gameOverScreen = document.getElementById('gameOverScreen');
+            const levelCompleteScreen = document.getElementById('levelCompleteScreen');
+            const gameOverMessage = document.getElementById('gameOverMessage');
+            const levelCompleteMessage = document.getElementById('levelCompleteMessage');
+            const fireScoreEl = document.getElementById('fireScore');
+            const iceScoreEl = document.getElementById('iceScore');
+            const fireHealthEl = document.getElementById('fireHealth');
+            const iceHealthEl = document.getElementById('iceHealth');
+            const currentLevelEl = document.getElementById('currentLevel');
+            const totalLevelsEl = document.getElementById('totalLevels');
+            const levelProgressEl = document.getElementById('levelProgress');
+            
+            // 设置画布尺寸
+            const GAME_WIDTH = 800;
+            const GAME_HEIGHT = 450;
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+            
+            // 游戏状态
+            let gameRunning = false;
+            let gameOver = false;
+            let levelComplete = false;
+            let currentLevel = 1;
+            const totalLevels = 3;
+            let keys = {};
+            
+            // 游戏常量
+            const GRAVITY = 0.5;
+            const JUMP_FORCE = -12;
+            const MOVEMENT_SPEED = 5;
+            const TILE_SIZE = 32;
+            
+            // 游戏对象类
+            class GameObject {
+                constructor(x, y, width, height, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.width = width;
+                    this.height = height;
+                    this.color = color;
+                    this.velocityX = 0;
+                    this.velocityY = 0;
+                    this.onGround = false;
+                }
+                
+                draw() {
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+                
+                update(platforms) {
+                    // 应用重力
+                    this.velocityY += GRAVITY;
+                    
+                    // 检测平台碰撞
+                    this.checkPlatformCollision(platforms);
+                    
+                    // 更新位置
+                    this.x += this.velocityX;
+                    this.y += this.velocityY;
+                    
+                    // 边界检查
+                    if (this.x < 0) this.x = 0;
+                    if (this.x + this.width > GAME_WIDTH) this.x = GAME_WIDTH - this.width;
+                    if (this.y + this.height > GAME_HEIGHT) this.y = GAME_HEIGHT - this.height;
+                }
+                
+                checkPlatformCollision(platforms) {
+                    // 简单的平台碰撞检测
+                    this.onGround = false;
+                    
+                    // X轴碰撞检测
+                    for (const platform of platforms) {
+                        if (
+                            this.x + this.width > platform.x &&
+                            this.x < platform.x + platform.width &&
+                            this.y + this.height > platform.y &&
+                            this.y < platform.y + platform.height
+                        ) {
+                            // 从右侧碰撞
+                            if (this.velocityX > 0) {
+                                this.x = platform.x - this.width;
+                            }
+                            // 从左侧碰撞
+                            if (this.velocityX < 0) {
+                                this.x = platform.x + platform.width;
+                            }
+                        }
+                    }
+                    
+                    // Y轴碰撞检测
+                    for (const platform of platforms) {
+                        if (
+                            this.x + this.width > platform.x &&
+                            this.x < platform.x + platform.width &&
+                            this.y + this.height > platform.y &&
+                            this.y < platform.y + platform.height
+                        ) {
+                            // 从底部碰撞
+                            if (this.velocityY > 0) {
+                                this.y = platform.y - this.height;
+                                this.velocityY = 0;
+                                this.onGround = true;
+                            }
+                            // 从顶部碰撞
+                            if (this.velocityY < 0) {
+                                this.y = platform.y + platform.height;
+                                this.velocityY = 0;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            class Player extends GameObject {
+                constructor(x, y, color, controls) {
+                    super(x, y, 24, 32, color);
+                    this.score = 0;
+                    this.controls = controls;
+                    this.health = 100;
+                    this.isAlive = true;
+                }
+                
+                handleInput() {
+                    // 处理水平移动
+                    this.velocityX = 0;
+                    if (keys[this.controls.left]) this.velocityX = -MOVEMENT_SPEED;
+                    if (keys[this.controls.right]) this.velocityX = MOVEMENT_SPEED;
+                    
+                    // 处理跳跃
+                    if (keys[this.controls.jump] && this.onGround) {
+                        this.velocityY = JUMP_FORCE;
+                        keys[this.controls.jump] = false; // 防止连续跳跃
+                    }
+                }
+                
+                checkHazards(hazards) {
+                    for (const hazard of hazards) {
+                        if (
+                            this.x + this.width > hazard.x &&
+                            this.x < hazard.x + hazard.width &&
+                            this.y + this.height > hazard.y &&
+                            this.y < hazard.y + hazard.height
+                        ) {
+                            // 根据角色类型和危险类型处理伤害
+                            if (
+                                (this.color === '#3498db' && hazard.type === 'lava') || // 冰人碰到岩浆
+                                (this.color === '#e74c3c' && hazard.type === 'water')  // 火人碰到水
+                            ) {
+                                this.health -= 20;
+                                if (this.health <= 0) {
+                                    this.isAlive = false;
+                                }
+                                // 受伤后弹开
+                                this.velocityY = JUMP_FORCE / 2;
+                                this.velocityX = (this.x < hazard.x) ? -MOVEMENT_SPEED : MOVEMENT_SPEED;
+                            }
+                        }
+                    }
+                }
+                
+                checkCoins(coins, game) {
+                    for (let i = 0; i < coins.length; i++) {
+                        const coin = coins[i];
+                        if (
+                            this.x + this.width > coin.x &&
+                            this.x < coin.x + coin.width &&
+                            this.y + this.height > coin.y &&
+                            this.y < coin.y + coin.height
+                        ) {
+                            // 收集硬币
+                            this.score += 10;
+                            coins.splice(i, 1);
+                            i--;
+                            
+                            // 更新UI
+                            if (this.color === '#e74c3c') {
+                                fireScoreEl.textContent = this.score;
+                            } else {
+                                iceScoreEl.textContent = this.score;
+                            }
+                            
+                            // 检查关卡是否完成
+                            game.checkLevelComplete();
+                        }
+                    }
+                }
+                
+                checkPortals(portals, game) {
+                    for (const portal of portals) {
+                        if (
+                            this.x + this.width > portal.x &&
+                            this.x < portal.x + portal.width &&
+                            this.y + this.height > portal.y &&
+                            this.y < portal.y + portal.height
+                        ) {
+                            // 传送到下一关
+                            game.completeLevel();
+                        }
+                    }
+                }
+                
+                update(platforms, hazards, coins, portals, game) {
+                    super.update(platforms);
+                    this.handleInput();
+                    this.checkHazards(hazards);
+                    this.checkCoins(coins, game);
+                    this.checkPortals(portals, game);
+                    
+                    // 更新健康条
+                    if (this.color === '#e74c3c') {
+                        fireHealthEl.style.width = `${this.health}%`;
+                    } else {
+                        iceHealthEl.style.width = `${this.health}%`;
+                    }
+                }
+                
+                draw() {
+                    // 绘制角色
+                    ctx.fillStyle = this.color;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    
+                    // 绘制眼睛
+                    ctx.fillStyle = 'white';
+                    ctx.fillRect(this.x + 6, this.y + 8, 4, 4);
+                    ctx.fillRect(this.x + 14, this.y + 8, 4, 4);
+                    
+                    // 绘制瞳孔
+                    ctx.fillStyle = 'black';
+                    ctx.fillRect(this.x + 7, this.y + 9, 2, 2);
+                    ctx.fillRect(this.x + 15, this.y + 9, 2, 2);
+                }
+            }
+            
+            class Level {
+                constructor(levelData) {
+                    this.platforms = [];
+                    this.hazards = [];
+                    this.coins = [];
+                    this.portals = [];
+                    this.levelData = levelData;
+                    this.parseLevelData();
+                }
+                
+                parseLevelData() {
+                    for (let y = 0; y < this.levelData.length; y++) {
+                        for (let x = 0; x < this.levelData[y].length; x++) {
+                            const tile = this.levelData[y][x];
+                            const tileX = x * TILE_SIZE;
+                            const tileY = y * TILE_SIZE;
+                            
+                            switch (tile) {
+                                case 1: // 平台
+                                    this.platforms.push(new GameObject(tileX, tileY, TILE_SIZE, TILE_SIZE, '#7f8c8d'));
+                                    break;
+                                case 2: // 岩浆
+                                    this.hazards.push({
+                                        x: tileX,
+                                        y: tileY,
+                                        width: TILE_SIZE,
+                                        height: TILE_SIZE,
+                                        color: '#c0392b',
+                                        type: 'lava'
+                                    });
+                                    break;
+                                case 3: // 水
+                                    this.hazards.push({
+                                        x: tileX,
+                                        y: tileY,
+                                        width: TILE_SIZE,
+                                        height: TILE_SIZE,
+                                        color: '#2980b9',
+                                        type: 'water'
+                                    });
+                                    break;
+                                case 4: // 硬币
+                                    this.coins.push(new GameObject(tileX + 8, tileY + 8, 16, 16, '#f1c40f'));
+                                    break;
+                                case 5: // 火人出生点
+                                    this.fireSpawn = { x: tileX, y: tileY };
+                                    break;
+                                case 6: // 冰人出生点
+                                    this.iceSpawn = { x: tileX, y: tileY };
+                                    break;
+                                case 7: // 传送门
+                                    this.portals.push(new GameObject(tileX, tileY, TILE_SIZE, TILE_SIZE, '#8e44ad'));
+                                    break;
+                            }
+                        }
+                    }
+                }
+                
+                draw() {
+                    // 绘制平台
+                    for (const platform of this.platforms) {
+                        platform.draw();
+                    }
+                    
+                    // 绘制危险
+                    for (const hazard of this.hazards) {
+                        ctx.fillStyle = hazard.color;
+                        ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+                        
+                        // 添加危险效果
+                        if (hazard.type === 'lava') {
+                            ctx.fillStyle = 'rgba(231, 76, 60, 0.5)';
+                            ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+                        } else if (hazard.type === 'water') {
+                            ctx.fillStyle = 'rgba(41, 128, 185, 0.5)';
+                            ctx.fillRect(hazard.x, hazard.y, hazard.width, hazard.height);
+                        }
+                    }
+                    
+                    // 绘制硬币
+                    for (const coin of this.coins) {
+                        ctx.fillStyle = coin.color;
+                        ctx.beginPath();
+                        ctx.arc(coin.x + coin.width/2, coin.y + coin.height/2, coin.width/2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 硬币反光效果
+                        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                        ctx.beginPath();
+                        ctx.arc(coin.x + coin.width/2 - 2, coin.y + coin.height/2 - 2, coin.width/6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    
+                    // 绘制传送门
+                    for (const portal of this.portals) {
+                        ctx.fillStyle = portal.color;
+                        ctx.fillRect(portal.x, portal.y, portal.width, portal.height);
+                        
+                        // 传送门动画效果
+                        const time = Date.now() * 0.001;
+                        const alpha = (Math.sin(time * 2) + 1) / 2;
+                        ctx.fillStyle = `rgba(142, 68, 173, ${alpha})`;
+                        ctx.fillRect(portal.x + 4, portal.y + 4, portal.width - 8, portal.height - 8);
+                    }
+                }
+            }
+            
+            class Game {
+                constructor() {
+                    this.levels = [];
+                    this.currentLevel = 0;
+                    this.firePlayer = null;
+                    this.icePlayer = null;
+                    this.gameLoop = null;
+                    this.initLevels();
+                    this.setupEventListeners();
+                }
+                
+                initLevels() {
+                    // 关卡1
+                    const level1 = new Level([
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                    ]);
+                    
+                    // 放置火人出生点
+                    level1.levelData[17][2] = 5;
+                    
+                    // 放置冰人出生点
+                    level1.levelData[17][23] = 6;
+                    
+                    // 添加平台
+                    level1.levelData[14][5] = 1;
+                    level1.levelData[14][6] = 1;
+                    level1.levelData[14][7] = 1;
+                    
+                    level1.levelData[12][10] = 1;
+                    level1.levelData[12][11] = 1;
+                    level1.levelData[12][12] = 1;
+                    
+                    level1.levelData[10][15] = 1;
+                    level1.levelData[10][16] = 1;
+                    level1.levelData[10][17] = 1;
+                    
+                    level1.levelData[8][20] = 1;
+                    level1.levelData[8][21] = 1;
+                    level1.levelData[8][22] = 1;
+                    
+                    // 添加岩浆
+                    level1.levelData[15][5] = 2;
+                    level1.levelData[15][6] = 2;
+                    level1.levelData[15][7] = 2;
+                    
+                    // 添加水
+                    level1.levelData[13][10] = 3;
+                    level1.levelData[13][11] = 3;
+                    level1.levelData[13][12] = 3;
+                    
+                    // 添加硬币
+                    level1.levelData[13][5] = 4;
+                    level1.levelData[13][6] = 4;
+                    level1.levelData[13][7] = 4;
+                    
+                    level1.levelData[11][10] = 4;
+                    level1.levelData[11][11] = 4;
+                    level1.levelData[11][12] = 4;
+                    
+                    level1.levelData[9][15] = 4;
+                    level1.levelData[9][16] = 4;
+                    level1.levelData[9][17] = 4;
+                    
+                    level1.levelData[7][20] = 4;
+                    level1.levelData[7][21] = 4;
+                    level1.levelData[7][22] = 4;
+                    
+                    // 添加传送门
+                    level1.levelData[6][23] = 7;
+                    
+                    this.levels.push(level1);
+                    
+                    // 关卡2
+                    const level2 = new Level([
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                    ]);
+                    
+                    // 放置火人出生点
+                    level2.levelData[17][2] = 5;
+                    
+                    // 放置冰人出生点
+                    level2.levelData[17][23] = 6;
+                    
+                    // 添加平台
+                    for (let x = 5; x < 20; x += 2) {
+                        level2.levelData[14][x] = 1;
+                        level2.levelData[12][x+1] = 1;
+                        level2.levelData[10][x] = 1;
+                        level2.levelData[8][x+1] = 1;
+                    }
+                    
+                    // 添加岩浆和水
+                    for (let x = 6; x < 19; x += 2) {
+                        level2.levelData[15][x] = 2; // 岩浆
+                        level2.levelData[13][x+1] = 3; // 水
+                        level2.levelData[11][x] = 2; // 岩浆
+                        level2.levelData[9][x+1] = 3; // 水
+                    }
+                    
+                    // 添加硬币
+                    for (let x = 5; x < 20; x += 2) {
+                        level2.levelData[13][x] = 4;
+                        level2.levelData[11][x+1] = 4;
+                        level2.levelData[9][x] = 4;
+                        level2.levelData[7][x+1] = 4;
+                    }
+                    
+                    // 添加传送门
+                    level2.levelData[6][23] = 7;
+                    
+                    this.levels.push(level2);
+                    
+                    // 关卡3
+                    const level3 = new Level([
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+                        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+                    ]);
+                    
+                    // 放置火人出生点
+                    level3.levelData[17][2] = 5;
+                    
+                    // 放置冰人出生点
+                    level3.levelData[17][23] = 6;
+                    
+                    // 添加更复杂的平台和障碍物
+                    // 平台
+                    for (let x = 4; x < 22; x += 3) {
+                        level3.levelData[14][x] = 1;
+                        level3.levelData[12][x+1] = 1;
+                        level3.levelData[10][x+2] = 1;
+                        level3.levelData[8][x] = 1;
+                        level3.levelData[6][x+1] = 1;
+                    }
+                    
+                    // 岩浆河
+                    for (let x = 0; x < 25; x++) {
+                        level3.levelData[16][x] = 2;
+                    }
+                    
+                    // 水坑
+                    level3.levelData[13][6] = 3;
+                    level3.levelData[13][7] = 3;
+                    level3.levelData[13][8] = 3;
+                    
+                    level3.levelData[11][12] = 3;
+                    level3.levelData[11][13] = 3;
+                    level3.levelData[11][14] = 3;
+                    
+                    level3.levelData[9][18] = 3;
+                    level3.levelData[9][19] = 3;
+                    level3.levelData[9][20] = 3;
+                    
+                    // 添加硬币
+                    for (let x = 4; x < 22; x += 3) {
+                        level3.levelData[13][x] = 4;
+                        level3.levelData[11][x+1] = 4;
+                        level3.levelData[9][x+2] = 4;
+                        level3.levelData[7][x] = 4;
+                        level3.levelData[5][x+1] = 4;
+                    }
+                    
+                    // 添加传送门
+                    level3.levelData[4][23] = 7;
+                    
+                    this.levels.push(level3);
+                    
+                    // 设置总关卡数
+                    totalLevelsEl.textContent = this.levels.length;
+                }
+                
+                setupEventListeners() {
+                    // 键盘控制
+                    window.addEventListener('keydown', (e) => {
+                        keys[e.key] = true;
+                        
+                        // 防止空格键滚动页面
+                        if (e.key === ' ') {
+                            e.preventDefault();
+                        }
+                    });
+                    
+                    window.addEventListener('keyup', (e) => {
+                        keys[e.key] = false;
+                    });
+                    
+                    // 按钮控制
+                    startBtn.addEventListener('click', () => this.startGame());
+                    resetBtn.addEventListener('click', () => this.resetLevel());
+                    nextLevelBtn.addEventListener('click', () => this.loadNextLevel());
+                    restartBtn.addEventListener('click', () => this.restartGame());
+                    continueBtn.addEventListener('click', () => this.loadNextLevel());
+                }
+                
+                startGame() {
+                    if (!gameRunning) {
+                        gameRunning = true;
+                        gameOver = false;
+                        levelComplete = false;
+                        this.currentLevel = 0;
+                        this.loadLevel(this.currentLevel);
+                        this.gameLoop = requestAnimationFrame(() => this.update());
+                        startBtn.disabled = true;
+                        gameOverScreen.classList.add('hidden');
+                        levelCompleteScreen.classList.add('hidden');
+                        
+                        // 添加调试输出
+                        console.log('游戏已启动，当前关卡:', this.currentLevel + 1);
+                    }
+                }
+                
+                resetLevel() {
+                    if (gameRunning) {
+                        this.loadLevel(this.currentLevel);
+                        gameOver = false;
+                        levelComplete = false;
+                        gameOverScreen.classList.add('hidden');
+                        levelCompleteScreen.classList.add('hidden');
+                        
+                        // 添加调试输出
+                        console.log('关卡已重置，当前关卡:', this.currentLevel + 1);
+                    }
+                }
+                
+                loadLevel(levelIndex) {
+                    if (levelIndex < this.levels.length) {
+                        const level = this.levels[levelIndex];
+                        
+                        // 创建玩家
+                        this.firePlayer = new Player(
+                            level.fireSpawn.x, 
+                            level.fireSpawn.y, 
+                            '#e74c3c', 
+                            { left: 'ArrowLeft', right: 'ArrowRight', jump: 'ArrowUp' }
+                        );
+                        
+                        this.icePlayer = new Player(
+                            level.iceSpawn.x, 
+                            level.iceSpawn.y, 
+                            '#3498db', 
+                            { left: 'a', right: 'd', jump: 'w' }
+                        );
+                        
+                        // 更新UI
+                        currentLevelEl.textContent = levelIndex + 1;
+                        levelProgressEl.style.width = `${((levelIndex + 1) / this.levels.length) * 100}%`;
+                        
+                        // 重置分数显示
+                        fireScoreEl.textContent = '0';
+                        iceScoreEl.textContent = '0';
+                        
+                        // 重置健康条
+                        fireHealthEl.style.width = '100%';
+                        iceHealthEl.style.width = '100%';
+                        
+                        // 启用/禁用下一关按钮
+                        nextLevelBtn.disabled = !(levelIndex < this.levels.length - 1);
+                        
+                        // 添加调试输出
+                        console.log('加载关卡:', levelIndex + 1);
+                        console.log('火人位置:', this.firePlayer.x, this.firePlayer.y);
+                        console.log('冰人位置:', this.icePlayer.x, this.icePlayer.y);
+                    }
+                }
+                
+                loadNextLevel() {
+                    if (this.currentLevel < this.levels.length - 1) {
+                        this.currentLevel++;
+                        this.loadLevel(this.currentLevel);
+                        levelComplete = false;
+                        levelCompleteScreen.classList.add('hidden');
+                    } else {
+                        // 游戏完成
+                        this.gameComplete();
+                    }
+                }
+                
+                restartGame() {
+                    this.currentLevel = 0;
+                    this.loadLevel(this.currentLevel);
+                    gameOver = false;
+                    levelComplete = false;
+                    gameOverScreen.classList.add('hidden');
+                    levelCompleteScreen.classList.add('hidden');
+                }
+                
+                gameOver(message) {
+                    gameOver = true;
+                    gameRunning = false;
+                    gameOverMessage.textContent = message;
+                    gameOverScreen.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    
+                    // 添加调试输出
+                    console.log('游戏结束:', message);
+                }
+                
+                completeLevel() {
+                    levelComplete = true;
+                    gameRunning = false;
+                    levelCompleteMessage.textContent = `关卡 ${this.currentLevel + 1} 完成!`;
+                    levelCompleteScreen.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    
+                    // 添加调试输出
+                    console.log('关卡完成:', this.currentLevel + 1);
+                }
+                
+                gameComplete() {
+                    gameOver = true;
+                    gameRunning = false;
+                    gameOverMessage.textContent = '恭喜你完成了所有关卡!';
+                    gameOverScreen.classList.remove('hidden');
+                    startBtn.disabled = false;
+                    
+                    // 添加调试输出
+                    console.log('游戏全部完成!');
+                }
+                
+                checkLevelComplete() {
+                    const level = this.levels[this.currentLevel];
+                    
+                    // 如果所有硬币都被收集，则关卡完成
+                    if (level.coins.length === 0) {
+                        this.completeLevel();
+                        
+                        // 添加调试输出
+                        console.log('所有硬币已收集，关卡完成');
+                    }
+                }
+                
+                update() {
+                    if (gameRunning && !gameOver && !levelComplete) {
+                        // 清空画布
+                        ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                        
+                        // 获取当前关卡
+                        const level = this.levels[this.currentLevel];
+                        
+                        // 绘制关卡
+                        level.draw();
+                        
+                        // 更新和绘制玩家
+                        if (this.firePlayer.isAlive) {
+                            this.firePlayer.update(
+                                level.platforms, 
+                                level.hazards, 
+                                level.coins, 
+                                level.portals, 
+                                this
+                            );
+                            this.firePlayer.draw();
+                        } else {
+                            // 火人死亡
+                            this.gameOver('火人死亡，游戏结束!');
+                        }
+                        
+                        if (this.icePlayer.isAlive) {
+                            this.icePlayer.update(
+                                level.platforms, 
+                                level.hazards, 
+                                level.coins, 
+                                level.portals, 
+                                this
+                            );
+                            this.icePlayer.draw();
+                        } else {
+                            // 冰人死亡
+                            this.gameOver('冰人死亡，游戏结束!');
+                        }
+                        
+                        // 继续游戏循环
+                        this.gameLoop = requestAnimationFrame(() => this.update());
+                    }
+                }
+            }
+            
+            // 创建游戏实例
+            const game = new Game();
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '朱泓亦';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>    

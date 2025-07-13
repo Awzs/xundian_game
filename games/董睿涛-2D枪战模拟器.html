@@ -1,0 +1,2133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2D枪战模拟器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        dark: '#1F2937',
+                        light: '#F3F4F6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixel-corners {
+                clip-path: polygon(
+                    0% 8px, 8px 0%, calc(100% - 8px) 0%, 100% 8px,
+                    100% calc(100% - 8px), calc(100% - 8px) 100%,
+                    8px 100%, 0% calc(100% - 8px)
+                );
+            }
+            .game-shadow {
+                box-shadow: 0 0 0 2px #1F2937, 0 0 0 4px #3B82F6, 0 8px 16px rgba(0,0,0,0.25);
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-dark to-gray-800 min-h-screen text-light font-sans overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 游戏容器 -->
+    <div class="container mx-auto px-4 py-8 flex flex-col items-center justify-center min-h-screen">
+        <!-- 游戏标题 -->
+        <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary mb-6 text-shadow">
+            2D枪战模拟器
+        </h1>
+
+        <!-- 游戏主界面 -->
+        <div class="relative w-full max-w-4xl game-shadow rounded-lg overflow-hidden pixel-corners">
+            <!-- 游戏画布 -->
+            <canvas id="gameCanvas" class="w-full h-auto bg-dark"></canvas>
+
+            <!-- 游戏控制面板 (初始隐藏) -->
+            <div id="controlPanel" class="absolute bottom-0 left-0 right-0 bg-dark/80 backdrop-blur-sm p-4 flex flex-wrap gap-3 justify-center items-center">
+                <button id="moveLeft" class="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-4 rounded pixel-corners transition-all">
+                    <i class="fa fa-arrow-left"></i> 左移
+                </button>
+                <button id="moveRight" class="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-4 rounded pixel-corners transition-all">
+                    <i class="fa fa-arrow-right"></i> 右移
+                </button>
+                <button id="jump" class="bg-secondary hover:bg-secondary/80 text-white font-bold py-2 px-4 rounded pixel-corners transition-all">
+                    <i class="fa fa-arrow-up"></i> 跳跃
+                </button>
+                <button id="shoot" class="bg-danger hover:bg-danger/80 text-white font-bold py-2 px-4 rounded pixel-corners transition-all">
+                    <i class="fa fa-crosshairs"></i> 射击
+                </button>
+                <button id="reload" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded pixel-corners transition-all">
+                    <i class="fa fa-refresh"></i> 换弹
+                </button>
+            </div>
+        </div>
+
+        <!-- 游戏状态显示 -->
+        <div class="w-full max-w-4xl flex justify-between items-center mt-4 text-lg">
+            <div class="flex items-center gap-3 bg-dark/60 backdrop-blur-sm px-4 py-2 rounded-lg">
+                <span class="flex items-center"><i class="fa fa-heart text-danger mr-2"></i> <span id="health">100</span></span>
+                <span class="flex items-center"><i class="fa fa-bullseye text-secondary mr-2"></i> <span id="accuracy">100%</span></span>
+            </div>
+            <div class="flex items-center gap-3 bg-dark/60 backdrop-blur-sm px-4 py-2 rounded-lg">
+                <span class="flex items-center"><i class="fa fa-bolt text-primary mr-2"></i> <span id="score">0</span></span>
+                <span class="flex items-center"><i class="fa fa-clock-o text-white mr-2"></i> <span id="timer">60</span></span>
+            </div>
+        </div>
+
+        <!-- 游戏菜单 -->
+        <div id="gameMenu" class="absolute inset-0 bg-dark/90 backdrop-blur-md flex flex-col items-center justify-center z-10">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-primary mb-8">游戏菜单</h2>
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+                <button id="startGame" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-play mr-2"></i> 开始游戏
+                </button>
+                <button id="showControls" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-gamepad mr-2"></i> 操作说明
+                </button>
+                <button id="showSettings" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-cog mr-2"></i> 设置
+                </button>
+                <button id="exitGame" class="bg-gray-800 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-sign-out mr-2"></i> 退出
+                </button>
+            </div>
+        </div>
+
+        <!-- 游戏结束画面 -->
+        <div id="gameOver" class="absolute inset-0 bg-dark/90 backdrop-blur-md flex flex-col items-center justify-center z-10 hidden">
+            <h2 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-danger mb-2">游戏结束</h2>
+            <p class="text-xl mb-6">你的得分: <span id="finalScore">0</span></p>
+            <div class="flex flex-col gap-4 w-full max-w-xs">
+                <button id="restartGame" class="bg-primary hover:bg-primary/80 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-refresh mr-2"></i> 重新开始
+                </button>
+                <button id="backToMenu" class="bg-gray-600 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded pixel-corners transition-all transform hover:scale-105 text-lg">
+                    <i class="fa fa-home mr-2"></i> 返回菜单
+                </button>
+            </div>
+        </div>
+
+        <!-- 操作说明模态框 -->
+        <div id="controlsModal" class="absolute inset-0 bg-dark/90 backdrop-blur-md flex flex-col items-center justify-center z-20 hidden">
+            <div class="bg-gray-800 rounded-lg p-6 w-full max-w-2xl game-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-primary">操作说明</h3>
+                    <button id="closeControls" class="text-gray-400 hover:text-white">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex items-start">
+                        <div class="bg-primary/20 p-2 rounded mr-3">
+                            <i class="fa fa-keyboard-o text-primary text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg">键盘控制</h4>
+                            <ul class="list-disc pl-5 mt-1 space-y-1">
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">A</span> 或 <span class="font-mono bg-gray-700 px-2 py-1 rounded">←</span>：向左移动</li>
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">D</span> 或 <span class="font-mono bg-gray-700 px-2 py-1 rounded">→</span>：向右移动</li>
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">W</span> 或 <span class="font-mono bg-gray-700 px-2 py-1 rounded">↑</span> 或 <span class="font-mono bg-gray-700 px-2 py-1 rounded">空格</span>：跳跃</li>
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">鼠标左键</span> 或 <span class="font-mono bg-gray-700 px-2 py-1 rounded">J</span>：射击</li>
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">R</span>：换弹</li>
+                                <li><span class="font-mono bg-gray-700 px-2 py-1 rounded">P</span>：暂停游戏</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex items-start">
+                        <div class="bg-secondary/20 p-2 rounded mr-3">
+                            <i class="fa fa-mobile text-secondary text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-lg">触摸屏控制</h4>
+                            <ul class="list-disc pl-5 mt-1 space-y-1">
+                                <li>屏幕下方的虚拟按钮</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <button id="closeControlsBtn" class="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded pixel-corners transition-all">
+                        关闭
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置模态框 -->
+        <div id="settingsModal" class="absolute inset-0 bg-dark/90 backdrop-blur-md flex flex-col items-center justify-center z-20 hidden">
+            <div class="bg-gray-800 rounded-lg p-6 w-full max-w-md game-shadow">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-2xl font-bold text-primary">游戏设置</h3>
+                    <button id="closeSettings" class="text-gray-400 hover:text-white">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-300 mb-2">游戏难度</label>
+                        <select id="difficulty" class="w-full bg-gray-700 border border-gray-600 text-white rounded py-2 px-3 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="easy">简单</option>
+                            <option value="medium" selected>中等</option>
+                            <option value="hard">困难</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">音效</label>
+                        <div class="flex items-center">
+                            <input type="range" id="soundVolume" min="0" max="100" value="80" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary">
+                            <span id="soundVolumeValue" class="ml-3 min-w-[3rem] text-right">80%</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-gray-300 mb-2">背景音乐</label>
+                        <div class="flex items-center">
+                            <input type="range" id="musicVolume" min="0" max="100" value="60" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-primary">
+                            <span id="musicVolumeValue" class="ml-3 min-w-[3rem] text-right">60%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="vibration" class="w-5 h-5 text-primary rounded border-gray-600 focus:ring-primary" checked>
+                        <label for="vibration" class="ml-2 text-gray-300">震动反馈</label>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="touchControls" class="w-5 h-5 text-primary rounded border-gray-600 focus:ring-primary" checked>
+                        <label for="touchControls" class="ml-2 text-gray-300">显示触摸按钮</label>
+                    </div>
+                </div>
+                <div class="mt-6 text-center">
+                    <button id="saveSettings" class="bg-primary hover:bg-primary/80 text-white font-bold py-2 px-6 rounded pixel-corners transition-all">
+                        保存设置
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态管理
+        const gameState = {
+            initialized: false,
+            running: false,
+            paused: false,
+            score: 0,
+            health: 100,
+            ammo: 30,
+            maxAmmo: 30,
+            reloadTime: 2000, // 毫秒
+            isReloading: false,
+            accuracy: 100,
+            shotsFired: 0,
+            shotsHit: 0,
+            timeRemaining: 60, // 秒
+            difficulty: 'medium',
+            soundVolume: 80,
+            musicVolume: 60,
+            vibrationEnabled: true,
+            touchControlsEnabled: true,
+            lastTimestamp: 0,
+            player: {
+                x: 100,
+                y: 300,
+                width: 40,
+                height: 60,
+                speed: 5,
+                jumping: false,
+                jumpSpeed: 10,
+                jumpHeight: 150,
+                direction: 1, // 1 向右, -1 向左
+                color: '#3B82F6'
+            },
+            bullets: [],
+            enemies: [],
+            obstacles: [],
+            particleEffects: [],
+            powerUps: [],
+            bulletSpeed: 10,
+            fireRate: 200, // 毫秒
+            lastFired: 0,
+            enemySpawnRate: 2000, // 毫秒
+            lastEnemySpawn: 0,
+            powerUpSpawnRate: 15000, // 毫秒
+            lastPowerUpSpawn: 0,
+            gameTime: 0,
+            gameOver: false,
+            keys: {
+                left: false,
+                right: false,
+                up: false,
+                shoot: false,
+                reload: false
+            },
+            mouse: {
+                x: 0,
+                y: 0,
+                clicked: false
+            }
+        };
+
+        // DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameMenu = document.getElementById('gameMenu');
+        const gameOver = document.getElementById('gameOver');
+        const controlPanel = document.getElementById('controlPanel');
+        const controlsModal = document.getElementById('controlsModal');
+        const settingsModal = document.getElementById('settingsModal');
+        const startGameBtn = document.getElementById('startGame');
+        const restartGameBtn = document.getElementById('restartGame');
+        const backToMenuBtn = document.getElementById('backToMenu');
+        const showControlsBtn = document.getElementById('showControls');
+        const closeControlsBtn = document.getElementById('closeControls');
+        const closeControlsModalBtn = document.getElementById('closeControlsBtn');
+        const showSettingsBtn = document.getElementById('showSettings');
+        const closeSettingsBtn = document.getElementById('closeSettings');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+        const exitGameBtn = document.getElementById('exitGame');
+        const moveLeftBtn = document.getElementById('moveLeft');
+        const moveRightBtn = document.getElementById('moveRight');
+        const jumpBtn = document.getElementById('jump');
+        const shootBtn = document.getElementById('shoot');
+        const reloadBtn = document.getElementById('reload');
+        const healthDisplay = document.getElementById('health');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const accuracyDisplay = document.getElementById('accuracy');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const soundVolumeSlider = document.getElementById('soundVolume');
+        const soundVolumeValue = document.getElementById('soundVolumeValue');
+        const musicVolumeSlider = document.getElementById('musicVolume');
+        const musicVolumeValue = document.getElementById('musicVolumeValue');
+        const vibrationToggle = document.getElementById('vibration');
+        const touchControlsToggle = document.getElementById('touchControls');
+        const difficultySelect = document.getElementById('difficulty');
+
+        // 初始化画布尺寸
+        function initCanvas() {
+            // 设置画布的实际尺寸
+            canvas.width = 800;
+            canvas.height = 500;
+            
+            // 根据设备像素比调整画布分辨率，使画面更清晰
+            const dpr = window.devicePixelRatio || 1;
+            canvas.style.width = canvas.width + 'px';
+            canvas.style.height = canvas.height + 'px';
+            canvas.width = canvas.width * dpr;
+            canvas.height = canvas.height * dpr;
+            ctx.scale(dpr, dpr);
+        }
+
+        // 初始化游戏
+        function initGame() {
+            if (!gameState.initialized) {
+                initCanvas();
+                createObstacles();
+                gameState.initialized = true;
+            }
+            
+            // 重置游戏状态
+            gameState.running = true;
+            gameState.paused = false;
+            gameState.gameOver = false;
+            gameState.score = 0;
+            gameState.health = 100;
+            gameState.ammo = gameState.maxAmmo;
+            gameState.isReloading = false;
+            gameState.shotsFired = 0;
+            gameState.shotsHit = 0;
+            gameState.timeRemaining = 60;
+            gameState.bullets = [];
+            gameState.enemies = [];
+            gameState.particleEffects = [];
+            gameState.powerUps = [];
+            gameState.player.x = 100;
+            gameState.player.y = 300;
+            gameState.player.jumping = false;
+            gameState.player.direction = 1;
+            gameState.lastTimestamp = performance.now();
+            gameState.lastEnemySpawn = 0;
+            gameState.lastPowerUpSpawn = 0;
+            gameState.lastFired = 0;
+            
+            // 更新UI
+            updateHUD();
+            gameMenu.classList.add('hidden');
+            gameOver.classList.add('hidden');
+            if (gameState.touchControlsEnabled) {
+                controlPanel.classList.remove('hidden');
+            } else {
+                controlPanel.classList.add('hidden');
+            }
+            
+            // 开始游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 创建障碍物
+        function createObstacles() {
+            gameState.obstacles = [
+                // 地面
+                { x: 0, y: 450, width: 800, height: 50, color: '#1F2937' },
+                // 平台
+                { x: 200, y: 350, width: 150, height: 20, color: '#374151' },
+                { x: 450, y: 300, width: 150, height: 20, color: '#374151' },
+                { x: 150, y: 250, width: 100, height: 20, color: '#374151' },
+                { x: 500, y: 200, width: 100, height: 20, color: '#374151' },
+                // 墙壁
+                { x: 650, y: 150, width: 20, height: 300, color: '#4B5563' }
+            ];
+        }
+
+        // 游戏主循环
+        function gameLoop(timestamp) {
+            if (!gameState.running) return;
+            
+            // 计算时间增量
+            const deltaTime = timestamp - gameState.lastTimestamp;
+            gameState.lastTimestamp = timestamp;
+            
+            // 更新游戏时间
+            gameState.gameTime += deltaTime;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawBackground();
+            
+            // 绘制障碍物
+            drawObstacles();
+            
+            // 生成敌人
+            spawnEnemies(timestamp);
+            
+            // 生成道具
+            spawnPowerUps(timestamp);
+            
+            // 更新和绘制玩家
+            updatePlayer(deltaTime);
+            drawPlayer();
+            
+            // 更新和绘制子弹
+            updateBullets(deltaTime);
+            drawBullets();
+            
+            // 更新和绘制敌人
+            updateEnemies(deltaTime);
+            drawEnemies();
+            
+            // 更新和绘制特效
+            updateParticleEffects(deltaTime);
+            drawParticleEffects();
+            
+            // 更新和绘制道具
+            updatePowerUps(deltaTime);
+            drawPowerUps();
+            
+            // 检测碰撞
+            checkCollisions();
+            
+            // 更新计时器
+            updateTimer(deltaTime);
+            
+            // 绘制UI
+            drawUI();
+            
+            // 检查游戏是否结束
+            if (gameState.gameOver) {
+                endGame();
+                return;
+            }
+            
+            // 继续游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 绘制背景
+        function drawBackground() {
+            // 渐变背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0F172A');
+            gradient.addColorStop(1, '#1E293B');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 简单的远景
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(0, 400, canvas.width, 50);
+            
+            // 远景建筑
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(100, 350, 60, 50);
+            ctx.fillRect(200, 320, 80, 80);
+            ctx.fillRect(350, 360, 40, 40);
+            ctx.fillRect(500, 330, 70, 70);
+            ctx.fillRect(650, 370, 50, 30);
+            
+            // 窗户
+            ctx.fillStyle = '#E2E8F0';
+            ctx.fillRect(110, 360, 10, 10);
+            ctx.fillRect(130, 360, 10, 10);
+            ctx.fillRect(110, 380, 10, 10);
+            ctx.fillRect(130, 380, 10, 10);
+            
+            ctx.fillRect(210, 330, 15, 15);
+            ctx.fillRect(235, 330, 15, 15);
+            ctx.fillRect(260, 330, 15, 15);
+            ctx.fillRect(210, 355, 15, 15);
+            ctx.fillRect(235, 355, 15, 15);
+            ctx.fillRect(260, 355, 15, 15);
+            ctx.fillRect(210, 380, 15, 15);
+            ctx.fillRect(235, 380, 15, 15);
+            ctx.fillRect(260, 380, 15, 15);
+        }
+
+        // 绘制障碍物
+        function drawObstacles() {
+            gameState.obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // 添加边缘高光
+                ctx.strokeStyle = '#94A3B8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+            });
+        }
+
+        // 更新玩家
+        function updatePlayer(deltaTime) {
+            const { player, keys } = gameState;
+            
+            // 水平移动
+            if (keys.left) {
+                player.x -= player.speed;
+                player.direction = -1;
+            }
+            if (keys.right) {
+                player.x += player.speed;
+                player.direction = 1;
+            }
+            
+            // 确保玩家不超出画布边界
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) {
+                player.x = canvas.width - player.width;
+            }
+            
+            // 跳跃逻辑
+            if (keys.up && !player.jumping) {
+                player.jumping = true;
+                player.jumpSpeed = 12;
+                playSound('jump');
+            }
+            
+            if (player.jumping) {
+                player.y -= player.jumpSpeed;
+                player.jumpSpeed -= 0.5;
+                
+                // 检测是否落地
+                if (player.y + player.height >= 450) {
+                    player.y = 450 - player.height;
+                    player.jumping = false;
+                }
+                
+                // 检测平台碰撞
+                for (let i = 0; i < gameState.obstacles.length; i++) {
+                    const obstacle = gameState.obstacles[i];
+                    if (
+                        player.x + player.width > obstacle.x &&
+                        player.x < obstacle.x + obstacle.width &&
+                        player.y + player.height >= obstacle.y &&
+                        player.y + player.height <= obstacle.y + 10 &&
+                        player.jumpSpeed < 0
+                    ) {
+                        player.y = obstacle.y - player.height;
+                        player.jumping = false;
+                        break;
+                    }
+                }
+            } else {
+                // 应用重力
+                player.y += 2;
+                
+                // 检测平台碰撞
+                let onGround = false;
+                for (let i = 0; i < gameState.obstacles.length; i++) {
+                    const obstacle = gameState.obstacles[i];
+                    if (
+                        player.x + player.width > obstacle.x &&
+                        player.x < obstacle.x + obstacle.width &&
+                        player.y + player.height >= obstacle.y &&
+                        player.y + player.height <= obstacle.y + 10
+                    ) {
+                        player.y = obstacle.y - player.height;
+                        onGround = true;
+                        break;
+                    }
+                }
+                
+                if (!onGround && player.y + player.height < 450) {
+                    player.jumping = true;
+                }
+            }
+            
+            // 射击逻辑
+            if ((keys.shoot || gameState.mouse.clicked) && !gameState.isReloading) {
+                const now = performance.now();
+                if (now - gameState.lastFired > gameState.fireRate) {
+                    if (gameState.ammo > 0) {
+                        fireBullet();
+                        gameState.lastFired = now;
+                        gameState.ammo--;
+                        gameState.shotsFired++;
+                    } else {
+                        playSound('empty');
+                        reload();
+                    }
+                }
+            }
+            
+            // 换弹逻辑
+            if (keys.reload && !gameState.isReloading && gameState.ammo < gameState.maxAmmo) {
+                reload();
+            }
+        }
+
+        // 绘制玩家
+        function drawPlayer() {
+            const { player } = gameState;
+            
+            // 玩家身体
+            ctx.fillStyle = player.color;
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+            
+            // 玩家头部
+            ctx.fillStyle = '#60A5FA';
+            ctx.beginPath();
+            ctx.arc(
+                player.x + player.width / 2, 
+                player.y + player.height / 4, 
+                player.width / 3, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+            
+            // 武器
+            ctx.fillStyle = '#1E293B';
+            if (player.direction === 1) {
+                // 向右
+                ctx.fillRect(
+                    player.x + player.width, 
+                    player.y + player.height / 3, 
+                    20, 
+                    player.height / 6
+                );
+            } else {
+                // 向左
+                ctx.fillRect(
+                    player.x - 20, 
+                    player.y + player.height / 3, 
+                    20, 
+                    player.height / 6
+                );
+            }
+            
+            // 准星方向
+            ctx.strokeStyle = '#EF4444';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            if (player.direction === 1) {
+                ctx.moveTo(player.x + player.width + 20, player.y + player.height / 3 + player.height / 12);
+                ctx.lineTo(player.x + player.width + 40, player.y + player.height / 3 + player.height / 12);
+            } else {
+                ctx.moveTo(player.x - 20, player.y + player.height / 3 + player.height / 12);
+                ctx.lineTo(player.x - 40, player.y + player.height / 3 + player.height / 12);
+            }
+            ctx.stroke();
+            
+            // 绘制玩家下方的阴影
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.ellipse(
+                player.x + player.width / 2, 
+                450, 
+                player.width / 2, 
+                10, 
+                0, 
+                0, 
+                Math.PI * 2
+            );
+            ctx.fill();
+        }
+
+        // 生成子弹
+        function fireBullet() {
+            const { player, mouse } = gameState;
+            
+            // 计算子弹发射位置
+            let startX, startY;
+            if (player.direction === 1) {
+                startX = player.x + player.width + 20;
+            } else {
+                startX = player.x - 20;
+            }
+            startY = player.y + player.height / 3 + player.height / 12;
+            
+            // 计算子弹方向
+            let directionX, directionY;
+            if (mouse.clicked) {
+                // 朝向鼠标点击位置
+                const dx = mouse.x - startX;
+                const dy = mouse.y - startY;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                directionX = dx / length;
+                directionY = dy / length;
+            } else {
+                // 朝向玩家面对的方向
+                directionX = player.direction;
+                directionY = 0;
+            }
+            
+            // 添加随机散布 (影响精度)
+            const spread = (100 - gameState.accuracy) / 200;
+            directionX += (Math.random() * spread - spread / 2);
+            directionY += (Math.random() * spread - spread / 2);
+            
+            // 重新归一化
+            const length = Math.sqrt(directionX * directionX + directionY * directionY);
+            directionX /= length;
+            directionY /= length;
+            
+            // 创建子弹
+            gameState.bullets.push({
+                x: startX,
+                y: startY,
+                width: 6,
+                height: 2,
+                directionX,
+                directionY,
+                speed: gameState.bulletSpeed,
+                damage: 25,
+                color: '#FBBF24'
+            });
+            
+            // 播放射击音效
+            playSound('shoot');
+            
+            // 添加后坐力效果
+            gameState.player.x -= player.direction * 3;
+            
+            // 添加射击特效
+            addMuzzleFlash(startX, startY, player.direction);
+        }
+
+        // 添加枪口火焰特效
+        function addMuzzleFlash(x, y, direction) {
+            const flashSize = 15;
+            gameState.particleEffects.push({
+                x: direction === 1 ? x + 5 : x - 5,
+                y,
+                size: flashSize,
+                color: '#FBBF24',
+                alpha: 1,
+                lifetime: 200,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 200);
+                    this.size = flashSize * (this.lifetime / 200);
+                },
+                draw: function(ctx) {
+                    const gradient = ctx.createRadialGradient(
+                        this.x, this.y, 0,
+                        this.x, this.y, this.size
+                    );
+                    gradient.addColorStop(0, `rgba(251, 191, 34, ${this.alpha})`);
+                    gradient.addColorStop(1, `rgba(251, 191, 34, 0)`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 更新子弹
+        function updateBullets(deltaTime) {
+            for (let i = gameState.bullets.length - 1; i >= 0; i--) {
+                const bullet = gameState.bullets[i];
+                
+                // 更新位置
+                bullet.x += bullet.directionX * bullet.speed;
+                bullet.y += bullet.directionY * bullet.speed;
+                
+                // 移除超出画布的子弹
+                if (
+                    bullet.x < 0 || 
+                    bullet.x > canvas.width || 
+                    bullet.y < 0 || 
+                    bullet.y > canvas.height
+                ) {
+                    gameState.bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // 检测障碍物碰撞
+                for (let j = 0; j < gameState.obstacles.length; j++) {
+                    const obstacle = gameState.obstacles[j];
+                    if (
+                        bullet.x + bullet.width > obstacle.x &&
+                        bullet.x < obstacle.x + obstacle.width &&
+                        bullet.y + bullet.height > obstacle.y &&
+                        bullet.y < obstacle.y + obstacle.height
+                    ) {
+                        // 添加碰撞特效
+                        addBulletImpact(bullet.x, bullet.y);
+                        
+                        // 移除子弹
+                        gameState.bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // 添加子弹撞击特效
+        function addBulletImpact(x, y) {
+            // 火花粒子
+            for (let i = 0; i < 5; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                gameState.particleEffects.push({
+                    x,
+                    y,
+                    size: 1 + Math.random() * 2,
+                    color: '#FBBF24',
+                    alpha: 1,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    lifetime: 300 + Math.random() * 200,
+                    update: function(deltaTime) {
+                        this.lifetime -= deltaTime;
+                        this.alpha = Math.max(0, this.lifetime / 500);
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+                    },
+                    draw: function(ctx) {
+                        ctx.fillStyle = `rgba(251, 191, 34, ${this.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+            
+            // 烟雾粒子
+            gameState.particleEffects.push({
+                x,
+                y,
+                size: 5 + Math.random() * 5,
+                color: '#94A3B8',
+                alpha: 0.7,
+                lifetime: 800,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 800);
+                    this.size += 0.1;
+                },
+                draw: function(ctx) {
+                    ctx.fillStyle = `rgba(148, 163, 184, ${this.alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 绘制子弹
+        function drawBullets() {
+            gameState.bullets.forEach(bullet => {
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+        }
+
+        // 生成敌人
+        function spawnEnemies(timestamp) {
+            // 根据难度调整生成率
+            let spawnRate = gameState.enemySpawnRate;
+            if (gameState.difficulty === 'easy') {
+                spawnRate = 2500;
+            } else if (gameState.difficulty === 'hard') {
+                spawnRate = 1500;
+            }
+            
+            // 随时间增加难度
+            const gameMinutes = gameState.gameTime / 60000;
+            spawnRate = Math.max(800, spawnRate - (gameMinutes * 200));
+            
+            if (timestamp - gameState.lastEnemySpawn > spawnRate) {
+                // 决定敌人出现的位置 (左右两侧)
+                const fromLeft = Math.random() < 0.5;
+                const x = fromLeft ? -50 : canvas.width + 50;
+                const y = 450 - 50; // 敌人高度
+                
+                // 创建敌人
+                const enemyTypes = [
+                    { health: 100, speed: 1.5, color: '#EF4444', damage: 10, points: 10 },
+                    { health: 150, speed: 1.0, color: '#DC2626', damage: 15, points: 15 },
+                    { health: 70, speed: 2.0, color: '#F87171', damage: 8, points: 8 }
+                ];
+                
+                // 根据难度调整敌人类型分布
+                let enemyType;
+                if (gameState.difficulty === 'easy') {
+                    enemyType = enemyTypes[Math.floor(Math.random() * 2)]; // 主要是前两种
+                } else if (gameState.difficulty === 'hard') {
+                    enemyType = enemyTypes[Math.floor(Math.random() * 2) + 1]; // 主要是后两种
+                } else {
+                    enemyType = enemyTypes[Math.floor(Math.random() * enemyTypes.length)];
+                }
+                
+                // 随时间增加敌人强度
+                const timeFactor = 1 + (gameMinutes * 0.1);
+                enemyType.health = Math.floor(enemyType.health * timeFactor);
+                enemyType.damage = Math.floor(enemyType.damage * timeFactor);
+                
+                gameState.enemies.push({
+                    x,
+                    y,
+                    width: 40,
+                    height: 50,
+                    health: enemyType.health,
+                    maxHealth: enemyType.health,
+                    speed: enemyType.speed,
+                    color: enemyType.color,
+                    damage: enemyType.damage,
+                    points: enemyType.points,
+                    direction: fromLeft ? 1 : -1,
+                    shootingCooldown: 2000 + Math.random() * 1000,
+                    lastShot: 0
+                });
+                
+                gameState.lastEnemySpawn = timestamp;
+            }
+        }
+
+        // 更新敌人
+        function updateEnemies(deltaTime) {
+            const { player } = gameState;
+            
+            for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                const enemy = gameState.enemies[i];
+                
+                // 移动敌人
+                enemy.x += enemy.speed * enemy.direction;
+                
+                // 敌人AI - 射击
+                const now = performance.now();
+                if (now - enemy.lastShot > enemy.shootingCooldown) {
+                    // 只有当玩家在合理范围内并且在同一垂直高度附近时才射击
+                    const playerInRange = Math.abs(player.y - enemy.y) < 50;
+                    if (
+                        (enemy.direction === 1 && player.x > enemy.x) || 
+                        (enemy.direction === -1 && player.x < enemy.x)
+                    ) {
+                        if (playerInRange) {
+                            enemyShoot(enemy, i);
+                            enemy.lastShot = now;
+                        }
+                    }
+                }
+                
+                // 敌人AI - 转向
+                if (
+                    (enemy.direction === 1 && enemy.x > player.x - 50) || 
+                    (enemy.direction === -1 && enemy.x < player.x + 50)
+                ) {
+                    enemy.direction = player.x > enemy.x ? 1 : -1;
+                }
+                
+                // 移除超出画布的敌人
+                if (
+                    (enemy.direction === 1 && enemy.x > canvas.width + 50) || 
+                    (enemy.direction === -1 && enemy.x < -50)
+                ) {
+                    gameState.enemies.splice(i, 1);
+                    continue;
+                }
+                
+                // 检测平台碰撞
+                let onGround = false;
+                for (let j = 0; j < gameState.obstacles.length; j++) {
+                    const obstacle = gameState.obstacles[j];
+                    if (
+                        enemy.x + enemy.width > obstacle.x &&
+                        enemy.x < obstacle.x + obstacle.width &&
+                        enemy.y + enemy.height >= obstacle.y &&
+                        enemy.y + enemy.height <= obstacle.y + 10
+                    ) {
+                        enemy.y = obstacle.y - enemy.height;
+                        onGround = true;
+                        break;
+                    }
+                }
+                
+                if (!onGround) {
+                    enemy.y += 2;
+                }
+            }
+        }
+
+        // 敌人射击
+        function enemyShoot(enemy, enemyIndex) {
+            const { player } = gameState;
+            
+            // 计算子弹发射位置
+            let startX, startY;
+            if (enemy.direction === 1) {
+                startX = enemy.x + enemy.width;
+            } else {
+                startX = enemy.x;
+            }
+            startY = enemy.y + enemy.height / 2;
+            
+            // 计算子弹方向，稍微随机以降低精度
+            const dx = player.x + player.width / 2 - startX;
+            const dy = player.y + player.height / 2 - startY;
+            const length = Math.sqrt(dx * dx + dy * dy);
+            
+            // 添加随机散布
+            const spread = 0.2 + (Math.random() * 0.2);
+            const directionX = (dx / length) + (Math.random() * spread - spread / 2);
+            const directionY = (dy / length) + (Math.random() * spread - spread / 2);
+            
+            // 重新归一化
+            const newLength = Math.sqrt(directionX * directionX + directionY * directionY);
+            
+            // 创建敌人子弹
+            gameState.bullets.push({
+                x: startX,
+                y: startY,
+                width: 5,
+                height: 2,
+                directionX: directionX / newLength,
+                directionY: directionY / newLength,
+                speed: gameState.bulletSpeed * 0.8,
+                damage: enemy.damage,
+                color: '#F43F5E',
+                isEnemy: true
+            });
+            
+            // 播放射击音效
+            playSound('enemyShoot');
+            
+            // 添加敌人射击特效
+            addEnemyMuzzleFlash(startX, startY, enemy.direction, enemyIndex);
+        }
+
+        // 添加敌人枪口火焰特效
+        function addEnemyMuzzleFlash(x, y, direction, enemyIndex) {
+            const flashSize = 12;
+            const enemy = gameState.enemies[enemyIndex];
+            
+            gameState.particleEffects.push({
+                x: direction === 1 ? x + 5 : x - 5,
+                y,
+                size: flashSize,
+                color: '#F43F5E',
+                alpha: 1,
+                lifetime: 200,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 200);
+                    this.size = flashSize * (this.lifetime / 200);
+                },
+                draw: function(ctx) {
+                    const gradient = ctx.createRadialGradient(
+                        this.x, this.y, 0,
+                        this.x, this.y, this.size
+                    );
+                    gradient.addColorStop(0, `rgba(244, 63, 94, ${this.alpha})`);
+                    gradient.addColorStop(1, `rgba(244, 63, 94, 0)`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 绘制敌人
+        function drawEnemies() {
+            gameState.enemies.forEach(enemy => {
+                // 敌人身体
+                ctx.fillStyle = enemy.color;
+                ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+                
+                // 敌人头部
+                ctx.fillStyle = '#DC2626';
+                ctx.beginPath();
+                ctx.arc(
+                    enemy.x + enemy.width / 2, 
+                    enemy.y + enemy.height / 4, 
+                    enemy.width / 3, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // 武器
+                ctx.fillStyle = '#1E293B';
+                if (enemy.direction === 1) {
+                    // 向右
+                    ctx.fillRect(
+                        enemy.x + enemy.width, 
+                        enemy.y + enemy.height / 3, 
+                        15, 
+                        enemy.height / 6
+                    );
+                } else {
+                    // 向左
+                    ctx.fillRect(
+                        enemy.x - 15, 
+                        enemy.y + enemy.height / 3, 
+                        15, 
+                        enemy.height / 6
+                    );
+                }
+                
+                // 绘制敌人下方的阴影
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+                ctx.beginPath();
+                ctx.ellipse(
+                    enemy.x + enemy.width / 2, 
+                    450, 
+                    enemy.width / 2, 
+                    8, 
+                    0, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // 绘制血条
+                ctx.fillStyle = '#DC2626';
+                ctx.fillRect(enemy.x, enemy.y - 10, enemy.width, 5);
+                
+                const healthPercentage = enemy.health / enemy.maxHealth;
+                ctx.fillStyle = '#10B981';
+                ctx.fillRect(enemy.x, enemy.y - 10, enemy.width * healthPercentage, 5);
+                
+                // 绘制轮廓
+                ctx.strokeStyle = '#94A3B8';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            });
+        }
+
+        // 生成道具
+        function spawnPowerUps(timestamp) {
+            if (timestamp - gameState.lastPowerUpSpawn > gameState.powerUpSpawnRate) {
+                // 决定道具类型
+                const types = ['health', 'ammo', 'accuracy', 'speed'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                // 随机位置
+                const x = 100 + Math.random() * (canvas.width - 200);
+                const y = 450 - 30; // 道具高度
+                
+                gameState.powerUps.push({
+                    x,
+                    y,
+                    width: 30,
+                    height: 30,
+                    type,
+                    color: getPowerUpColor(type),
+                    pulseSize: 0,
+                    pulseDirection: 0.02,
+                    lifetime: 10000 // 10秒
+                });
+                
+                gameState.lastPowerUpSpawn = timestamp;
+            }
+        }
+
+        // 获取道具颜色
+        function getPowerUpColor(type) {
+            switch (type) {
+                case 'health': return '#10B981';
+                case 'ammo': return '#3B82F6';
+                case 'accuracy': return '#8B5CF6';
+                case 'speed': return '#F59E0B';
+                default: return '#F3F4F6';
+            }
+        }
+
+        // 更新道具
+        function updatePowerUps(deltaTime) {
+            for (let i = gameState.powerUps.length - 1; i >= 0; i--) {
+                const powerUp = gameState.powerUps[i];
+                
+                // 脉动效果
+                powerUp.pulseSize += powerUp.pulseDirection;
+                if (powerUp.pulseSize > 5 || powerUp.pulseSize < 0) {
+                    powerUp.pulseDirection *= -1;
+                }
+                
+                // 减少生命周期
+                powerUp.lifetime -= deltaTime;
+                if (powerUp.lifetime <= 0) {
+                    gameState.powerUps.splice(i, 1);
+                    continue;
+                }
+            }
+        }
+
+        // 绘制道具
+        function drawPowerUps() {
+            gameState.powerUps.forEach(powerUp => {
+                // 绘制道具
+                ctx.fillStyle = powerUp.color;
+                ctx.beginPath();
+                ctx.arc(
+                    powerUp.x + powerUp.width / 2, 
+                    powerUp.y + powerUp.height / 2, 
+                    powerUp.width / 2 + powerUp.pulseSize, 
+                    0, 
+                    Math.PI * 2
+                );
+                ctx.fill();
+                
+                // 绘制道具内部符号
+                ctx.fillStyle = '#1F2937';
+                ctx.font = '16px FontAwesome';
+                
+                switch (powerUp.type) {
+                    case 'health':
+                        ctx.fillText('\uf004', powerUp.x + 8, powerUp.y + 22);
+                        break;
+                    case 'ammo':
+                        ctx.fillText('\uf11e', powerUp.x + 8, powerUp.y + 22);
+                        break;
+                    case 'accuracy':
+                        ctx.fillText('\uf140', powerUp.x + 8, powerUp.y + 22);
+                        break;
+                    case 'speed':
+                        ctx.fillText('\uf0e7', powerUp.x + 8, powerUp.y + 22);
+                        break;
+                }
+                
+                // 闪烁效果 (当道具即将消失时)
+                if (powerUp.lifetime < 3000) {
+                    const alpha = Math.sin(Date.now() / 100) * 0.5 + 0.5;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(
+                        powerUp.x + powerUp.width / 2, 
+                        powerUp.y + powerUp.height / 2, 
+                        powerUp.width / 2 + powerUp.pulseSize + 2, 
+                        0, 
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 更新粒子效果
+        function updateParticleEffects(deltaTime) {
+            for (let i = gameState.particleEffects.length - 1; i >= 0; i--) {
+                const effect = gameState.particleEffects[i];
+                effect.update(deltaTime);
+                
+                if (effect.alpha <= 0 || effect.lifetime <= 0) {
+                    gameState.particleEffects.splice(i, 1);
+                }
+            }
+        }
+
+        // 绘制粒子效果
+        function drawParticleEffects() {
+            gameState.particleEffects.forEach(effect => {
+                effect.draw(ctx);
+            });
+        }
+
+        // 检测碰撞
+        function checkCollisions() {
+            const { player, bullets, enemies, powerUps } = gameState;
+            
+            // 玩家与敌人碰撞
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                
+                if (
+                    player.x + player.width > enemy.x &&
+                    player.x < enemy.x + enemy.width &&
+                    player.y + player.height > enemy.y &&
+                    player.y < enemy.y + enemy.height
+                ) {
+                    // 玩家受伤
+                    gameState.health -= 5;
+                    updateHUD();
+                    
+                    // 添加受伤特效
+                    addDamageEffect(player.x + player.width / 2, player.y + player.height / 2);
+                    
+                    // 击退效果
+                    const knockbackDir = player.x > enemy.x ? 1 : -1;
+                    player.x += knockbackDir * 20;
+                    
+                    // 播放受伤音效
+                    playSound('hit');
+                    
+                    // 检查游戏是否结束
+                    if (gameState.health <= 0) {
+                        gameState.gameOver = true;
+                    }
+                }
+            }
+            
+            // 子弹与敌人碰撞
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // 跳过敌人子弹
+                if (bullet.isEnemy) continue;
+                
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    
+                    if (
+                        bullet.x + bullet.width > enemy.x &&
+                        bullet.x < enemy.x + enemy.width &&
+                        bullet.y + bullet.height > enemy.y &&
+                        bullet.y < enemy.y + enemy.height
+                    ) {
+                        // 敌人受伤
+                        enemy.health -= bullet.damage;
+                        
+                        // 添加击中特效
+                        addBulletImpact(bullet.x, bullet.y);
+                        
+                        // 移除子弹
+                        bullets.splice(i, 1);
+                        
+                        // 检查敌人是否死亡
+                        if (enemy.health <= 0) {
+                            // 添加爆炸特效
+                            addEnemyExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                            
+                            // 增加分数
+                            gameState.score += enemy.points;
+                            
+                            // 更新命中率
+                            gameState.shotsHit++;
+                            
+                            // 播放击杀音效
+                            playSound('kill');
+                            
+                            // 移除敌人
+                            enemies.splice(j, 1);
+                            
+                            // 更新HUD
+                            updateHUD();
+                            
+                            // 显示得分浮动文字
+                            showFloatingText(enemy.x + enemy.width / 2, enemy.y, `+${enemy.points}`);
+                        } else {
+                            // 播放击中音效
+                            playSound('enemyHit');
+                            
+                            // 显示伤害浮动文字
+                            showFloatingText(enemy.x + enemy.width / 2, enemy.y, `-${bullet.damage}`);
+                        }
+                        
+                        // 更新命中率
+                        updateAccuracy();
+                        
+                        break;
+                    }
+                }
+            }
+            
+            // 敌人子弹与玩家碰撞
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const bullet = bullets[i];
+                
+                // 只检查敌人子弹
+                if (!bullet.isEnemy) continue;
+                
+                if (
+                    bullet.x + bullet.width > player.x &&
+                    bullet.x < player.x + player.width &&
+                    bullet.y + bullet.height > player.y &&
+                    bullet.y < player.y + player.height
+                ) {
+                    // 玩家受伤
+                    gameState.health -= bullet.damage;
+                    
+                    // 添加击中特效
+                    addBulletImpact(bullet.x, bullet.y);
+                    
+                    // 移除子弹
+                    bullets.splice(i, 1);
+                    
+                    // 添加受伤特效
+                    addDamageEffect(player.x + player.width / 2, player.y + player.height / 2);
+                    
+                    // 播放受伤音效
+                    playSound('hit');
+                    
+                    // 更新HUD
+                    updateHUD();
+                    
+                    // 检查游戏是否结束
+                    if (gameState.health <= 0) {
+                        gameState.gameOver = true;
+                    }
+                    
+                    break;
+                }
+            }
+            
+            // 玩家与道具碰撞
+            for (let i = powerUps.length - 1; i >= 0; i--) {
+                const powerUp = powerUps[i];
+                
+                if (
+                    player.x + player.width > powerUp.x &&
+                    player.x < powerUp.x + powerUp.width &&
+                    player.y + player.height > powerUp.y &&
+                    player.y < powerUp.y + powerUp.height
+                ) {
+                    // 应用道具效果
+                    applyPowerUp(powerUp.type);
+                    
+                    // 添加道具收集特效
+                    addPowerUpEffect(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2, powerUp.type);
+                    
+                    // 播放道具收集音效
+                    playSound('powerUp');
+                    
+                    // 移除道具
+                    powerUps.splice(i, 1);
+                    
+                    // 显示道具效果浮动文字
+                    showFloatingText(
+                        powerUp.x + powerUp.width / 2, 
+                        powerUp.y, 
+                        getPowerUpText(powerUp.type)
+                    );
+                }
+            }
+        }
+
+        // 应用道具效果
+        function applyPowerUp(type) {
+            switch (type) {
+                case 'health':
+                    gameState.health = Math.min(100, gameState.health + 30);
+                    break;
+                case 'ammo':
+                    gameState.ammo = gameState.maxAmmo;
+                    break;
+                case 'accuracy':
+                    gameState.accuracy = Math.min(100, gameState.accuracy + 10);
+                    break;
+                case 'speed':
+                    gameState.player.speed = Math.min(8, gameState.player.speed + 1);
+                    // 效果持续10秒
+                    setTimeout(() => {
+                        gameState.player.speed = 5;
+                    }, 10000);
+                    break;
+            }
+            
+            // 更新HUD
+            updateHUD();
+        }
+
+        // 获取道具效果文字
+        function getPowerUpText(type) {
+            switch (type) {
+                case 'health': return '+30 生命';
+                case 'ammo': return '弹药已满';
+                case 'accuracy': return '+10 精准度';
+                case 'speed': return '速度提升!';
+                default: return '道具';
+            }
+        }
+
+        // 添加伤害特效
+        function addDamageEffect(x, y) {
+            // 红色闪烁
+            gameState.particleEffects.push({
+                x: canvas.width / 2,
+                y: canvas.height / 2,
+                size: canvas.width,
+                color: '#EF4444',
+                alpha: 0.3,
+                lifetime: 100,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 100) * 0.3;
+                },
+                draw: function(ctx) {
+                    ctx.fillStyle = `rgba(239, 68, 68, ${this.alpha})`;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+            });
+            
+            // 粒子飞溅
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3;
+                gameState.particleEffects.push({
+                    x,
+                    y,
+                    size: 2 + Math.random() * 3,
+                    color: '#EF4444',
+                    alpha: 1,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    lifetime: 500 + Math.random() * 300,
+                    update: function(deltaTime) {
+                        this.lifetime -= deltaTime;
+                        this.alpha = Math.max(0, this.lifetime / 800);
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+                    },
+                    draw: function(ctx) {
+                        ctx.fillStyle = `rgba(239, 68, 68, ${this.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+        }
+
+        // 添加敌人爆炸特效
+        function addEnemyExplosion(x, y) {
+            // 大爆炸
+            gameState.particleEffects.push({
+                x,
+                y,
+                size: 40,
+                color: '#FBBF24',
+                alpha: 0.8,
+                lifetime: 300,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 300) * 0.8;
+                    this.size = 40 * (1 - (this.lifetime / 300));
+                },
+                draw: function(ctx) {
+                    const gradient = ctx.createRadialGradient(
+                        this.x, this.y, 0,
+                        this.x, this.y, this.size
+                    );
+                    gradient.addColorStop(0, `rgba(251, 191, 34, ${this.alpha})`);
+                    gradient.addColorStop(1, `rgba(251, 191, 34, 0)`);
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // 碎片粒子
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 2 + Math.random() * 4;
+                gameState.particleEffects.push({
+                    x,
+                    y,
+                    size: 2 + Math.random() * 3,
+                    color: '#EF4444',
+                    alpha: 1,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    lifetime: 800 + Math.random() * 500,
+                    update: function(deltaTime) {
+                        this.lifetime -= deltaTime;
+                        this.alpha = Math.max(0, this.lifetime / 1300);
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+                    },
+                    draw: function(ctx) {
+                        ctx.fillStyle = `rgba(239, 68, 68, ${this.alpha})`;
+                        ctx.fillRect(this.x, this.y, this.size, this.size);
+                    }
+                });
+            }
+        }
+
+        // 添加道具收集特效
+        function addPowerUpEffect(x, y, type) {
+            const color = getPowerUpColor(type);
+            
+            // 粒子飞溅
+            for (let i = 0; i < 15; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 2;
+                gameState.particleEffects.push({
+                    x,
+                    y,
+                    size: 2 + Math.random() * 2,
+                    color,
+                    alpha: 1,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    lifetime: 600 + Math.random() * 400,
+                    update: function(deltaTime) {
+                        this.lifetime -= deltaTime;
+                        this.alpha = Math.max(0, this.lifetime / 1000);
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+                    },
+                    draw: function(ctx) {
+                        ctx.fillStyle = `rgba(251, 191, 34, ${this.alpha})`;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                });
+            }
+            
+            // 光环效果
+            gameState.particleEffects.push({
+                x,
+                y,
+                size: 30,
+                color,
+                alpha: 0.5,
+                lifetime: 500,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 500) * 0.5;
+                    this.size = 30 + (500 - this.lifetime) / 10;
+                },
+                draw: function(ctx) {
+                    ctx.strokeStyle = `rgba(251, 191, 34, ${this.alpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // 显示浮动文字
+        function showFloatingText(x, y, text) {
+            gameState.particleEffects.push({
+                x,
+                y,
+                text,
+                alpha: 1,
+                lifetime: 1000,
+                update: function(deltaTime) {
+                    this.lifetime -= deltaTime;
+                    this.alpha = Math.max(0, this.lifetime / 1000);
+                    this.y -= 0.2;
+                },
+                draw: function(ctx) {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${this.alpha})`;
+                    ctx.font = '16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(this.text, this.x, this.y);
+                    ctx.textAlign = 'left';
+                }
+            });
+        }
+
+        // 换弹
+        function reload() {
+            if (gameState.isReloading) return;
+            
+            gameState.isReloading = true;
+            
+            // 播放换弹音效
+            playSound('reload');
+            
+            // 显示换弹UI
+            showFloatingText(gameState.player.x + gameState.player.width / 2, gameState.player.y, '换弹中...');
+            
+            // 换弹完成
+            setTimeout(() => {
+                gameState.ammo = gameState.maxAmmo;
+                gameState.isReloading = false;
+                updateHUD();
+            }, gameState.reloadTime);
+        }
+
+        // 更新命中率
+        function updateAccuracy() {
+            if (gameState.shotsFired > 0) {
+                gameState.accuracy = Math.round((gameState.shotsHit / gameState.shotsFired) * 100);
+                updateHUD();
+            }
+        }
+
+        // 更新计时器
+        function updateTimer(deltaTime) {
+            if (gameState.timeRemaining <= 0) {
+                gameState.gameOver = true;
+                return;
+            }
+            
+            // 每秒钟减少1
+            const seconds = Math.floor(gameState.gameTime / 1000);
+            const remaining = 60 - seconds;
+            if (remaining !== gameState.timeRemaining) {
+                gameState.timeRemaining = remaining;
+                updateHUD();
+                
+                // 当时间不多时播放警告音效
+                if (remaining <= 10) {
+                    playSound('timeWarning');
+                }
+            }
+        }
+
+        // 更新HUD
+        function updateHUD() {
+            healthDisplay.textContent = gameState.health;
+            scoreDisplay.textContent = gameState.score;
+            timerDisplay.textContent = gameState.timeRemaining;
+            accuracyDisplay.textContent = `${gameState.accuracy}%`;
+            finalScoreDisplay.textContent = gameState.score;
+        }
+
+        // 绘制UI
+        function drawUI() {
+            // 绘制弹药计数器
+            ctx.fillStyle = '#1F2937';
+            ctx.fillRect(20, 20, 150, 30);
+            
+            ctx.fillStyle = '#3B82F6';
+            ctx.fillRect(25, 25, 140 * (gameState.ammo / gameState.maxAmmo), 20);
+            
+            ctx.fillStyle = '#F3F4F6';
+            ctx.font = '16px Arial';
+            ctx.fillText(
+                `弹药: ${gameState.ammo}/${gameState.maxAmmo}`, 
+                30, 
+                40
+            );
+            
+            // 换弹提示
+            if (gameState.isReloading) {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.8)';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    '换弹中...', 
+                    canvas.width / 2, 
+                    40
+                );
+                ctx.textAlign = 'left';
+            }
+            
+            // 游戏结束提示
+            if (gameState.timeRemaining <= 10 && gameState.timeRemaining > 0) {
+                const alpha = Math.sin(Date.now() / 200) * 0.5 + 0.5;
+                ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`;
+                ctx.font = '24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(
+                    `时间: ${gameState.timeRemaining}`, 
+                    canvas.width / 2, 
+                    40
+                );
+                ctx.textAlign = 'left';
+            }
+        }
+
+        // 结束游戏
+        function endGame() {
+            gameState.running = false;
+            gameOver.classList.remove('hidden');
+        }
+
+        // 播放音效
+        function playSound(type) {
+            // 这里只是模拟音效，实际项目中应该使用音频文件
+            if (gameState.soundVolume <= 0) return;
+            
+            // 震动反馈
+            if (gameState.vibrationEnabled && window.navigator.vibrate) {
+                switch (type) {
+                    case 'shoot':
+                        window.navigator.vibrate(20);
+                        break;
+                    case 'hit':
+                        window.navigator.vibrate(50);
+                        break;
+                    case 'kill':
+                        window.navigator.vibrate(70);
+                        break;
+                    case 'reload':
+                        window.navigator.vibrate([100, 50, 100]);
+                        break;
+                }
+            }
+        }
+
+        // 键盘事件监听
+        function setupKeyboardControls() {
+            window.addEventListener('keydown', (e) => {
+                if (!gameState.running) return;
+                
+                switch (e.key) {
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        gameState.keys.left = true;
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        gameState.keys.right = true;
+                        break;
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                    case ' ':
+                        gameState.keys.up = true;
+                        break;
+                    case 'j':
+                    case 'J':
+                        gameState.keys.shoot = true;
+                        break;
+                    case 'r':
+                    case 'R':
+                        gameState.keys.reload = true;
+                        break;
+                    case 'p':
+                    case 'P':
+                        // 暂停游戏
+                        if (gameState.running && !gameState.gameOver) {
+                            gameState.paused = !gameState.paused;
+                            if (gameState.paused) {
+                                showFloatingText(canvas.width / 2, canvas.height / 2, '游戏暂停');
+                            }
+                        }
+                        break;
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                switch (e.key) {
+                    case 'ArrowLeft':
+                    case 'a':
+                    case 'A':
+                        gameState.keys.left = false;
+                        break;
+                    case 'ArrowRight':
+                    case 'd':
+                    case 'D':
+                        gameState.keys.right = false;
+                        break;
+                    case 'ArrowUp':
+                    case 'w':
+                    case 'W':
+                    case ' ':
+                        gameState.keys.up = false;
+                        break;
+                    case 'j':
+                    case 'J':
+                        gameState.keys.shoot = false;
+                        break;
+                    case 'r':
+                    case 'R':
+                        gameState.keys.reload = false;
+                        break;
+                }
+            });
+        }
+
+        // 鼠标事件监听
+        function setupMouseControls() {
+            canvas.addEventListener('mousemove', (e) => {
+                const rect = canvas.getBoundingClientRect();
+                gameState.mouse.x = e.clientX - rect.left;
+                gameState.mouse.y = e.clientY - rect.top;
+            });
+            
+            canvas.addEventListener('mousedown', () => {
+                if (!gameState.running) return;
+                gameState.mouse.clicked = true;
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                gameState.mouse.clicked = false;
+            });
+        }
+
+        // 触摸屏控制
+        function setupTouchControls() {
+            moveLeftBtn.addEventListener('touchstart', () => {
+                gameState.keys.left = true;
+            });
+            
+            moveLeftBtn.addEventListener('touchend', () => {
+                gameState.keys.left = false;
+            });
+            
+            moveRightBtn.addEventListener('touchstart', () => {
+                gameState.keys.right = true;
+            });
+            
+            moveRightBtn.addEventListener('touchend', () => {
+                gameState.keys.right = false;
+            });
+            
+            jumpBtn.addEventListener('touchstart', () => {
+                gameState.keys.up = true;
+            });
+            
+            jumpBtn.addEventListener('touchend', () => {
+                gameState.keys.up = false;
+            });
+            
+            shootBtn.addEventListener('touchstart', () => {
+                gameState.keys.shoot = true;
+            });
+            
+            shootBtn.addEventListener('touchend', () => {
+                gameState.keys.shoot = false;
+            });
+            
+            reloadBtn.addEventListener('touchstart', () => {
+                gameState.keys.reload = true;
+            });
+            
+            reloadBtn.addEventListener('touchend', () => {
+                gameState.keys.reload = false;
+            });
+        }
+
+        // UI按钮事件
+        function setupUIEvents() {
+            startGameBtn.addEventListener('click', initGame);
+            restartGameBtn.addEventListener('click', initGame);
+            backToMenuBtn.addEventListener('click', () => {
+                gameMenu.classList.remove('hidden');
+                gameOver.classList.add('hidden');
+            });
+            
+            showControlsBtn.addEventListener('click', () => {
+                controlsModal.classList.remove('hidden');
+            });
+            
+            closeControlsBtn.addEventListener('click', () => {
+                controlsModal.classList.add('hidden');
+            });
+            
+            closeControlsModalBtn.addEventListener('click', () => {
+                controlsModal.classList.add('hidden');
+            });
+            
+            showSettingsBtn.addEventListener('click', () => {
+                settingsModal.classList.remove('hidden');
+                // 更新设置UI
+                soundVolumeSlider.value = gameState.soundVolume;
+                soundVolumeValue.textContent = `${gameState.soundVolume}%`;
+                musicVolumeSlider.value = gameState.musicVolume;
+                musicVolumeValue.textContent = `${gameState.musicVolume}%`;
+                vibrationToggle.checked = gameState.vibrationEnabled;
+                touchControlsToggle.checked = gameState.touchControlsEnabled;
+                difficultySelect.value = gameState.difficulty;
+            });
+            
+            closeSettingsBtn.addEventListener('click', () => {
+                settingsModal.classList.add('hidden');
+            });
+            
+            saveSettingsBtn.addEventListener('click', () => {
+                gameState.soundVolume = parseInt(soundVolumeSlider.value);
+                gameState.musicVolume = parseInt(musicVolumeSlider.value);
+                gameState.vibrationEnabled = vibrationToggle.checked;
+                gameState.touchControlsEnabled = touchControlsToggle.checked;
+                gameState.difficulty = difficultySelect.value;
+                
+                // 更新触摸控制显示
+                if (gameState.running && !gameState.gameOver) {
+                    if (gameState.touchControlsEnabled) {
+                        controlPanel.classList.remove('hidden');
+                    } else {
+                        controlPanel.classList.add('hidden');
+                    }
+                }
+                
+                settingsModal.classList.add('hidden');
+            });
+            
+            soundVolumeSlider.addEventListener('input', () => {
+                soundVolumeValue.textContent = `${soundVolumeSlider.value}%`;
+            });
+            
+            musicVolumeSlider.addEventListener('input', () => {
+                musicVolumeValue.textContent = `${musicVolumeSlider.value}%`;
+            });
+            
+            exitGameBtn.addEventListener('click', () => {
+                if (confirm('确定要退出游戏吗？')) {
+                    // 这里可以添加实际退出逻辑
+                    window.location.reload();
+                }
+            });
+        }
+
+        // 窗口大小调整事件
+        function setupResizeEvents() {
+            window.addEventListener('resize', () => {
+                // 如果游戏已经初始化，则重新设置画布
+                if (gameState.initialized) {
+                    initCanvas();
+                    
+                    // 如果游戏正在运行，重绘画布
+                    if (gameState.running) {
+                        drawBackground();
+                        drawObstacles();
+                        drawPlayer();
+                        drawBullets();
+                        drawEnemies();
+                        drawParticleEffects();
+                        drawPowerUps();
+                        drawUI();
+                    }
+                }
+            });
+        }
+
+        // 初始化游戏控制
+        function setupGameControls() {
+            setupKeyboardControls();
+            setupMouseControls();
+            setupTouchControls();
+            setupUIEvents();
+            setupResizeEvents();
+        }
+
+        // 初始化游戏
+        setupGameControls();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '董睿涛';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简易我的世界</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/controls/FirstPersonControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/examples/js/loaders/MTLLoader.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4CAF50',
+                        secondary: '#2196F3',
+                        accent: '#FF9800',
+                        dark: '#212121',
+                        light: '#f5f5f5'
+                    },
+                    fontFamily: {
+                        game: ['Minecraft', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixel-corners {
+                clip-path: polygon(
+                    0% 4px, 4px 4px, 4px 0%, calc(100% - 4px) 0%, calc(100% - 4px) 4px, 100% 4px,
+                    100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%,
+                    4px 100%, 4px calc(100% - 4px), 0% calc(100% - 4px)
+                );
+            }
+            .game-ui {
+                text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+            }
+            .crosshair {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                width: 20px;
+                height: 20px;
+                pointer-events: none;
+            }
+            .crosshair::before,
+            .crosshair::after {
+                content: '';
+                position: absolute;
+                background-color: white;
+            }
+            .crosshair::before {
+                width: 2px;
+                height: 20px;
+                left: 9px;
+                top: 0;
+            }
+            .crosshair::after {
+                width: 20px;
+                height: 2px;
+                left: 0;
+                top: 9px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-dark overflow-hidden m-0 p-0 font-game text-white">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div id="game-container" class="w-full h-screen relative"></div>
+    
+    <!-- 游戏界面元素 -->
+    <div id="game-ui" class="absolute inset-0 pointer-events-none">
+        <!-- 生命值 -->
+        <div class="absolute top-4 left-4 flex items-center game-ui">
+            <i class="fa fa-heart text-red-500 mr-2"></i>
+            <span id="health">100</span>
+        </div>
+        
+        <!-- 物品栏 -->
+        <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex bg-dark/70 p-2 rounded-lg">
+            <div id="inventory" class="flex space-x-2">
+                <div class="inventory-slot w-12 h-12 bg-gray-700/70 rounded border-2 border-white/30 flex items-center justify-center cursor-pointer" data-block-type="grass">
+                    <span class="text-xl">G</span>
+                </div>
+                <div class="inventory-slot w-12 h-12 bg-gray-700/70 rounded border-2 border-white/30 flex items-center justify-center cursor-pointer" data-block-type="stone">
+                    <span class="text-xl">S</span>
+                </div>
+                <div class="inventory-slot w-12 h-12 bg-gray-700/70 rounded border-2 border-white/30 flex items-center justify-center cursor-pointer" data-block-type="wood">
+                    <span class="text-xl">W</span>
+                </div>
+                <div class="inventory-slot w-12 h-12 bg-gray-700/70 rounded border-2 border-white/30 flex items-center justify-center cursor-pointer" data-block-type="glass">
+                    <span class="text-xl">L</span>
+                </div>
+                <div class="inventory-slot w-12 h-12 bg-gray-700/70 rounded border-2 border-white/30 flex items-center justify-center cursor-pointer" data-block-type="dirt">
+                    <span class="text-xl">D</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 当前选中物品 -->
+        <div id="selected-item" class="absolute bottom-24 left-1/2 transform -translate-x-1/2 bg-dark/70 px-4 py-2 rounded-lg game-ui">
+            <span>当前选中: <span id="selected-item-text">草方块</span></span>
+        </div>
+        
+        <!-- 准星 -->
+        <div class="crosshair"></div>
+        
+        <!-- 攻击提示 -->
+        <div id="attack-indicator" class="absolute top-4 right-4 game-ui opacity-0 transition-opacity duration-300">
+            <i class="fa fa-crosshairs text-red-500 mr-2"></i>
+            <span>攻击</span>
+        </div>
+        
+        <!-- 操作提示 -->
+        <div class="absolute bottom-4 left-4 bg-dark/70 px-4 py-2 rounded-lg text-sm game-ui">
+            <p>WASD: 移动</p>
+            <p>空格: 跳跃</p>
+            <p>左键: 破坏方块</p>
+            <p>右键: 放置方块</p>
+            <p>1-5: 选择物品</p>
+            <p>E: 打开物品栏</p>
+            <p>Q: 丢弃物品</p>
+            <p>鼠标: 视角移动</p>
+        </div>
+    </div>
+
+    <script>
+        // 游戏主逻辑
+        document.addEventListener('DOMContentLoaded', () => {
+            // 初始化Three.js场景
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 2, 0);
+            
+            const renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('game-container').appendChild(renderer.domElement);
+            
+            // 添加环境光
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            
+            // 添加平行光（太阳光）
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+            
+            // 初始化控制器
+            const controls = new THREE.FirstPersonControls(camera, renderer.domElement);
+            controls.movementSpeed = 5;
+            controls.lookSpeed = 0.1;
+            controls.noFly = true;
+            controls.lookVertical = true;
+            
+            // 存储所有方块的字典
+            const blocks = {};
+            
+            // 方块材质
+            const blockMaterials = {
+                grass: new THREE.MeshStandardMaterial({ color: 0x4CAF50 }),
+                stone: new THREE.MeshStandardMaterial({ color: 0x9E9E9E }),
+                wood: new THREE.MeshStandardMaterial({ color: 0x8B4513 }),
+                glass: new THREE.MeshStandardMaterial({ color: 0x87CEEB, transparent: true, opacity: 0.7 }),
+                dirt: new THREE.MeshStandardMaterial({ color: 0x795548 }),
+            };
+            
+            // 创建世界
+            function createWorld() {
+                // 创建地面
+                const groundGeometry = new THREE.PlaneGeometry(50, 50);
+                const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x4CAF50 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.y = -0.5;
+                scene.add(ground);
+                
+                // 创建一些随机方块作为示例
+                for (let x = -5; x <= 5; x++) {
+                    for (let z = -5; z <= 5; z++) {
+                        if (Math.random() > 0.7) {
+                            const y = Math.floor(Math.random() * 3);
+                            const blockType = ['grass', 'stone', 'wood', 'dirt'][Math.floor(Math.random() * 4)];
+                            createBlock(x, y, z, blockType);
+                        }
+                    }
+                }
+            }
+            
+            // 创建一个方块
+            function createBlock(x, y, z, type = 'grass') {
+                const geometry = new THREE.BoxGeometry(1, 1, 1);
+                const material = blockMaterials[type] || blockMaterials.grass;
+                const block = new THREE.Mesh(geometry, material);
+                block.position.set(x, y, z);
+                block.userData = { type, position: { x, y, z } };
+                scene.add(block);
+                
+                // 将方块添加到字典中
+                const key = `${x},${y},${z}`;
+                blocks[key] = block;
+                
+                return block;
+            }
+            
+            // 销毁一个方块
+            function destroyBlock(x, y, z) {
+                const key = `${x},${y},${z}`;
+                const block = blocks[key];
+                
+                if (block) {
+                    scene.remove(block);
+                    delete blocks[key];
+                }
+            }
+            
+            // 玩家状态
+            const player = {
+                health: 100,
+                selectedBlockType: 'grass',
+                inventory: {
+                    grass: 64,
+                    stone: 64,
+                    wood: 64,
+                    glass: 64,
+                    dirt: 64
+                }
+            };
+            
+            // 更新UI
+            function updateUI() {
+                document.getElementById('health').textContent = player.health;
+                document.getElementById('selected-item-text').textContent = {
+                    grass: '草方块',
+                    stone: '石头',
+                    wood: '木头',
+                    glass: '玻璃',
+                    dirt: '泥土'
+                }[player.selectedBlockType];
+                
+                // 更新物品栏高亮
+                document.querySelectorAll('.inventory-slot').forEach(slot => {
+                    if (slot.dataset.blockType === player.selectedBlockType) {
+                        slot.classList.add('border-accent');
+                        slot.classList.remove('border-white/30');
+                    } else {
+                        slot.classList.remove('border-accent');
+                        slot.classList.add('border-white/30');
+                    }
+                });
+            }
+            
+            // 射线检测（用于选择和放置方块）
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+            
+            // 处理鼠标点击
+            function handleMouseDown(event) {
+                // 只有在游戏容器内点击才处理
+                if (!event.target.closest('#game-container')) return;
+                
+                // 计算鼠标在标准化设备坐标中的位置
+                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+                
+                // 更新射线
+                raycaster.setFromCamera(mouse, camera);
+                
+                // 计算射线与场景中物体的交点
+                const intersects = raycaster.intersectObjects(scene.children);
+                
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    
+                    // 左键点击：破坏方块
+                    if (event.button === 0) {
+                        // 显示攻击指示器
+                        const attackIndicator = document.getElementById('attack-indicator');
+                        attackIndicator.style.opacity = '1';
+                        setTimeout(() => {
+                            attackIndicator.style.opacity = '0';
+                        }, 300);
+                        
+                        // 获取方块位置并取整
+                        const blockPosition = intersect.object.position.clone();
+                        const key = `${Math.floor(blockPosition.x)},${Math.floor(blockPosition.y)},${Math.floor(blockPosition.z)}`;
+                        
+                        // 检查是否是玩家自己
+                        if (key === '0,1,0') return; // 防止破坏玩家所在位置
+                        
+                        // 销毁方块
+                        destroyBlock(
+                            Math.floor(blockPosition.x),
+                            Math.floor(blockPosition.y),
+                            Math.floor(blockPosition.z)
+                        );
+                    }
+                    // 右键点击：放置方块
+                    else if (event.button === 2) {
+                        // 计算新方块的位置（从交点位置沿法线方向外推）
+                        const newPosition = intersect.point.clone().add(intersect.face.normal.clone().multiplyScalar(0.5));
+                        newPosition.x = Math.floor(newPosition.x);
+                        newPosition.y = Math.floor(newPosition.y);
+                        newPosition.z = Math.floor(newPosition.z);
+                        
+                        // 检查新位置是否已经有方块
+                        const key = `${newPosition.x},${newPosition.y},${newPosition.z}`;
+                        if (!blocks[key]) {
+                            // 检查玩家是否有足够的物品
+                            if (player.inventory[player.selectedBlockType] > 0) {
+                                // 创建新方块
+                                createBlock(
+                                    newPosition.x,
+                                    newPosition.y,
+                                    newPosition.z,
+                                    player.selectedBlockType
+                                );
+                                
+                                // 减少物品数量
+                                player.inventory[player.selectedBlockType]--;
+                                if (player.inventory[player.selectedBlockType] <= 0) {
+                                    // 如果物品用完了，自动选择下一个有物品的类型
+                                    for (const type in player.inventory) {
+                                        if (player.inventory[type] > 0) {
+                                            player.selectedBlockType = type;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                updateUI();
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 处理键盘输入
+            function handleKeyDown(event) {
+                // 1-5键选择物品
+                if (event.key >= '1' && event.key <= '5') {
+                    const index = parseInt(event.key) - 1;
+                    const blockTypes = ['grass', 'stone', 'wood', 'glass', 'dirt'];
+                    if (blockTypes[index]) {
+                        player.selectedBlockType = blockTypes[index];
+                        updateUI();
+                    }
+                }
+                
+                // 空格键跳跃（简化版）
+                if (event.key === ' ') {
+                    // 简单的跳跃模拟
+                    if (camera.position.y <= 2) {
+                        // 这里只是简单的跳跃效果，实际游戏中需要更复杂的物理系统
+                        let jumpHeight = 0;
+                        const jumpInterval = setInterval(() => {
+                            jumpHeight += 0.1;
+                            camera.position.y = 2 + Math.sin(jumpHeight) * 1.5;
+                            
+                            if (jumpHeight >= Math.PI) {
+                                clearInterval(jumpInterval);
+                                camera.position.y = 2;
+                            }
+                        }, 20);
+                    }
+                }
+            }
+            
+            // 处理物品栏点击
+            document.querySelectorAll('.inventory-slot').forEach(slot => {
+                slot.addEventListener('click', () => {
+                    player.selectedBlockType = slot.dataset.blockType;
+                    updateUI();
+                });
+            });
+            
+            // 防止右键菜单
+            document.addEventListener('contextmenu', event => {
+                if (event.target.closest('#game-container')) {
+                    event.preventDefault();
+                }
+            });
+            
+            // 添加事件监听
+            document.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('keydown', handleKeyDown);
+            
+            // 调整窗口大小时更新渲染器
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // 游戏循环
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                // 更新控制器
+                controls.update(0.016); // 假设60fps
+                
+                // 渲染场景
+                renderer.render(scene, camera);
+            }
+            
+            // 初始化游戏
+            createWorld();
+            updateUI();
+            animate();
+        });
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李汐宸';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>    

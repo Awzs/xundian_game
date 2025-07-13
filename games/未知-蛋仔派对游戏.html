@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>蛋仔派对游戏</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B6B',
+                        secondary: '#4ECDC4',
+                        accent: '#FFD166',
+                        dark: '#2A2D34',
+                        light: '#F7FFF7',
+                    },
+                    fontFamily: {
+                        game: ['"Comic Sans MS"', '"Marker Felt"', 'Arial', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .pixel-borders {
+                box-shadow: 0 0 0 2px #2A2D34;
+            }
+            .btn-game {
+                @apply bg-primary hover:bg-primary/80 text-light font-bold py-2 px-4 rounded shadow-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            .game-container {
+                @apply relative w-full h-screen bg-gradient-to-b from-blue-300 to-blue-500 overflow-hidden;
+            }
+            .cloud {
+                @apply absolute bg-white rounded-full opacity-80;
+            }
+            .egg {
+                @apply absolute rounded-full transition-all duration-150 z-10;
+            }
+            .obstacle {
+                @apply absolute bg-dark rounded-md z-5;
+            }
+            .power-up {
+                @apply absolute rounded-full bg-accent animate-pulse z-5;
+            }
+        }
+    </style>
+</head>
+<body class="font-game">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 开始界面 -->
+    <div id="start-screen" class="game-container flex flex-col items-center justify-center">
+        <h1 class="text-[clamp(2.5rem,5vw,4rem)] font-bold text-primary text-shadow mb-6">蛋仔派对</h1>
+        <div class="bg-light/90 rounded-xl p-8 shadow-2xl pixel-borders max-w-md w-full">
+            <div class="flex justify-center mb-6">
+                <div class="w-24 h-24 rounded-full bg-primary relative">
+                    <div class="w-12 h-12 bg-white rounded-full absolute top-4 left-6"></div>
+                    <div class="w-4 h-4 bg-dark rounded-full absolute top-8 left-10"></div>
+                    <div class="w-8 h-4 bg-accent rounded-full absolute top-16 left-8"></div>
+                </div>
+            </div>
+            <div class="mb-6">
+                <p class="text-dark text-lg mb-4">控制蛋仔跳跃，避开障碍物，收集道具，获得高分！</p>
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <i class="fa fa-arrow-up text-secondary mr-2"></i>
+                        <span>跳跃</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fa fa-shield text-accent mr-2"></i>
+                        <span>保护</span>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fa fa-star text-yellow-400 mr-2"></i>
+                        <span>加分</span>
+                    </div>
+                </div>
+            </div>
+            <button id="start-btn" class="btn-game w-full text-xl">开始游戏</button>
+        </div>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="game-container hidden">
+        <!-- 云朵背景 -->
+        <div id="clouds"></div>
+        
+        <!-- 分数显示 -->
+        <div class="absolute top-4 left-4 bg-dark/80 text-light px-4 py-2 rounded-lg z-20">
+            <span id="score">分数: 0</span>
+        </div>
+        
+        <!-- 生命值显示 -->
+        <div class="absolute top-4 right-4 bg-dark/80 text-light px-4 py-2 rounded-lg z-20">
+            <span id="lives">生命值: 3</span>
+        </div>
+        
+        <!-- 蛋仔 -->
+        <div id="egg" class="egg bg-primary w-16 h-16">
+            <div class="w-8 h-8 bg-white rounded-full absolute top-2 left-4"></div>
+            <div class="w-3 h-3 bg-dark rounded-full absolute top-4 left-6"></div>
+            <div class="w-6 h-3 bg-accent rounded-full absolute top-10 left-5"></div>
+        </div>
+        
+        <!-- 障碍物和道具容器 -->
+        <div id="obstacles-container"></div>
+        
+        <!-- 游戏暂停按钮 -->
+        <button id="pause-btn" class="absolute top-4 right-24 bg-dark/80 text-light p-2 rounded-lg z-20 hover:bg-dark transition-colors">
+            <i class="fa fa-pause"></i>
+        </button>
+    </div>
+
+    <!-- 暂停界面 -->
+    <div id="pause-screen" class="fixed inset-0 bg-dark/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-light rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
+            <h2 class="text-2xl font-bold text-primary mb-6">游戏暂停</h2>
+            <button id="resume-btn" class="btn-game w-full mb-4">继续游戏</button>
+            <button id="restart-btn" class="btn-game w-full mb-4 bg-secondary">重新开始</button>
+            <button id="exit-btn" class="btn-game w-full bg-dark">退出游戏</button>
+        </div>
+    </div>
+
+    <!-- 游戏结束界面 -->
+    <div id="game-over-screen" class="fixed inset-0 bg-dark/70 flex items-center justify-center z-50 hidden">
+        <div class="bg-light rounded-xl p-8 shadow-2xl max-w-md w-full text-center">
+            <h2 class="text-2xl font-bold text-primary mb-2">游戏结束</h2>
+            <p class="text-lg mb-6">你的最终得分: <span id="final-score">0</span></p>
+            <button id="play-again-btn" class="btn-game w-full mb-4">再玩一次</button>
+            <button id="main-menu-btn" class="btn-game w-full bg-dark">返回主菜单</button>
+        </div>
+    </div>
+
+    <script>
+        // 游戏状态
+        const gameState = {
+            isRunning: false,
+            isPaused: false,
+            score: 0,
+            lives: 3,
+            speed: 5,
+            jumpPower: -15,
+            gravity: 0.7,
+            eggPosition: { x: 50, y: 500 },
+            eggVelocity: { x: 0, y: 0 },
+            obstacles: [],
+            powerUps: [],
+            cloudPositions: [],
+            gameLoop: null,
+            obstacleTimer: null,
+            powerUpTimer: null,
+            lastObstacleTime: 0,
+            lastPowerUpTime: 0,
+            obstacleInterval: 2000,
+            powerUpInterval: 8000,
+            groundLevel: 550,
+            eggElement: null,
+            scoreElement: null,
+            livesElement: null,
+            obstaclesContainer: null,
+            powerUpsContainer: null,
+            cloudsContainer: null,
+            gameWidth: 800,
+            gameHeight: 600,
+            isJumping: false,
+            isInvincible: false,
+            invincibilityTimer: null,
+            invincibilityDuration: 3000,
+        };
+
+        // DOM元素
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const pauseScreen = document.getElementById('pause-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const startBtn = document.getElementById('start-btn');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const exitBtn = document.getElementById('exit-btn');
+        const playAgainBtn = document.getElementById('play-again-btn');
+        const mainMenuBtn = document.getElementById('main-menu-btn');
+        const finalScoreElement = document.getElementById('final-score');
+
+        // 初始化游戏
+        function initGame() {
+            // 获取DOM元素
+            gameState.eggElement = document.getElementById('egg');
+            gameState.scoreElement = document.getElementById('score');
+            gameState.livesElement = document.getElementById('lives');
+            gameState.obstaclesContainer = document.getElementById('obstacles-container');
+            gameState.cloudsContainer = document.getElementById('clouds');
+            
+            // 设置游戏区域尺寸
+            gameState.gameWidth = window.innerWidth;
+            gameState.gameHeight = window.innerHeight;
+            gameState.groundLevel = gameState.gameHeight - 100;
+            
+            // 初始化云朵
+            createClouds();
+            
+            // 事件监听
+            document.addEventListener('keydown', handleKeyDown);
+            document.addEventListener('keyup', handleKeyUp);
+            
+            // 按钮事件
+            startBtn.addEventListener('click', startGame);
+            pauseBtn.addEventListener('click', pauseGame);
+            resumeBtn.addEventListener('click', resumeGame);
+            restartBtn.addEventListener('click', restartGame);
+            exitBtn.addEventListener('click', exitGame);
+            playAgainBtn.addEventListener('click', restartGame);
+            mainMenuBtn.addEventListener('click', exitGame);
+        }
+
+        // 创建云朵背景
+        function createClouds() {
+            gameState.cloudPositions = [];
+            gameState.cloudsContainer.innerHTML = '';
+            
+            // 创建随机云朵
+            for (let i = 0; i < 8; i++) {
+                const cloud = document.createElement('div');
+                cloud.className = 'cloud';
+                
+                const size = Math.random() * 100 + 50;
+                const x = Math.random() * gameState.gameWidth;
+                const y = Math.random() * (gameState.gameHeight / 3);
+                const speed = Math.random() * 0.5 + 0.1;
+                
+                cloud.style.width = `${size}px`;
+                cloud.style.height = `${size / 2}px`;
+                cloud.style.left = `${x}px`;
+                cloud.style.top = `${y}px`;
+                
+                gameState.cloudsContainer.appendChild(cloud);
+                gameState.cloudPositions.push({ element: cloud, x, y, speed });
+            }
+        }
+
+        // 更新云朵位置
+        function updateClouds() {
+            gameState.cloudPositions.forEach(cloud => {
+                cloud.x -= cloud.speed;
+                if (cloud.x < -150) {
+                    cloud.x = gameState.gameWidth;
+                    cloud.y = Math.random() * (gameState.gameHeight / 3);
+                }
+                cloud.element.style.left = `${cloud.x}px`;
+                cloud.element.style.top = `${cloud.y}px`;
+            });
+        }
+
+        // 开始游戏
+        function startGame() {
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            
+            gameState.isRunning = true;
+            gameState.isPaused = false;
+            gameState.score = 0;
+            gameState.lives = 3;
+            gameState.speed = 5;
+            gameState.eggPosition = { x: 100, y: gameState.groundLevel - 64 };
+            gameState.eggVelocity = { x: 0, y: 0 };
+            gameState.obstacles = [];
+            gameState.powerUps = [];
+            gameState.obstaclesContainer.innerHTML = '';
+            
+            updateScore();
+            updateLives();
+            
+            // 启动游戏循环
+            gameState.gameLoop = requestAnimationFrame(gameLoop);
+            
+            // 创建障碍物计时器
+            gameState.obstacleTimer = setInterval(createObstacle, gameState.obstacleInterval);
+            
+            // 创建道具计时器
+            gameState.powerUpTimer = setInterval(createPowerUp, gameState.powerUpInterval);
+        }
+
+        // 游戏主循环
+        function gameLoop(timestamp) {
+            if (!gameState.isPaused && gameState.isRunning) {
+                // 清空容器
+                clearElements();
+                
+                // 更新蛋仔位置
+                updateEgg();
+                
+                // 更新云朵
+                updateClouds();
+                
+                // 更新障碍物
+                updateObstacles();
+                
+                // 更新道具
+                updatePowerUps();
+                
+                // 检测碰撞
+                checkCollisions();
+                
+                // 更新分数
+                increaseScore();
+                
+                // 增加游戏难度
+                increaseDifficulty(timestamp);
+            }
+            
+            // 继续游戏循环
+            gameState.gameLoop = requestAnimationFrame(gameLoop);
+        }
+
+        // 清空不再需要的元素
+        function clearElements() {
+            // 移除屏幕外的障碍物
+            gameState.obstacles = gameState.obstacles.filter(obstacle => {
+                if (obstacle.x + obstacle.width < 0) {
+                    if (obstacle.element && obstacle.element.parentNode) {
+                        obstacle.element.parentNode.removeChild(obstacle.element);
+                    }
+                    return false;
+                }
+                return true;
+            });
+            
+            // 移除屏幕外的道具
+            gameState.powerUps = gameState.powerUps.filter(powerUp => {
+                if (powerUp.x + powerUp.width < 0) {
+                    if (powerUp.element && powerUp.element.parentNode) {
+                        powerUp.element.parentNode.removeChild(powerUp.element);
+                    }
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // 更新蛋仔位置
+        function updateEgg() {
+            // 应用重力
+            gameState.eggVelocity.y += gameState.gravity;
+            
+            // 更新位置
+            gameState.eggPosition.y += gameState.eggVelocity.y;
+            
+            // 限制在地面
+            if (gameState.eggPosition.y > gameState.groundLevel - 64) {
+                gameState.eggPosition.y = gameState.groundLevel - 64;
+                gameState.eggVelocity.y = 0;
+                gameState.isJumping = false;
+            }
+            
+            // 更新DOM
+            gameState.eggElement.style.left = `${gameState.eggPosition.x}px`;
+            gameState.eggElement.style.top = `${gameState.eggPosition.y}px`;
+            
+            // 无敌状态闪烁效果
+            if (gameState.isInvincible) {
+                gameState.eggElement.style.opacity = Math.sin(Date.now() / 100) > 0 ? 0.7 : 1;
+            } else {
+                gameState.eggElement.style.opacity = 1;
+            }
+        }
+
+        // 创建障碍物
+        function createObstacle() {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            // 随机障碍物高度和类型
+            const height = Math.random() * 150 + 50;
+            const width = 40;
+            const isSpike = Math.random() > 0.7;
+            
+            if (isSpike) {
+                obstacle.classList.add('bg-red-600');
+                obstacle.innerHTML = `
+                    <div class="w-full h-full flex flex-col items-center justify-end">
+                        <div class="w-0 h-0 border-l-20px border-l-transparent border-r-20px border-r-transparent border-b-20px border-b-dark"></div>
+                        <div class="w-0 h-0 border-l-20px border-l-transparent border-r-20px border-r-transparent border-b-20px border-b-dark"></div>
+                        <div class="w-0 h-0 border-l-20px border-l-transparent border-r-20px border-r-transparent border-b-20px border-b-dark"></div>
+                    </div>
+                `;
+            }
+            
+            obstacle.style.width = `${width}px`;
+            obstacle.style.height = `${height}px`;
+            obstacle.style.bottom = '0';
+            obstacle.style.left = `${gameState.gameWidth}px`;
+            
+            gameState.obstaclesContainer.appendChild(obstacle);
+            
+            gameState.obstacles.push({
+                element: obstacle,
+                x: gameState.gameWidth,
+                y: gameState.groundLevel - height,
+                width: width,
+                height: height,
+                isSpike: isSpike
+            });
+        }
+
+        // 更新障碍物位置
+        function updateObstacles() {
+            gameState.obstacles.forEach(obstacle => {
+                obstacle.x -= gameState.speed;
+                obstacle.element.style.left = `${obstacle.x}px`;
+            });
+        }
+
+        // 创建道具
+        function createPowerUp() {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            const powerUp = document.createElement('div');
+            powerUp.className = 'power-up';
+            
+            // 随机道具类型
+            const powerUpType = Math.random() > 0.5 ? 'invincibility' : 'score';
+            const size = 30;
+            
+            if (powerUpType === 'invincibility') {
+                powerUp.innerHTML = '<i class="fa fa-shield text-2xl"></i>';
+            } else {
+                powerUp.innerHTML = '<i class="fa fa-star text-2xl"></i>';
+            }
+            
+            powerUp.style.width = `${size}px`;
+            powerUp.style.height = `${size}px`;
+            powerUp.style.left = `${gameState.gameWidth}px`;
+            powerUp.style.top = `${Math.random() * (gameState.groundLevel - 100)}px`;
+            
+            gameState.obstaclesContainer.appendChild(powerUp);
+            
+            gameState.powerUps.push({
+                element: powerUp,
+                x: gameState.gameWidth,
+                y: parseInt(powerUp.style.top),
+                width: size,
+                height: size,
+                type: powerUpType
+            });
+        }
+
+        // 更新道具位置
+        function updatePowerUps() {
+            gameState.powerUps.forEach(powerUp => {
+                powerUp.x -= gameState.speed;
+                powerUp.element.style.left = `${powerUp.x}px`;
+            });
+        }
+
+        // 检测碰撞
+        function checkCollisions() {
+            const egg = {
+                x: gameState.eggPosition.x,
+                y: gameState.eggPosition.y,
+                width: 64,
+                height: 64
+            };
+            
+            // 检测与障碍物的碰撞
+            gameState.obstacles.forEach(obstacle => {
+                if (isColliding(egg, obstacle) && !gameState.isInvincible) {
+                    if (obstacle.isSpike) {
+                        // 尖刺障碍物直接扣除所有生命值
+                        gameState.lives = 0;
+                        updateLives();
+                        gameOver();
+                    } else {
+                        // 普通障碍物扣除1点生命值
+                        gameState.lives--;
+                        updateLives();
+                        
+                        if (gameState.lives <= 0) {
+                            gameOver();
+                        } else {
+                            // 短暂无敌
+                            makeInvincible();
+                        }
+                    }
+                }
+            });
+            
+            // 检测与道具的碰撞
+            gameState.powerUps = gameState.powerUps.filter(powerUp => {
+                if (isColliding(egg, powerUp)) {
+                    // 移除道具元素
+                    if (powerUp.element && powerUp.element.parentNode) {
+                        powerUp.element.parentNode.removeChild(powerUp.element);
+                    }
+                    
+                    // 应用道具效果
+                    if (powerUp.type === 'invincibility') {
+                        makeInvincible();
+                    } else {
+                        // 增加额外分数
+                        gameState.score += 50;
+                        updateScore();
+                    }
+                    
+                    return false;
+                }
+                return true;
+            });
+        }
+
+        // 碰撞检测辅助函数
+        function isColliding(a, b) {
+            return a.x < b.x + b.width &&
+                   a.x + a.width > b.x &&
+                   a.y < b.y + b.height &&
+                   a.y + a.height > b.y;
+        }
+
+        // 使蛋仔无敌
+        function makeInvincible() {
+            gameState.isInvincible = true;
+            
+            // 清除之前的无敌计时器
+            if (gameState.invincibilityTimer) {
+                clearTimeout(gameState.invincibilityTimer);
+            }
+            
+            // 设置新的无敌计时器
+            gameState.invincibilityTimer = setTimeout(() => {
+                gameState.isInvincible = false;
+            }, gameState.invincibilityDuration);
+        }
+
+        // 增加分数
+        function increaseScore() {
+            gameState.score += 0.5;
+            updateScore();
+        }
+
+        // 更新分数显示
+        function updateScore() {
+            gameState.scoreElement.textContent = `分数: ${Math.floor(gameState.score)}`;
+        }
+
+        // 更新生命值显示
+        function updateLives() {
+            gameState.livesElement.textContent = `生命值: ${gameState.lives}`;
+        }
+
+        // 增加游戏难度
+        function increaseDifficulty(timestamp) {
+            // 每10秒增加一点速度
+            if (timestamp - gameState.lastObstacleTime > 10000) {
+                gameState.speed = Math.min(gameState.speed + 0.5, 15);
+                gameState.lastObstacleTime = timestamp;
+            }
+            
+            // 每30秒减少障碍物生成间隔
+            if (timestamp - gameState.lastPowerUpTime > 30000) {
+                gameState.obstacleInterval = Math.max(gameState.obstacleInterval - 200, 800);
+                clearInterval(gameState.obstacleTimer);
+                gameState.obstacleTimer = setInterval(createObstacle, gameState.obstacleInterval);
+                gameState.lastPowerUpTime = timestamp;
+            }
+        }
+
+        // 暂停游戏
+        function pauseGame() {
+            gameState.isPaused = true;
+            pauseScreen.classList.remove('hidden');
+        }
+
+        // 恢复游戏
+        function resumeGame() {
+            gameState.isPaused = false;
+            pauseScreen.classList.add('hidden');
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            // 清除计时器
+            if (gameState.gameLoop) {
+                cancelAnimationFrame(gameState.gameLoop);
+            }
+            if (gameState.obstacleTimer) {
+                clearInterval(gameState.obstacleTimer);
+            }
+            if (gameState.powerUpTimer) {
+                clearInterval(gameState.powerUpTimer);
+            }
+            
+            // 重置界面
+            pauseScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            
+            // 开始新游戏
+            startGame();
+        }
+
+        // 退出游戏
+        function exitGame() {
+            // 清除计时器
+            if (gameState.gameLoop) {
+                cancelAnimationFrame(gameState.gameLoop);
+            }
+            if (gameState.obstacleTimer) {
+                clearInterval(gameState.obstacleTimer);
+            }
+            if (gameState.powerUpTimer) {
+                clearInterval(gameState.powerUpTimer);
+            }
+            
+            // 重置界面
+            gameScreen.classList.add('hidden');
+            pauseScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            
+            // 重置游戏状态
+            gameState.isRunning = false;
+            gameState.isPaused = false;
+        }
+
+        // 游戏结束
+        function gameOver() {
+            gameState.isRunning = false;
+            
+            // 清除计时器
+            if (gameState.obstacleTimer) {
+                clearInterval(gameState.obstacleTimer);
+            }
+            if (gameState.powerUpTimer) {
+                clearInterval(gameState.powerUpTimer);
+            }
+            
+            // 显示最终分数
+            finalScoreElement.textContent = Math.floor(gameState.score);
+            
+            // 显示游戏结束界面
+            gameOverScreen.classList.remove('hidden');
+        }
+
+        // 键盘事件处理
+        function handleKeyDown(e) {
+            if (!gameState.isRunning || gameState.isPaused) return;
+            
+            // 空格键或上箭头跳跃
+            if ((e.code === 'Space' || e.code === 'ArrowUp') && !gameState.isJumping) {
+                gameState.eggVelocity.y = gameState.jumpPower;
+                gameState.isJumping = true;
+            }
+            
+            // P键暂停/恢复游戏
+            if (e.code === 'KeyP') {
+                if (gameState.isPaused) {
+                    resumeGame();
+                } else {
+                    pauseGame();
+                }
+            }
+        }
+
+        function handleKeyUp(e) {
+            // 释放空格键停止跳跃蓄力
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                if (gameState.eggVelocity.y < gameState.jumpPower / 2) {
+                    gameState.eggVelocity.y = gameState.jumpPower / 2;
+                }
+            }
+        }
+
+        // 响应窗口大小变化
+        window.addEventListener('resize', () => {
+            gameState.gameWidth = window.innerWidth;
+            gameState.gameHeight = window.innerHeight;
+            gameState.groundLevel = gameState.gameHeight - 100;
+            
+            // 重新定位蛋仔
+            if (gameState.isRunning) {
+                gameState.eggPosition.y = Math.min(gameState.eggPosition.y, gameState.groundLevel - 64);
+            }
+            
+            // 重新创建云朵
+            if (gameState.cloudsContainer) {
+                createClouds();
+            }
+        });
+
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', initGame);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '未知';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

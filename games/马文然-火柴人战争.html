@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>火柴人战争</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        danger: '#EF4444',
+                        warning: '#F59E0B',
+                        dark: '#1F2937',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .text-shadow {
+                text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            }
+            .animate-pulse-fast {
+                animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4 font-sans">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <div class="max-w-4xl w-full bg-white rounded-xl shadow-lg overflow-hidden">
+        <!-- 游戏标题 -->
+        <div class="bg-gradient-to-r from-primary to-secondary text-white p-4 text-center">
+            <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold tracking-wide text-shadow">火柴人战争</h1>
+            <p class="text-sm md:text-base opacity-90 mt-1">双人对战游戏</p>
+        </div>
+        
+        <!-- 游戏控制面板 -->
+        <div class="p-4 bg-gray-50 border-b border-gray-200 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-4">
+                <button id="startBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-md flex items-center gap-2">
+                    <i class="fa fa-play"></i>
+                    <span>开始游戏</span>
+                </button>
+                <button id="resetBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-500/50 shadow-md flex items-center gap-2">
+                    <i class="fa fa-refresh"></i>
+                    <span>重置游戏</span>
+                </button>
+                <div class="relative inline-block w-14 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" name="toggle" id="aiToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-gray-300 appearance-none cursor-pointer peer-checked:right-0 peer-checked:border-primary transition duration-200 ease-in"/>
+                    <label for="aiToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 peer-checked:bg-primary cursor-pointer"></label>
+                    <span class="ml-2 text-sm font-medium text-gray-700">AI模式</span>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-4">
+                <div class="player-controls flex flex-col">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-1">玩家1 (蓝色):</h3>
+                    <div class="text-xs text-gray-600">
+                        <div class="flex items-center"><span class="w-12 inline-block">移动:</span> W, A, S, D</div>
+                        <div class="flex items-center"><span class="w-12 inline-block">攻击:</span> 空格键</div>
+                    </div>
+                </div>
+                
+                <div id="player2Controls" class="player-controls flex flex-col">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-1">玩家2 (绿色):</h3>
+                    <div class="text-xs text-gray-600">
+                        <div class="flex items-center"><span class="w-12 inline-block">移动:</span> 方向键</div>
+                        <div class="flex items-center"><span class="w-12 inline-block">攻击:</span> Enter键</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏区域 -->
+        <div class="relative bg-gray-200 overflow-hidden" style="height: 400px;">
+            <canvas id="gameCanvas" class="w-full h-full"></canvas>
+            
+            <!-- 游戏状态提示 -->
+            <div id="gameStatus" class="absolute inset-0 flex items-center justify-center bg-black/70 text-white z-10 hidden">
+                <div class="text-center">
+                    <p id="statusMessage" class="text-3xl font-bold mb-4">游戏开始!</p>
+                    <button id="continueBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50 shadow-md">
+                        开始
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 游戏信息 -->
+        <div class="p-4 bg-gray-50 border-t border-gray-200">
+            <div class="flex flex-wrap justify-between gap-4 mb-4">
+                <div class="flex-1 min-w-[200px]">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">玩家1 (蓝色) 生命值</span>
+                        <span id="player1HealthText" class="text-sm font-medium text-primary">100%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="player1HealthBar" class="bg-primary h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+                
+                <div class="flex-1 min-w-[200px]">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-sm font-medium text-gray-700">玩家2 (绿色) 生命值</span>
+                        <span id="player2HealthText" class="text-sm font-medium text-secondary">100%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="player2HealthBar" class="bg-secondary h-2.5 rounded-full" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-sm text-gray-600 mt-2">
+                <p class="mb-1"><i class="fa fa-info-circle mr-1"></i> 游戏目标: 攻击并击败对手，将对方生命值降至0</p>
+                <p id="gameHint"><i class="fa fa-lightbulb-o mr-1"></i> 提示: 攻击有冷却时间，合理利用移动和攻击时机</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer class="mt-6 text-center text-gray-500 text-sm">
+        <p>火柴人战争游戏 &copy; 2025</p>
+    </footer>
+
+    <script>
+        // 获取DOM元素
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const continueBtn = document.getElementById('continueBtn');
+        const gameStatus = document.getElementById('gameStatus');
+        const statusMessage = document.getElementById('statusMessage');
+        const player1HealthBar = document.getElementById('player1HealthBar');
+        const player2HealthBar = document.getElementById('player2HealthBar');
+        const player1HealthText = document.getElementById('player1HealthText');
+        const player2HealthText = document.getElementById('player2HealthText');
+        const aiToggle = document.getElementById('aiToggle');
+        const player2Controls = document.getElementById('player2Controls');
+        const gameHint = document.getElementById('gameHint');
+        
+        // 设置Canvas尺寸
+        function resizeCanvas() {
+            const gameContainer = canvas.parentElement;
+            canvas.width = gameContainer.clientWidth;
+            canvas.height = gameContainer.clientHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // 游戏状态
+        let gameRunning = false;
+        let gamePaused = true;
+        let animationId = null;
+        let isAiMode = false;
+        
+        // 玩家1控制键
+        const keys1 = {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            attack: false
+        };
+        
+        // 玩家2控制键
+        const keys2 = {
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            attack: false
+        };
+        
+        // AI控制状态
+        const aiState = {
+            moveUp: false,
+            moveDown: false,
+            moveLeft: false,
+            moveRight: false,
+            attack: false,
+            state: 'idle', // idle, moveToPlayer, attack, retreat
+            stateTimer: 0,
+            stateDuration: 0,
+            decisionCooldown: 0,
+            decisionCooldownMax: 30 // 每30帧做一次决策
+        };
+        
+        // 玩家类
+        class Player {
+            constructor(x, y, width, height, color, controls) {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.color = color;
+                this.controls = controls;
+                this.speed = 5;
+                this.health = 100;
+                this.isAttacking = false;
+                this.attackCooldown = 0;
+                this.attackCooldownMax = 60; // 攻击冷却时间
+                this.attackRange = 50;
+                this.attackDamage = 10;
+                this.direction = 1; // 1 = 右, -1 = 左
+            }
+            
+            update(enemy) {
+                // 应用攻击冷却
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown--;
+                }
+                
+                // 移动逻辑
+                if (this.controls.up && this.y > 0) {
+                    this.y -= this.speed;
+                }
+                if (this.controls.down && this.y < canvas.height - this.height) {
+                    this.y += this.speed;
+                }
+                if (this.controls.left && this.x > 0) {
+                    this.x -= this.speed;
+                    this.direction = -1;
+                }
+                if (this.controls.right && this.x < canvas.width - this.width) {
+                    this.x += this.speed;
+                    this.direction = 1;
+                }
+                
+                // 攻击逻辑
+                if (this.controls.attack && this.attackCooldown === 0) {
+                    this.isAttacking = true;
+                    this.attackCooldown = this.attackCooldownMax;
+                    
+                    // 攻击动画持续时间
+                    setTimeout(() => {
+                        this.isAttacking = false;
+                    }, 150);
+                }
+                
+                // 面向敌人
+                if (enemy) {
+                    this.direction = enemy.x > this.x ? 1 : -1;
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                
+                // 绘制火柴人身体
+                ctx.fillStyle = this.color;
+                
+                // 移动到火柴人位置
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                
+                // 根据方向翻转
+                if (this.direction === -1) {
+                    ctx.scale(-1, 1);
+                }
+                
+                // 绘制火柴人头部
+                ctx.beginPath();
+                ctx.arc(0, -30, 10, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 绘制火柴人身体
+                ctx.beginPath();
+                ctx.moveTo(0, -20);
+                ctx.lineTo(0, 10);
+                ctx.strokeStyle = this.color;
+                ctx.lineWidth = 5;
+                ctx.stroke();
+                
+                // 绘制火柴人手臂
+                ctx.beginPath();
+                if (this.isAttacking) {
+                    // 攻击姿势
+                    ctx.moveTo(0, -10);
+                    ctx.lineTo(25, -20);
+                    ctx.stroke();
+                } else {
+                    // 正常姿势
+                    ctx.moveTo(0, -10);
+                    ctx.lineTo(15, -15);
+                    ctx.stroke();
+                }
+                
+                // 绘制火柴人腿部
+                ctx.beginPath();
+                ctx.moveTo(0, 10);
+                ctx.lineTo(-10, 30);
+                ctx.moveTo(0, 10);
+                ctx.lineTo(10, 30);
+                ctx.stroke();
+                
+                // 绘制攻击范围（仅攻击时显示）
+                if (this.isAttacking) {
+                    ctx.beginPath();
+                    ctx.rect(0, -20, this.attackRange, 40);
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.restore();
+            }
+            
+            attack(enemy) {
+                if (!this.isAttacking) return false;
+                
+                // 计算攻击范围（根据方向调整）
+                const attackX = this.direction === 1 ? this.x + this.width : this.x - this.attackRange;
+                const attackWidth = this.attackRange;
+                
+                // 检测碰撞
+                if (
+                    enemy.x < attackX + attackWidth &&
+                    enemy.x + enemy.width > attackX &&
+                    enemy.y < this.y + this.height &&
+                    enemy.y + enemy.height > this.y
+                ) {
+                    // 攻击命中
+                    enemy.health -= this.attackDamage;
+                    enemy.health = Math.max(0, enemy.health);
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            isAlive() {
+                return this.health > 0;
+            }
+        }
+        
+        // 创建玩家
+        const player1 = new Player(100, canvas.height / 2 - 50, 40, 80, '#3B82F6', keys1);
+        const player2 = new Player(canvas.width - 140, canvas.height / 2 - 50, 40, 80, '#10B981', keys2);
+        
+        // AI决策逻辑
+        function updateAI() {
+            if (!isAiMode) return;
+            
+            // 每X帧做一次决策
+            aiState.decisionCooldown--;
+            if (aiState.decisionCooldown > 0) return;
+            
+            aiState.decisionCooldown = aiState.decisionCooldownMax;
+            
+            // 计算与玩家的距离
+            const dx = player1.x - player2.x;
+            const dy = player1.y - player2.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            // AI状态机
+            if (aiState.stateTimer > 0) {
+                aiState.stateTimer--;
+            } else {
+                // 随机选择新状态
+                const randomState = Math.floor(Math.random() * 4);
+                
+                switch(randomState) {
+                    case 0:
+                        aiState.state = 'idle';
+                        aiState.stateDuration = 30 + Math.floor(Math.random() * 60);
+                        break;
+                    case 1:
+                        aiState.state = 'moveToPlayer';
+                        aiState.stateDuration = 60 + Math.floor(Math.random() * 120);
+                        break;
+                    case 2:
+                        aiState.state = 'attack';
+                        aiState.stateDuration = 40 + Math.floor(Math.random() * 80);
+                        break;
+                    case 3:
+                        aiState.state = 'retreat';
+                        aiState.stateDuration = 60 + Math.floor(Math.random() * 120);
+                        break;
+                }
+                
+                aiState.stateTimer = aiState.stateDuration;
+            }
+            
+            // 重置控制状态
+            keys2.up = false;
+            keys2.down = false;
+            keys2.left = false;
+            keys2.right = false;
+            keys2.attack = false;
+            
+            // 根据当前状态执行不同的行为
+            switch(aiState.state) {
+                case 'idle':
+                    // 随机小范围移动
+                    if (Math.random() < 0.05) keys2.up = true;
+                    if (Math.random() < 0.05) keys2.down = true;
+                    if (Math.random() < 0.05) keys2.left = true;
+                    if (Math.random() < 0.05) keys2.right = true;
+                    break;
+                    
+                case 'moveToPlayer':
+                    // 向玩家移动
+                    if (dy < -10) keys2.up = true;
+                    if (dy > 10) keys2.down = true;
+                    if (dx < -20) keys2.left = true;
+                    if (dx > 20) keys2.right = true;
+                    
+                    // 如果足够近且攻击冷却完毕，尝试攻击
+                    if (distance < 100 && player2.attackCooldown === 0) {
+                        keys2.attack = true;
+                    }
+                    break;
+                    
+                case 'attack':
+                    // 主动攻击玩家
+                    if (dy < -5) keys2.up = true;
+                    if (dy > 5) keys2.down = true;
+                    
+                    // 接近玩家
+                    if (dx < -30) keys2.left = true;
+                    if (dx > 30) keys2.right = true;
+                    
+                    // 尝试攻击
+                    if (player2.attackCooldown === 0) {
+                        keys2.attack = true;
+                    }
+                    break;
+                    
+                case 'retreat':
+                    // 撤退并重新定位
+                    if (dy < -10) keys2.down = true; // 反方向移动
+                    if (dy > 10) keys2.up = true;
+                    if (dx < -20) keys2.right = true;
+                    if (dx > 20) keys2.left = true;
+                    
+                    // 偶尔攻击
+                    if (Math.random() < 0.1 && player2.attackCooldown === 0) {
+                        keys2.attack = true;
+                    }
+                    break;
+            }
+            
+            // 如果玩家正在攻击且距离很近，尝试躲避
+            if (player1.isAttacking && distance < 80) {
+                // 随机上下移动躲避
+                if (Math.random() < 0.5) keys2.up = true;
+                else keys2.down = true;
+                
+                // 向后移动
+                if (dx < 0) keys2.right = true;
+                else keys2.left = true;
+            }
+        }
+        
+        // 绘制游戏背景
+        function drawBackground() {
+            // 绘制地面
+            ctx.fillStyle = '#E5E7EB';
+            ctx.fillRect(0, canvas.height - 30, canvas.width, 30);
+            
+            // 绘制中间线
+            ctx.strokeStyle = '#9CA3AF';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 5]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        // 更新游戏状态显示
+        function updateHealthDisplay() {
+            player1HealthBar.style.width = `${player1.health}%`;
+            player2HealthBar.style.width = `${player2.health}%`;
+            player1HealthText.textContent = `${player1.health}%`;
+            player2HealthText.textContent = `${player2.health}%`;
+            
+            // 根据生命值改变颜色
+            if (player1.health < 30) {
+                player1HealthBar.classList.remove('bg-primary');
+                player1HealthBar.classList.add('bg-danger');
+            } else {
+                player1HealthBar.classList.remove('bg-danger');
+                player1HealthBar.classList.add('bg-primary');
+            }
+            
+            if (player2.health < 30) {
+                player2HealthBar.classList.remove('bg-secondary');
+                player2HealthBar.classList.add('bg-danger');
+            } else {
+                player2HealthBar.classList.remove('bg-danger');
+                player2HealthBar.classList.add('bg-secondary');
+            }
+        }
+        
+        // 游戏主循环
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景
+            drawBackground();
+            
+            if (!gamePaused) {
+                // 更新AI
+                updateAI();
+                
+                // 更新玩家
+                player1.update(player2);
+                player2.update(player1);
+                
+                // 检测攻击
+                const p1Attacked = player1.attack(player2);
+                const p2Attacked = player2.attack(player1);
+                
+                // 更新生命值显示
+                updateHealthDisplay();
+                
+                // 检测游戏结束
+                if (!player1.isAlive() || !player2.isAlive()) {
+                    gamePaused = true;
+                    
+                    if (!player1.isAlive() && !player2.isAlive()) {
+                        statusMessage.textContent = "平局!";
+                    } else if (!player1.isAlive()) {
+                        statusMessage.textContent = isAiMode ? "AI获胜!" : "玩家2获胜!";
+                    } else {
+                        statusMessage.textContent = "玩家1获胜!";
+                    }
+                    
+                    gameStatus.classList.remove('hidden');
+                    continueBtn.textContent = "再来一局";
+                }
+            }
+            
+            // 绘制玩家
+            player1.draw();
+            player2.draw();
+            
+            // 继续游戏循环
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        // 键盘事件监听
+        window.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            // 玩家1控制 (WASD + 空格)
+            if (e.key === 'w' || e.key === 'W') keys1.up = true;
+            if (e.key === 's' || e.key === 'S') keys1.down = true;
+            if (e.key === 'a' || e.key === 'A') keys1.left = true;
+            if (e.key === 'd' || e.key === 'D') keys1.right = true;
+            if (e.key === ' ') keys1.attack = true;
+            
+            // 只有非AI模式下玩家2才接受键盘控制
+            if (!isAiMode) {
+                // 玩家2控制 (方向键 + Enter)
+                if (e.key === 'ArrowUp') keys2.up = true;
+                if (e.key === 'ArrowDown') keys2.down = true;
+                if (e.key === 'ArrowLeft') keys2.left = true;
+                if (e.key === 'ArrowRight') keys2.right = true;
+                if (e.key === 'Enter') keys2.attack = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            // 玩家1控制
+            if (e.key === 'w' || e.key === 'W') keys1.up = false;
+            if (e.key === 's' || e.key === 'S') keys1.down = false;
+            if (e.key === 'a' || e.key === 'A') keys1.left = false;
+            if (e.key === 'd' || e.key === 'D') keys1.right = false;
+            if (e.key === ' ') keys1.attack = false;
+            
+            // 只有非AI模式下玩家2才接受键盘控制
+            if (!isAiMode) {
+                // 玩家2控制
+                if (e.key === 'ArrowUp') keys2.up = false;
+                if (e.key === 'ArrowDown') keys2.down = false;
+                if (e.key === 'ArrowLeft') keys2.left = false;
+                if (e.key === 'ArrowRight') keys2.right = false;
+                if (e.key === 'Enter') keys2.attack = false;
+            }
+        });
+        
+        // AI模式切换
+        aiToggle.addEventListener('change', (e) => {
+            isAiMode = e.target.checked;
+            
+            if (isAiMode) {
+                player2Controls.style.display = 'none';
+                gameHint.innerHTML = '<i class="fa fa-lightbulb-o mr-1"></i> 提示: AI会根据你的位置做出反应，合理利用攻击时机';
+            } else {
+                player2Controls.style.display = 'flex';
+                gameHint.innerHTML = '<i class="fa fa-lightbulb-o mr-1"></i> 提示: 攻击有冷却时间，合理利用移动和攻击时机';
+            }
+            
+            // 如果游戏正在运行，重置游戏
+            if (gameRunning) {
+                resetGame();
+            }
+        });
+        
+        // 按钮事件监听
+        startBtn.addEventListener('click', () => {
+            if (!gameRunning) {
+                gameRunning = true;
+                gamePaused = false;
+                startBtn.textContent = "暂停游戏";
+                startBtn.classList.remove('bg-primary');
+                startBtn.classList.add('bg-warning');
+                startBtn.innerHTML = '<i class="fa fa-pause"></i><span>暂停游戏</span>';
+                gameLoop();
+            } else if (gamePaused) {
+                gamePaused = false;
+                startBtn.textContent = "暂停游戏";
+                startBtn.classList.remove('bg-primary');
+                startBtn.classList.add('bg-warning');
+                startBtn.innerHTML = '<i class="fa fa-pause"></i><span>暂停游戏</span>';
+                gameLoop();
+            } else {
+                gamePaused = true;
+                startBtn.textContent = "继续游戏";
+                startBtn.classList.remove('bg-warning');
+                startBtn.classList.add('bg-primary');
+                startBtn.innerHTML = '<i class="fa fa-play"></i><span>继续游戏</span>';
+                cancelAnimationFrame(animationId);
+            }
+        });
+        
+        resetBtn.addEventListener('click', resetGame);
+        
+        continueBtn.addEventListener('click', () => {
+            if (!player1.isAlive() || !player2.isAlive()) {
+                resetGame();
+            } else {
+                gamePaused = false;
+                gameStatus.classList.add('hidden');
+                startBtn.textContent = "暂停游戏";
+                startBtn.classList.remove('bg-primary');
+                startBtn.classList.add('bg-warning');
+                startBtn.innerHTML = '<i class="fa fa-pause"></i><span>暂停游戏</span>';
+                gameLoop();
+            }
+        });
+        
+        // 重置游戏
+        function resetGame() {
+            // 重置玩家状态
+            player1.x = 100;
+            player1.y = canvas.height / 2 - 50;
+            player1.health = 100;
+            player1.isAttacking = false;
+            player1.attackCooldown = 0;
+            player1.direction = 1;
+            
+            player2.x = canvas.width - 140;
+            player2.y = canvas.height / 2 - 50;
+            player2.health = 100;
+            player2.isAttacking = false;
+            player2.attackCooldown = 0;
+            player2.direction = -1;
+            
+            // 重置AI状态
+            aiState.state = 'idle';
+            aiState.stateTimer = 0;
+            aiState.decisionCooldown = 0;
+            
+            // 重置游戏状态
+            gamePaused = true;
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            
+            // 更新UI
+            updateHealthDisplay();
+            statusMessage.textContent = isAiMode ? "挑战AI!" : "游戏开始!";
+            gameStatus.classList.remove('hidden');
+            startBtn.textContent = "开始游戏";
+            startBtn.classList.remove('bg-warning');
+            startBtn.classList.add('bg-primary');
+            startBtn.innerHTML = '<i class="fa fa-play"></i><span>开始游戏</span>';
+            
+            // 绘制初始状态
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+            player1.draw();
+            player2.draw();
+        }
+        
+        // 初始化显示
+        resetGame();
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '马文然';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>
+    

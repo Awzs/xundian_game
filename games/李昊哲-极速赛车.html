@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>极速赛车</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF3366',
+                        secondary: '#4A6CF7',
+                        accent: '#FF9F1C',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                    },
+                    fontFamily: {
+                        racing: ['"Segoe UI"', 'Roboto', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            .btn-racing {
+                @apply bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary/50;
+            }
+            .btn-racing-secondary {
+                @apply bg-secondary hover:bg-secondary/90 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-secondary/50;
+            }
+            .game-container {
+                @apply relative w-full h-screen overflow-hidden bg-dark;
+            }
+            .game-ui {
+                @apply absolute inset-0 z-10 pointer-events-none;
+            }
+            .control-btn {
+                @apply bg-dark/50 backdrop-blur-sm text-white rounded-full w-16 h-16 flex items-center justify-center shadow-lg pointer-events-auto;
+            }
+        }
+    </style>
+</head>
+<body class="m-0 p-0 font-racing overflow-hidden">
+<!-- 返回主页按钮 -->
+<div id="homeNavigation" style="position: fixed; top: 20px; left: 20px; z-index: 9999;">
+    <a href="../index.html" 
+       style="display: inline-flex; align-items: center; gap: 8px; 
+              background: linear-gradient(135deg, #FF6B6B, #4ECDC4); 
+              color: white; padding: 12px 20px; border-radius: 25px; 
+              text-decoration: none; font-family: 'Microsoft YaHei', sans-serif; 
+              font-weight: bold; font-size: 14px; 
+              box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+              transition: all 0.3s ease;
+              backdrop-filter: blur(10px);"
+       onmouseover="this.style.transform='translateY(-2px) scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.3)';"
+       onmouseout="this.style.transform='translateY(0) scale(1)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.2)';">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+        </svg>
+        返回星球工坊
+    </a>
+</div>
+
+    <!-- 开始菜单 -->
+    <div id="startMenu" class="fixed inset-0 flex flex-col items-center justify-center bg-dark/90 z-50">
+        <div class="text-center p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl transform transition-all duration-500">
+            <h1 class="text-[clamp(2.5rem,8vw,5rem)] font-bold text-primary mb-6 text-shadow">
+                <i class="fa fa-car mr-2"></i>极速赛车
+            </h1>
+            <p class="text-light/80 text-lg mb-8 max-w-md mx-auto">
+                挑战极限速度，征服赛道！躲避障碍物，收集金币，创造最高分！
+            </p>
+            <div class="flex flex-col md:flex-row gap-4 justify-center">
+                <button id="startGame" class="btn-racing">
+                    <i class="fa fa-play mr-2"></i>开始游戏
+                </button>
+                <button id="showSettings" class="btn-racing-secondary">
+                    <i class="fa fa-cog mr-2"></i>游戏设置
+                </button>
+                <button id="showHighScores" class="btn-racing-secondary">
+                    <i class="fa fa-trophy mr-2"></i>排行榜
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置菜单 -->
+    <div id="settingsMenu" class="fixed inset-0 flex items-center justify-center bg-dark/90 z-50 hidden">
+        <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-primary">游戏设置</h2>
+                <button id="closeSettings" class="text-light/80 hover:text-light">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-light mb-2">控制方式</label>
+                    <div class="flex space-x-4">
+                        <button class="control-option bg-secondary/50 text-white px-4 py-2 rounded" data-control="keyboard">键盘</button>
+                        <button class="control-option bg-dark/50 text-white px-4 py-2 rounded" data-control="touch">触摸</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-light mb-2">游戏难度</label>
+                    <div class="flex space-x-4">
+                        <button class="difficulty-option bg-secondary/50 text-white px-4 py-2 rounded" data-difficulty="easy">简单</button>
+                        <button class="difficulty-option bg-dark/50 text-white px-4 py-2 rounded" data-difficulty="medium">中等</button>
+                        <button class="difficulty-option bg-dark/50 text-white px-4 py-2 rounded" data-difficulty="hard">困难</button>
+                    </div>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="soundEnabled" class="mr-2">
+                    <label for="soundEnabled" class="text-light">音效开启</label>
+                </div>
+            </div>
+            <div class="mt-8">
+                <button id="saveSettings" class="btn-racing w-full">
+                    保存设置
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 排行榜 -->
+    <div id="highScoresMenu" class="fixed inset-0 flex items-center justify-center bg-dark/90 z-50 hidden">
+        <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl max-w-md w-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-primary">排行榜</h2>
+                <button id="closeHighScores" class="text-light/80 hover:text-light">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div id="highScoresList" class="space-y-3 mb-8 max-h-64 overflow-y-auto">
+                <!-- 排行榜将通过JS动态生成 -->
+                <div class="text-center text-light/70 py-4">暂无记录</div>
+            </div>
+            <button id="backFromHighScores" class="btn-racing w-full">
+                返回
+            </button>
+        </div>
+    </div>
+
+    <!-- 游戏结束菜单 -->
+    <div id="gameOverMenu" class="fixed inset-0 flex items-center justify-center bg-dark/90 z-50 hidden">
+        <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl max-w-md w-full text-center">
+            <h2 class="text-3xl font-bold text-primary mb-2">游戏结束</h2>
+            <p class="text-xl text-light mb-6">你的得分: <span id="finalScore" class="font-bold">0</span></p>
+            <div class="mb-8">
+                <h3 class="text-lg text-light mb-3">最佳成绩</h3>
+                <p id="bestScore" class="text-2xl font-bold text-primary">0</p>
+            </div>
+            <div class="flex flex-col gap-4">
+                <button id="playAgain" class="btn-racing">
+                    <i class="fa fa-refresh mr-2"></i>再玩一次
+                </button>
+                <button id="backToMenu" class="btn-racing-secondary">
+                    <i class="fa fa-home mr-2"></i>返回菜单
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏暂停菜单 -->
+    <div id="pauseMenu" class="fixed inset-0 flex items-center justify-center bg-dark/90 z-50 hidden">
+        <div class="p-8 rounded-2xl bg-white/10 backdrop-blur-xl shadow-2xl max-w-md w-full text-center">
+            <h2 class="text-3xl font-bold text-primary mb-6">游戏暂停</h2>
+            <div class="flex flex-col gap-4">
+                <button id="resumeGame" class="btn-racing">
+                    <i class="fa fa-play mr-2"></i>继续游戏
+                </button>
+                <button id="restartGame" class="btn-racing-secondary">
+                    <i class="fa fa-refresh mr-2"></i>重新开始
+                </button>
+                <button id="exitGame" class="btn-racing-secondary">
+                    <i class="fa fa-home mr-2"></i>退出游戏
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 游戏容器 -->
+    <div class="game-container">
+        <canvas id="gameCanvas" class="w-full h-full"></canvas>
+        
+        <!-- 游戏UI -->
+        <div class="game-ui">
+            <!-- 分数显示 -->
+            <div class="absolute top-4 left-4 bg-dark/50 backdrop-blur-sm text-white px-4 py-2 rounded-lg shadow-lg">
+                <div class="flex items-center">
+                    <i class="fa fa-tachometer mr-2"></i>
+                    <span id="score" class="font-bold">0</span>
+                </div>
+            </div>
+            
+            <!-- 暂停按钮 -->
+            <div class="absolute top-4 right-4">
+                <button id="pauseBtn" class="bg-dark/50 backdrop-blur-sm text-white rounded-full w-12 h-12 flex items-center justify-center shadow-lg">
+                    <i class="fa fa-pause"></i>
+                </button>
+            </div>
+            
+            <!-- 触摸控制按钮 (移动设备) -->
+            <div id="touchControls" class="absolute bottom-4 left-0 right-0 flex justify-center space-x-16 md:hidden">
+                <button id="leftBtn" class="control-btn">
+                    <i class="fa fa-arrow-left"></i>
+                </button>
+                <button id="rightBtn" class="control-btn">
+                    <i class="fa fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 游戏配置
+        const gameConfig = {
+            playerSpeed: 5,
+            obstacleSpeed: 6,
+            coinSpeed: 5,
+            laneCount: 3,
+            lanes: [],
+            spawnRate: 1500, // 毫秒
+            coinSpawnRate: 2500,
+            difficultyIncreaseInterval: 30000, // 难度增加间隔（毫秒）
+            initialDifficulty: 1,
+            soundEnabled: true,
+            controlType: 'keyboard', // 'keyboard' 或 'touch'
+            difficulty: 'medium',
+        };
+
+        // 游戏状态
+        const gameState = {
+            score: 0,
+            isRunning: false,
+            isPaused: false,
+            lastObstacleTime: 0,
+            lastCoinTime: 0,
+            obstacles: [],
+            coins: [],
+            difficulty: gameConfig.initialDifficulty,
+            highScores: [],
+            player: {
+                x: 0,
+                y: 0,
+                width: 50,
+                height: 80,
+                color: '#FF3366',
+                lane: 1, // 0: 左, 1: 中, 2: 右
+                image: null,
+                isColliding: false
+            },
+            keys: {
+                left: false,
+                right: false
+            },
+            soundEffects: {
+                coin: null,
+                crash: null,
+                engine: null
+            }
+        };
+
+        // 初始化游戏
+        function initGame() {
+            // 设置画布
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // 设置画布尺寸
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // 计算车道位置
+            calculateLanes();
+            
+            // 加载玩家图像
+            loadPlayerImage();
+            
+            // 加载音效
+            loadSounds();
+            
+            // 加载高分记录
+            loadHighScores();
+            
+            // 设置游戏状态
+            resetGame();
+            
+            // 添加事件监听器
+            setupEventListeners();
+            
+            // 开始游戏循环
+            gameLoop();
+        }
+
+        // 计算车道位置
+        function calculateLanes() {
+            const canvas = document.getElementById('gameCanvas');
+            const laneWidth = canvas.width / gameConfig.laneCount;
+            
+            gameConfig.lanes = [];
+            for (let i = 0; i < gameConfig.laneCount; i++) {
+                const center = (i * laneWidth) + (laneWidth / 2);
+                gameConfig.lanes.push(center);
+            }
+            
+            // 设置玩家初始位置
+            gameState.player.x = gameConfig.lanes[gameState.player.lane] - (gameState.player.width / 2);
+            gameState.player.y = canvas.height - gameState.player.height - 50;
+        }
+
+        // 加载玩家图像
+        function loadPlayerImage() {
+            const playerImage = new Image();
+            playerImage.src = 'https://picsum.photos/id/1/100/200'; // 临时占位图像
+            playerImage.onload = () => {
+                gameState.player.image = playerImage;
+            };
+        }
+
+        // 加载音效
+        function loadSounds() {
+            if (!gameConfig.soundEnabled) return;
+            
+            // 这里只是示例，实际项目中需要使用真实的音频文件
+            gameState.soundEffects.coin = new Audio('coin.mp3');
+            gameState.soundEffects.crash = new Audio('crash.mp3');
+            gameState.soundEffects.engine = new Audio('engine.mp3');
+            
+            // 设置循环播放
+            gameState.soundEffects.engine.loop = true;
+        }
+
+        // 重置游戏状态
+        function resetGame() {
+            gameState.score = 0;
+            gameState.isRunning = false;
+            gameState.isPaused = false;
+            gameState.obstacles = [];
+            gameState.coins = [];
+            gameState.difficulty = gameConfig.initialDifficulty;
+            gameState.player.lane = 1;
+            gameState.player.x = gameConfig.lanes[gameState.player.lane] - (gameState.player.width / 2);
+            gameState.player.isColliding = false;
+            
+            document.getElementById('score').textContent = gameState.score;
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 键盘控制
+            window.addEventListener('keydown', (e) => {
+                if (!gameState.isRunning || gameState.isPaused) return;
+                
+                if (e.key === 'ArrowLeft') {
+                    gameState.keys.left = true;
+                } else if (e.key === 'ArrowRight') {
+                    gameState.keys.right = true;
+                } else if (e.key === ' ') {
+                    // 空格键暂停/继续
+                    togglePause();
+                }
+            });
+            
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowLeft') {
+                    gameState.keys.left = false;
+                } else if (e.key === 'ArrowRight') {
+                    gameState.keys.right = false;
+                }
+            });
+            
+            // 触摸控制
+            document.getElementById('leftBtn').addEventListener('touchstart', () => {
+                if (!gameState.isRunning || gameState.isPaused || gameConfig.controlType !== 'touch') return;
+                gameState.keys.left = true;
+            });
+            
+            document.getElementById('leftBtn').addEventListener('touchend', () => {
+                gameState.keys.left = false;
+            });
+            
+            document.getElementById('rightBtn').addEventListener('touchstart', () => {
+                if (!gameState.isRunning || gameState.isPaused || gameConfig.controlType !== 'touch') return;
+                gameState.keys.right = true;
+            });
+            
+            document.getElementById('rightBtn').addEventListener('touchend', () => {
+                gameState.keys.right = false;
+            });
+            
+            // 按钮事件
+            document.getElementById('startGame').addEventListener('click', startGame);
+            document.getElementById('pauseBtn').addEventListener('click', togglePause);
+            document.getElementById('resumeGame').addEventListener('click', togglePause);
+            document.getElementById('restartGame').addEventListener('click', restartGame);
+            document.getElementById('exitGame').addEventListener('click', exitGame);
+            document.getElementById('playAgain').addEventListener('click', restartGame);
+            document.getElementById('backToMenu').addEventListener('click', exitGame);
+            document.getElementById('showSettings').addEventListener('click', showSettings);
+            document.getElementById('closeSettings').addEventListener('click', hideSettings);
+            document.getElementById('saveSettings').addEventListener('click', saveSettings);
+            document.getElementById('showHighScores').addEventListener('click', showHighScores);
+            document.getElementById('closeHighScores').addEventListener('click', hideHighScores);
+            document.getElementById('backFromHighScores').addEventListener('click', hideHighScores);
+            
+            // 设置选项事件
+            document.querySelectorAll('.control-option').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.control-option').forEach(b => {
+                        b.classList.remove('bg-secondary/50');
+                        b.classList.add('bg-dark/50');
+                    });
+                    e.target.classList.remove('bg-dark/50');
+                    e.target.classList.add('bg-secondary/50');
+                    gameConfig.controlType = e.target.dataset.control;
+                });
+            });
+            
+            document.querySelectorAll('.difficulty-option').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.difficulty-option').forEach(b => {
+                        b.classList.remove('bg-secondary/50');
+                        b.classList.add('bg-dark/50');
+                    });
+                    e.target.classList.remove('bg-dark/50');
+                    e.target.classList.add('bg-secondary/50');
+                    gameConfig.difficulty = e.target.dataset.difficulty;
+                });
+            });
+            
+            document.getElementById('soundEnabled').addEventListener('change', (e) => {
+                gameConfig.soundEnabled = e.target.checked;
+            });
+            
+            // 窗口大小调整
+            window.addEventListener('resize', () => {
+                const canvas = document.getElementById('gameCanvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                calculateLanes();
+            });
+        }
+
+        // 开始游戏
+        function startGame() {
+            document.getElementById('startMenu').classList.add('hidden');
+            gameState.isRunning = true;
+            gameState.lastObstacleTime = Date.now();
+            gameState.lastCoinTime = Date.now();
+            
+            if (gameConfig.soundEnabled && gameState.soundEffects.engine) {
+                gameState.soundEffects.engine.play();
+            }
+        }
+
+        // 暂停/继续游戏
+        function togglePause() {
+            if (!gameState.isRunning) return;
+            
+            gameState.isPaused = !gameState.isPaused;
+            
+            if (gameState.isPaused) {
+                document.getElementById('pauseMenu').classList.remove('hidden');
+                if (gameConfig.soundEnabled && gameState.soundEffects.engine) {
+                    gameState.soundEffects.engine.pause();
+                }
+            } else {
+                document.getElementById('pauseMenu').classList.add('hidden');
+                if (gameConfig.soundEnabled && gameState.soundEffects.engine) {
+                    gameState.soundEffects.engine.play();
+                }
+            }
+        }
+
+        // 重新开始游戏
+        function restartGame() {
+            resetGame();
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('pauseMenu').classList.add('hidden');
+            startGame();
+        }
+
+        // 退出游戏
+        function exitGame() {
+            resetGame();
+            document.getElementById('gameOverMenu').classList.add('hidden');
+            document.getElementById('pauseMenu').classList.add('hidden');
+            document.getElementById('startMenu').classList.remove('hidden');
+            
+            if (gameConfig.soundEnabled && gameState.soundEffects.engine) {
+                gameState.soundEffects.engine.pause();
+            }
+        }
+
+        // 显示设置菜单
+        function showSettings() {
+            document.getElementById('startMenu').classList.add('hidden');
+            document.getElementById('settingsMenu').classList.remove('hidden');
+            
+            // 设置当前选项
+            document.querySelector(`.control-option[data-control="${gameConfig.controlType}"]`).classList.remove('bg-dark/50');
+            document.querySelector(`.control-option[data-control="${gameConfig.controlType}"]`).classList.add('bg-secondary/50');
+            
+            document.querySelector(`.difficulty-option[data-difficulty="${gameConfig.difficulty}"]`).classList.remove('bg-dark/50');
+            document.querySelector(`.difficulty-option[data-difficulty="${gameConfig.difficulty}"]`).classList.add('bg-secondary/50');
+            
+            document.getElementById('soundEnabled').checked = gameConfig.soundEnabled;
+        }
+
+        // 隐藏设置菜单
+        function hideSettings() {
+            document.getElementById('settingsMenu').classList.add('hidden');
+            document.getElementById('startMenu').classList.remove('hidden');
+        }
+
+        // 保存设置
+        function saveSettings() {
+            // 设置已经在事件监听器中更新
+            hideSettings();
+        }
+
+        // 显示排行榜
+        function showHighScores() {
+            document.getElementById('startMenu').classList.add('hidden');
+            document.getElementById('highScoresMenu').classList.remove('hidden');
+            
+            // 更新排行榜显示
+            updateHighScoresDisplay();
+        }
+
+        // 隐藏排行榜
+        function hideHighScores() {
+            document.getElementById('highScoresMenu').classList.add('hidden');
+            document.getElementById('startMenu').classList.remove('hidden');
+        }
+
+        // 加载高分记录
+        function loadHighScores() {
+            const savedScores = localStorage.getItem('racingGameHighScores');
+            if (savedScores) {
+                gameState.highScores = JSON.parse(savedScores);
+            }
+        }
+
+        // 保存高分记录
+        function saveHighScore(score) {
+            // 添加新分数
+            gameState.highScores.push({
+                score: score,
+                date: new Date().toISOString()
+            });
+            
+            // 按分数排序并保留前10名
+            gameState.highScores.sort((a, b) => b.score - a.score);
+            if (gameState.highScores.length > 10) {
+                gameState.highScores = gameState.highScores.slice(0, 10);
+            }
+            
+            // 保存到localStorage
+            localStorage.setItem('racingGameHighScores', JSON.stringify(gameState.highScores));
+        }
+
+        // 更新排行榜显示
+        function updateHighScoresDisplay() {
+            const list = document.getElementById('highScoresList');
+            list.innerHTML = '';
+            
+            if (gameState.highScores.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center text-light/70 py-4">暂无记录</div>
+                `;
+                return;
+            }
+            
+            gameState.highScores.forEach((entry, index) => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-white/5 p-3 rounded-lg';
+                
+                // 格式化日期
+                const date = new Date(entry.date);
+                const formattedDate = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+                
+                item.innerHTML = `
+                    <div class="flex items-center">
+                        <span class="font-bold text-primary mr-3">${index + 1}.</span>
+                        <span class="text-light">${entry.score}</span>
+                    </div>
+                    <span class="text-light/70 text-sm">${formattedDate}</span>
+                `;
+                
+                list.appendChild(item);
+            });
+        }
+
+        // 游戏结束
+        function gameOver() {
+            gameState.isRunning = false;
+            
+            // 保存高分
+            if (gameState.highScores.length === 0 || gameState.score > gameState.highScores[0].score) {
+                saveHighScore(gameState.score);
+            }
+            
+            // 更新UI
+            document.getElementById('finalScore').textContent = gameState.score;
+            
+            const bestScore = gameState.highScores.length > 0 ? gameState.highScores[0].score : 0;
+            document.getElementById('bestScore').textContent = bestScore;
+            
+            document.getElementById('gameOverMenu').classList.remove('hidden');
+            
+            if (gameConfig.soundEnabled && gameState.soundEffects.engine) {
+                gameState.soundEffects.engine.pause();
+            }
+            
+            if (gameConfig.soundEnabled && gameState.soundEffects.crash) {
+                gameState.soundEffects.crash.play();
+            }
+        }
+
+        // 生成障碍物
+        function spawnObstacle() {
+            const now = Date.now();
+            
+            // 根据难度调整生成速率
+            const adjustedSpawnRate = gameConfig.spawnRate / gameState.difficulty;
+            
+            if (now - gameState.lastObstacleTime > adjustedSpawnRate) {
+                const canvas = document.getElementById('gameCanvas');
+                const lane = Math.floor(Math.random() * gameConfig.laneCount);
+                const width = 60 + Math.random() * 40;
+                const height = 80 + Math.random() * 60;
+                const x = gameConfig.lanes[lane] - (width / 2);
+                const y = -height;
+                
+                // 根据难度调整障碍物速度
+                const speed = gameConfig.obstacleSpeed * gameState.difficulty;
+                
+                gameState.obstacles.push({
+                    x: x,
+                    y: y,
+                    width: width,
+                    height: height,
+                    lane: lane,
+                    speed: speed,
+                    color: '#1E293B'
+                });
+                
+                gameState.lastObstacleTime = now;
+            }
+        }
+
+        // 生成金币
+        function spawnCoin() {
+            const now = Date.now();
+            
+            // 根据难度调整生成速率
+            const adjustedSpawnRate = gameConfig.coinSpawnRate / (gameState.difficulty * 0.7);
+            
+            if (now - gameState.lastCoinTime > adjustedSpawnRate) {
+                const canvas = document.getElementById('gameCanvas');
+                const lane = Math.floor(Math.random() * gameConfig.laneCount);
+                const size = 30 + Math.random() * 10;
+                const x = gameConfig.lanes[lane] - (size / 2);
+                const y = -size;
+                
+                // 根据难度调整金币速度
+                const speed = gameConfig.coinSpeed * gameState.difficulty;
+                
+                gameState.coins.push({
+                    x: x,
+                    y: y,
+                    size: size,
+                    lane: lane,
+                    speed: speed,
+                    collected: false
+                });
+                
+                gameState.lastCoinTime = now;
+            }
+        }
+
+        // 更新玩家位置
+        function updatePlayer() {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // 左右移动
+            if (gameState.keys.left && gameState.player.lane > 0) {
+                gameState.player.lane--;
+                gameState.keys.left = false;
+            } else if (gameState.keys.right && gameState.player.lane < gameConfig.laneCount - 1) {
+                gameState.player.lane++;
+                gameState.keys.right = false;
+            }
+            
+            // 更新玩家x坐标
+            gameState.player.x = gameConfig.lanes[gameState.player.lane] - (gameState.player.width / 2);
+            
+            // 确保玩家不超出屏幕
+            if (gameState.player.x < 0) {
+                gameState.player.x = 0;
+            } else if (gameState.player.x + gameState.player.width > canvas.width) {
+                gameState.player.x = canvas.width - gameState.player.width;
+            }
+        }
+
+        // 更新障碍物
+        function updateObstacles() {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // 更新所有障碍物位置
+            for (let i = gameState.obstacles.length - 1; i >= 0; i--) {
+                const obstacle = gameState.obstacles[i];
+                obstacle.y += obstacle.speed;
+                
+                // 移除离开屏幕的障碍物
+                if (obstacle.y > canvas.height) {
+                    gameState.obstacles.splice(i, 1);
+                    continue;
+                }
+                
+                // 检测碰撞
+                if (checkCollision(gameState.player, obstacle)) {
+                    gameState.player.isColliding = true;
+                    gameOver();
+                    break;
+                }
+            }
+        }
+
+        // 更新金币
+        function updateCoins() {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // 更新所有金币位置
+            for (let i = gameState.coins.length - 1; i >= 0; i--) {
+                const coin = gameState.coins[i];
+                
+                if (!coin.collected) {
+                    coin.y += coin.speed;
+                    
+                    // 移除离开屏幕的金币
+                    if (coin.y > canvas.height) {
+                        gameState.coins.splice(i, 1);
+                        continue;
+                    }
+                    
+                    // 检测碰撞
+                    if (checkCoinCollision(gameState.player, coin)) {
+                        coin.collected = true;
+                        
+                        // 增加分数
+                        gameState.score += 10;
+                        document.getElementById('score').textContent = gameState.score;
+                        
+                        // 播放音效
+                        if (gameConfig.soundEnabled && gameState.soundEffects.coin) {
+                            gameState.soundEffects.coin.play();
+                        }
+                        
+                        // 从数组中移除金币
+                        setTimeout(() => {
+                            const coinIndex = gameState.coins.findIndex(c => c === coin);
+                            if (coinIndex !== -1) {
+                                gameState.coins.splice(coinIndex, 1);
+                            }
+                        }, 0);
+                    }
+                }
+            }
+        }
+
+        // 检测碰撞
+        function checkCollision(player, obstacle) {
+            return player.x < obstacle.x + obstacle.width &&
+                   player.x + player.width > obstacle.x &&
+                   player.y < obstacle.y + obstacle.height &&
+                   player.y + player.height > obstacle.y;
+        }
+
+        // 检测金币碰撞
+        function checkCoinCollision(player, coin) {
+            const playerCenterX = player.x + player.width / 2;
+            const playerCenterY = player.y + player.height / 2;
+            const coinCenterX = coin.x + coin.size / 2;
+            const coinCenterY = coin.y + coin.size / 2;
+            
+            // 计算玩家和金币之间的距离
+            const distance = Math.sqrt(
+                Math.pow(playerCenterX - coinCenterX, 2) +
+                Math.pow(playerCenterY - coinCenterY, 2)
+            );
+            
+            // 如果距离小于两者半径之和，则发生碰撞
+            return distance < (player.width / 2 + coin.size / 2);
+        }
+
+        // 增加游戏难度
+        function increaseDifficulty() {
+            const now = Date.now();
+            
+            // 根据难度配置调整难度增加速度
+            let difficultyFactor = 1;
+            if (gameConfig.difficulty === 'easy') {
+                difficultyFactor = 0.8;
+            } else if (gameConfig.difficulty === 'hard') {
+                difficultyFactor = 1.2;
+            }
+            
+            // 每30秒增加一次难度
+            if (now - gameState.lastObstacleTime > gameConfig.difficultyIncreaseInterval * difficultyFactor) {
+                gameState.difficulty += 0.1;
+            }
+        }
+
+        // 绘制游戏
+        function drawGame(ctx) {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制背景（赛道）
+            drawRoad(ctx);
+            
+            // 绘制金币
+            drawCoins(ctx);
+            
+            // 绘制障碍物
+            drawObstacles(ctx);
+            
+            // 绘制玩家
+            drawPlayer(ctx);
+            
+            // 绘制分数
+            ctx.fillStyle = 'white';
+            ctx.font = '24px Arial';
+            ctx.fillText(`分数: ${gameState.score}`, 20, 40);
+        }
+
+        // 绘制赛道
+        function drawRoad(ctx) {
+            const canvas = document.getElementById('gameCanvas');
+            
+            // 绘制道路
+            ctx.fillStyle = '#333333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制车道分隔线
+            const laneWidth = canvas.width / gameConfig.laneCount;
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([30, 20]);
+            
+            for (let i = 1; i < gameConfig.laneCount; i++) {
+                const x = i * laneWidth;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // 重置虚线样式
+            ctx.setLineDash([]);
+        }
+
+        // 绘制玩家
+        function drawPlayer(ctx) {
+            if (gameState.player.image && !gameState.player.isColliding) {
+                // 绘制玩家图像
+                ctx.drawImage(
+                    gameState.player.image,
+                    gameState.player.x,
+                    gameState.player.y,
+                    gameState.player.width,
+                    gameState.player.height
+                );
+            } else {
+                // 如果图像未加载或发生碰撞，绘制一个简单的矩形
+                ctx.fillStyle = gameState.player.isColliding ? '#FF0000' : gameState.player.color;
+                ctx.fillRect(
+                    gameState.player.x,
+                    gameState.player.y,
+                    gameState.player.width,
+                    gameState.player.height
+                );
+                
+                // 绘制窗户和轮子
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(
+                    gameState.player.x + gameState.player.width * 0.3,
+                    gameState.player.y + gameState.player.height * 0.2,
+                    gameState.player.width * 0.4,
+                    gameState.player.height * 0.3
+                );
+                
+                ctx.fillStyle = '#000000';
+                // 左前轮
+                ctx.fillRect(
+                    gameState.player.x - 5,
+                    gameState.player.y + 10,
+                    10,
+                    20
+                );
+                // 右前轮
+                ctx.fillRect(
+                    gameState.player.x + gameState.player.width - 5,
+                    gameState.player.y + 10,
+                    10,
+                    20
+                );
+                // 左后轮
+                ctx.fillRect(
+                    gameState.player.x - 5,
+                    gameState.player.y + gameState.player.height - 30,
+                    10,
+                    20
+                );
+                // 右后轮
+                ctx.fillRect(
+                    gameState.player.x + gameState.player.width - 5,
+                    gameState.player.y + gameState.player.height - 30,
+                    10,
+                    20
+                );
+            }
+        }
+
+        // 绘制障碍物
+        function drawObstacles(ctx) {
+            gameState.obstacles.forEach(obstacle => {
+                ctx.fillStyle = obstacle.color;
+                ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // 绘制障碍物细节（模拟其他车辆）
+                ctx.fillStyle = '#555555';
+                ctx.fillRect(
+                    obstacle.x + obstacle.width * 0.2,
+                    obstacle.y + obstacle.height * 0.2,
+                    obstacle.width * 0.6,
+                    obstacle.height * 0.3
+                );
+                
+                // 绘制轮子
+                ctx.fillStyle = '#000000';
+                // 左前轮
+                ctx.fillRect(
+                    obstacle.x - 5,
+                    obstacle.y + 5,
+                    10,
+                    15
+                );
+                // 右前轮
+                ctx.fillRect(
+                    obstacle.x + obstacle.width - 5,
+                    obstacle.y + 5,
+                    10,
+                    15
+                );
+                // 左后轮
+                ctx.fillRect(
+                    obstacle.x - 5,
+                    obstacle.y + obstacle.height - 20,
+                    10,
+                    15
+                );
+                // 右后轮
+                ctx.fillRect(
+                    obstacle.x + obstacle.width - 5,
+                    obstacle.y + obstacle.height - 20,
+                    10,
+                    15
+                );
+            });
+        }
+
+        // 绘制金币
+        function drawCoins(ctx) {
+            gameState.coins.forEach(coin => {
+                if (!coin.collected) {
+                    // 绘制金币
+                    ctx.fillStyle = '#FFD700';
+                    ctx.beginPath();
+                    ctx.arc(
+                        coin.x + coin.size / 2,
+                        coin.y + coin.size / 2,
+                        coin.size / 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    // 绘制金币反光
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                    ctx.beginPath();
+                    ctx.arc(
+                        coin.x + coin.size / 2 - coin.size / 4,
+                        coin.y + coin.size / 2 - coin.size / 4,
+                        coin.size / 6,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+            });
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (gameState.isRunning && !gameState.isPaused) {
+                // 更新游戏状态
+                updatePlayer();
+                spawnObstacle();
+                spawnCoin();
+                updateObstacles();
+                updateCoins();
+                increaseDifficulty();
+                
+                // 增加分数（随时间增长）
+                gameState.score += 0.1;
+                document.getElementById('score').textContent = Math.floor(gameState.score);
+            }
+            
+            // 绘制游戏
+            drawGame(ctx);
+            
+            // 继续游戏循环
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 当页面加载完成后初始化游戏
+        window.addEventListener('load', initGame);
+    </script>
+
+<!-- Author Signature Widget V2 -->
+<script id="author-signature-widget-v2">
+  (function() {
+    function showSignature() {
+      var authorNameStr = '李昊哲';
+
+      if (document.getElementById('author-signature-container-v2')) {
+        return;
+      }
+
+      var container = document.createElement('div');
+      container.id = 'author-signature-container-v2';
+      container.style.position = 'fixed';
+      container.style.top = '50%';
+      container.style.left = '50%';
+      container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+      container.style.padding = '30px 50px';
+      container.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+      container.style.color = 'white';
+      container.style.borderRadius = '20px';
+      container.style.zIndex = '2147483647';
+      container.style.fontFamily = '"PingFang SC", "Helvetica Neue", "Microsoft YaHei", sans-serif';
+      container.style.fontSize = '10vw';
+      container.style.fontWeight = 'bold';
+      container.style.textAlign = 'center';
+      container.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      container.style.whiteSpace = 'nowrap';
+      container.style.cursor = 'pointer';
+
+      var textElement = document.createElement('span');
+      textElement.textContent = '作者: ' + authorNameStr;
+
+      var hideWidget = function() {
+        container.style.transform = 'translate(-50%, -50%) scale(0.7)';
+        container.style.opacity = '0';
+        setTimeout(function() {
+          if (container.parentNode) {
+            container.parentNode.removeChild(container);
+          }
+        }, 500);
+      };
+
+      container.onclick = hideWidget;
+
+      container.appendChild(textElement);
+      document.body.appendChild(container);
+
+      setTimeout(function() {
+        container.style.opacity = '1';
+        container.style.transform = 'translate(-50%, -50%) scale(1)';
+      }, 50);
+
+      setTimeout(hideWidget, 5000);
+    }
+
+    if (document.body) {
+        showSignature();
+    } else {
+        document.addEventListener('DOMContentLoaded', showSignature);
+    }
+  })();
+</script>
+</body>
+</html>    
