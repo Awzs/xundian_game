@@ -412,6 +412,10 @@
                 <i class="fas fa-heart text-red-500 animate-pulse"></i> 
                 感谢仁德一小的每一位小创客，你们的创意让世界更美好！
             </p>
+            <p class="text-sm text-gray-400 mt-4">
+                <i class="fas fa-user-shield text-blue-400 mr-1"></i>
+                为保护小创客的隐私，本站对作者姓名进行了部分隐藏处理。
+            </p>
             <p class="text-sm text-gray-500 mt-2">
                 体智夏令营 · 华东师范大学体育与健康学院 · 2025
             </p>
@@ -419,8 +423,16 @@
     </footer>
 
     <script>
+        // 姓名脱敏函数
+        function desensitizeName(name) {
+            if (name && name.length > 1 && name !== '未知') {
+                return '*' + name.substring(1);
+            }
+            return name;
+        }
+
         // 游戏数据直接嵌入
-        const gamesDatabase = [
+        const originalGamesDatabase = [
             {"id":"game_001","filename":"丁宁远-俄罗斯方块(1).html","title":"俄罗斯方块","author":"丁宁远","category":"益智游戏","style":"经典","difficulty":"中等","version":1,"tags":["经典","益智","方块"],"description":"经典俄罗斯方块游戏第一版"},
             {"id":"game_002","filename":"丁宁远-俄罗斯方块(2).html","title":"俄罗斯方块","author":"丁宁远","category":"益智游戏","style":"经典","difficulty":"中等","version":2,"tags":["经典","益智","方块"],"description":"经典俄罗斯方块游戏改进版"},
             {"id":"game_003","filename":"丁宁远(推测)-经典推箱子游戏.html","title":"经典推箱子游戏","author":"丁宁远","authorConfidence":"推测","category":"益智游戏","style":"经典","difficulty":"中等","tags":["益智","推箱子","经典"],"description":"考验逻辑思维的推箱子游戏"},
@@ -562,6 +574,13 @@
             {"id":"game_139","filename":"未知-蛋仔派对游戏.html","title":"蛋仔派对游戏","author":"未知","category":"休闲游戏","style":"可爱","difficulty":"简单","tags":["派对","可爱","休闲"],"description":"蛋仔主题的派对游戏"},
             {"id":"game_140","filename":"未知-贪吃蛇游戏.html","title":"贪吃蛇游戏","author":"未知","category":"休闲游戏","style":"经典","difficulty":"简单","tags":["贪吃蛇","经典","休闲"],"description":"经典贪吃蛇游戏"}
         ];
+
+        const gamesDatabase = originalGamesDatabase.map(game => ({...game}));
+
+        // 对整个数据库进行姓名脱敏
+        gamesDatabase.forEach(game => {
+            game.author = desensitizeName(game.author);
+        });
 
         // 全局变量
         let gamesData = gamesDatabase;
@@ -759,6 +778,31 @@
                 }
             });
         });
+
+        // 更新创作者榜单
+        function updateCreators() {
+            const authorCounts = originalGamesDatabase.reduce((acc, game) => {
+                if (game.author !== '未知') {
+                    acc[game.author] = (acc[game.author] || 0) + 1;
+                }
+                return acc;
+            }, {});
+
+            const sortedAuthors = Object.entries(authorCounts).sort(([, a], [, b]) => b - a).slice(0, 3);
+            
+            const creatorsContainer = document.querySelector('.fa-trophy').parentElement.nextElementSibling;
+            const medals = ['🥇', '🥈', '🥉'];
+            let creatorsHTML = '';
+            sortedAuthors.forEach(([author, count], index) => {
+                creatorsHTML += `
+                    <div class="flex items-center justify-between">
+                        <span>${medals[index]} ${desensitizeName(author)}</span>
+                        <span class="text-yellow-400 font-bold">${count}个游戏</span>
+                    </div>
+                `;
+            });
+            creatorsContainer.innerHTML = creatorsHTML;
+        }
     </script>
 </body>
 </html>
